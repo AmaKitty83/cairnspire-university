@@ -1,0 +1,27 @@
+# Dependencies & build output
+node_modules/
+dist/
+build/
+.vite/
+
+# Firebase local state & caches
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Secrets, credentials, and local-only configs (Bill of Rights Article III.3)
+.env
+.env.*
+!.env.example
+*.local.json
+*serviceAccount*.json
+*service-account*.json
+*credentials*.json
+*.pem
+*.key
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
