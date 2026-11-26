@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BILL_OF_RIGHTS_ARTICLES, type BuildingDef } from '../data/campusData';
+import type { BuildingDef } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
+import { BillOfRightsReader } from './BillOfRightsReader';
 
 interface InteriorModalProps {
   building: BuildingDef | null;
@@ -43,7 +44,11 @@ export function InteriorModal({
       }}
       className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
-      <div className="parchment-panel w-full sm:max-w-xl max-h-[88vh] rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col">
+      <div
+        className={`parchment-panel w-full ${
+          showCharter ? 'sm:max-w-2xl' : 'sm:max-w-xl'
+        } max-h-[88vh] rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col transition-all`}
+      >
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[#362316] text-[#fbe8b5] border-b-2 border-[#a87e45]">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-wider text-[#dfb97a] font-semibold">
@@ -126,23 +131,11 @@ export function InteriorModal({
                 onClick={() => setShowCharter((s) => !s)}
                 className="px-3 py-1.5 rounded-lg bg-[#6b4423] hover:bg-[#7e512a] text-[#fbe8b5] text-xs font-semibold cursor-pointer"
               >
-                {showCharter ? 'Hide Ten Foundational Articles ▲' : 'Read Ten Foundational Articles ▼'}
+                {showCharter
+                  ? 'Hide Full Ratified Bill of Rights ▲'
+                  : 'Read Full Ratified Bill of Rights (All 10 Articles & Subpoints) ▼'}
               </button>
-              {showCharter && (
-                <div className="pt-2 space-y-2 border-t border-[#d8bc8a]">
-                  {BILL_OF_RIGHTS_ARTICLES.map((art) => (
-                    <div
-                      key={art.num}
-                      className="p-2.5 rounded-lg bg-white/75 border border-[#d6b782] text-xs space-y-0.5"
-                    >
-                      <div className="font-bold text-[#3c230f]">
-                        {art.num} — {art.title}
-                      </div>
-                      <p className="text-[#523519] leading-snug">{art.summary}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {showCharter && <BillOfRightsReader />}
             </div>
           )}
 
