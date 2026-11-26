@@ -1,0 +1,549 @@
+rules_version = '2';
+
+// ===============================================================
+// Cairnspire University — Cloud Firestore Security Rules
+// Governed by the Ratified Preliminary Bill of Rights
+// ===============================================================
+//
+// Assumed Data Model
+// ===============================================================
+//
+// 1. Collection: access_roles
+//    Document ID: {emailLower} (lowercase valid email address, max 254 chars)
+//    Fields:
+//      - role: string (required, enum: 'university' | 'guest' | 'family')
+//      - displayName: string (optional, 0..100 chars)
+//      - notes: string (optional, 0..500 chars)
+//      - updatedAt: timestamp (optional)
+//      - updatedBy: string (optional, 1..254 chars, matches caller email)
+//
+// 2. Collection: campus_departments
+//    Document ID: {deptId} (lowercase slug ^[a-z0-9][a-z0-9_-]{0,63}$)
+//    Fields:
+//      - repName: string (required, 1..120 chars)
+//      - status: string (required, enum: 'recruiting' | 'seated' | 'active')
+//      - notes: string (required, 0..2000 chars)
+//      - updatedAt: timestamp (required)
+//      - updatedBy: string (required, 1..254 chars, matches caller email)
+//
+// 3. Collection: governance_proposals
+//    Document ID: {proposalId}
+//    Fields:
+//      - title: string (required, 1..200 chars)
+//      - articleRef: string (required, 0..100 chars)
+//      - summary: string (required, 1..500 chars)
+//      - body: string (required, 1..20000 chars)
+//      - proposedByDept: string (required, slug 1..64 chars)
+//      - gate1Status: string (required, enum: 'draft' | 'pending' | 'review' | 'passed' | 'approved' | 'rejected' | 'needs_revision')
+//      - gate1Notes: string (required, 0..4000 chars)
+//      - gate2Status: string (required, enum: 'pending' | 'ratified' | 'rejected'; non-Chancellor locked to 'pending')
+//      - gate2DecidedAt: timestamp | null (optional; required timestamp when gate2Status != 'pending')
+//      - gate2DecidedBy: string (optional, 0..254 chars; required Chancellor email when gate2Status != 'pending')
+//      - createdAt: timestamp (required, immutable on update)
+//      - updatedAt: timestamp (required)
+//      - createdBy: string (required, 1..254 chars, matches caller email on create, immutable on update)
+//      - updatedBy: string (required, 1..254 chars, matches caller email)
+//
+// 4. Collection: permits (Article II — Chancellor Permit Gate)
+//    Document ID: {permitId}
+//    Fields:
+//      - title: string (required, 1..200 chars, immutable on update)
+//      - departmentId: string (required, slug 1..64 chars, immutable on update)
+//      - requestedBy: string (required, 1..120 chars, immutable on update)
+//      - actionType: string (required, 1..80 chars, immutable on update)
+//      - details: string (required, 1..8000 chars, immutable on update)
+//      - riskLevel: string (required, enum: 'low' | 'medium' | 'high' | 'critical', immutable on update)
+//      - status: string (required, enum: 'pending' | 'approved' | 'denied'; must create as 'pending'; Chancellor transitions pending -> approved/denied once)
+//      - createdAt: timestamp (required, immutable on update)
+//      - decisionNote: string (required, 0..2000 chars; must be '' on create)
+//      - decidedBy: string (required, 0..254 chars; must be '' on create; matches Chancellor email on decision)
+//      - decidedAt: timestamp | null (required; must be null on create; must be timestamp on decision)
+//    Delete: DENIED for all users (immutable audit record).
+//
+// 5. Collection: conduct_logs (Courthouse — Article IX.2 No Tampering)
+//    Document ID: {logId}
+//    Fields:
+//      - category: string (required, enum: 'audit' | 'policy_violation' | 'watchdog_alert' | 'remediation' | 'permit_audit' | 'governance' | 'incident' | 'commendation')
+//      - severity: string (required, enum: 'info' | 'low' | 'medium' | 'high' | 'critical')
+//      - departmentId: string (required, slug 1..64 chars)
+//      - actor: string (required, 1..120 chars)
+//      - summary: string (required, 1..4000 chars)
+//      - remediationOrder: string (required, 0..4000 chars)
+//      - createdAt: timestamp (required)
+//    Update / Delete: DENIED for EVERYONE including Chancellor (append-only ledger).
+//
+// 6. Collection: skills_registry
+//    Document ID: {skillId}
+//    Fields:
+//      - name: string (required, 1..120 chars)
+//      - scope: string (required, enum: 'campus' | 'department' | 'local' | 'external' | 'restricted')
+//      - departmentId: string (required, slug 1..64 chars)
+//      - description: string (required, 1..2000 chars)
+//      - status: string (required, enum: 'draft' | 'active' | 'under_review' | 'deprecated' | 'revoked')
+//      - location: string (required, 0..500 chars)
+//      - updatedAt: timestamp (required)
+//      - updatedBy: string (required, 1..254 chars, matches caller email)
+//
+// 7. Collection: air_bridges
+//    Document ID: {bridgeId}
+//    Fields:
+//      - name: string (required, 1..120 chars)
+//      - host: string (required, 1..255 chars)
+//      - type: string (required, enum: 'comfyui' | 'agent_zero' | 'mcp' | 'ollama' | 'llm' | 'gpu_worker' | 'api' | 'custom')
+//      - status: string (required, enum: 'online' | 'offline' | 'degraded' | 'standby' | 'maintenance')
+//      - hardware: string (required, 0..300 chars)
+//      - notes: string (required, 0..2000 chars)
+//      - updatedAt: timestamp (required)
+//      - updatedBy: string (required, 1..254 chars, matches caller email)
+//
+// 8. Collection: home_and_garden/{document=**}
+//    Access: Chancellor, University, and Family only (hard-denied for Guest & unauthenticated).
+//    Validated for key-count bounds and timestamp/field hygiene on create & update.
+//
+// 9. Collections: private_health/{document=**}, private_finance/{document=**}, private_stocks/{document=**}
+//    Access: Chancellor and University only (hard-denied for Guest, Family, & unauthenticated).
+//    Validated for key-count bounds and timestamp/field hygiene on create & update.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions — Authentication & RBAC
+    // ===============================================================
+
+    // Verified Google Sign-In identity required for all access
+    function isAuthenticated() {
+      return request.auth != null &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email is string &&
+        request.auth.token.email.size() > 0;
+    }
+
+    function authEmailLower() {
+      return request.auth.token.email.lower();
+    }
+
+    // Standard UID ownership helpers
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    // Sole bootstrapped Chancellor authority (Gate 2 ratification & Permit approvals)
+    function isChancellor() {
+      return isAuthenticated() &&
+        authEmailLower() == 'amarette83@gmail.com';
+    }
+
+    // Dynamic role document lookup (zero private family emails hardcoded in rules)
+    function roleDocPath() {
+      return /databases/$(database)/documents/access_roles/$(authEmailLower());
+    }
+
+    function hasRole(roleName) {
+      return isAuthenticated() &&
+        exists(roleDocPath()) &&
+        get(roleDocPath()).data.role == roleName;
+    }
+
+    function hasAnyRole(roles) {
+      return isAuthenticated() &&
+        exists(roleDocPath()) &&
+        get(roleDocPath()).data.role in roles;
+    }
+
+    function isUniversity() {
+      return hasRole('university');
+    }
+
+    function isGuest() {
+      return hasRole('guest');
+    }
+
+    function isFamily() {
+      return hasRole('family');
+    }
+
+    function isCampusReader() {
+      return isChancellor() || hasAnyRole(['university', 'guest']);
+    }
+
+    function isCampusOperator() {
+      return isChancellor() || isUniversity();
+    }
+
+    function isSanctuaryMember() {
+      return isChancellor() || hasAnyRole(['university', 'family']);
+    }
+
+    // ===============================================================
+    // Helper Functions — Schema & Data Validation
+    // ===============================================================
+
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string &&
+        val.size() >= minLen &&
+        val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, field, minLen, maxLen) {
+      return !(field in data) || isValidString(data[field], minLen, maxLen);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() >= 3 &&
+        email.size() <= 254 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function isValidSlug(val) {
+      return val is string &&
+        val.size() >= 1 &&
+        val.size() <= 64 &&
+        val.matches('^[a-z0-9][a-z0-9_-]{0,63}$');
+    }
+
+    function isCallerEmail(val) {
+      return isValidString(val, 3, 254) &&
+        val.lower() == authEmailLower();
+    }
+
+    // ===============================================================
+    // Domain Validators (Invoked in BOTH create and update rules)
+    // ===============================================================
+
+    function isValidAccessRole(data, emailLower) {
+      return isValidEmail(emailLower) &&
+        emailLower == emailLower.lower() &&
+        hasOnlyAllowedFields(data, ['role', 'displayName', 'notes', 'updatedAt', 'updatedBy']) &&
+        hasRequiredFields(data, ['role']) &&
+        data.role in ['university', 'guest', 'family'] &&
+        isValidOptionalString(data, 'displayName', 0, 100) &&
+        isValidOptionalString(data, 'notes', 0, 500) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+        (!('updatedBy' in data) || isCallerEmail(data.updatedBy));
+    }
+
+    function isValidCampusDepartment(data, deptId) {
+      return isValidSlug(deptId) &&
+        hasOnlyAllowedFields(data, ['repName', 'status', 'notes', 'updatedAt', 'updatedBy']) &&
+        hasRequiredFields(data, ['repName', 'status', 'notes', 'updatedAt', 'updatedBy']) &&
+        isValidString(data.repName, 1, 120) &&
+        data.status in ['recruiting', 'seated', 'active'] &&
+        isValidString(data.notes, 0, 2000) &&
+        data.updatedAt is timestamp &&
+        isCallerEmail(data.updatedBy);
+    }
+
+    function isValidGovernanceProposal(data) {
+      return hasOnlyAllowedFields(data, [
+          'title', 'articleRef', 'summary', 'body', 'proposedByDept',
+          'gate1Status', 'gate1Notes', 'gate2Status',
+          'gate2DecidedAt', 'gate2DecidedBy',
+          'createdAt', 'updatedAt', 'createdBy', 'updatedBy'
+        ]) &&
+        hasRequiredFields(data, [
+          'title', 'articleRef', 'summary', 'body', 'proposedByDept',
+          'gate1Status', 'gate1Notes', 'gate2Status',
+          'createdAt', 'updatedAt', 'createdBy', 'updatedBy'
+        ]) &&
+        isValidString(data.title, 1, 200) &&
+        isValidString(data.articleRef, 0, 100) &&
+        isValidString(data.summary, 1, 500) &&
+        isValidString(data.body, 1, 20000) &&
+        isValidSlug(data.proposedByDept) &&
+        data.gate1Status in ['draft', 'pending', 'review', 'passed', 'approved', 'rejected', 'needs_revision'] &&
+        isValidString(data.gate1Notes, 0, 4000) &&
+        data.gate2Status in ['pending', 'ratified', 'rejected'] &&
+        (!('gate2DecidedAt' in data) || data.gate2DecidedAt == null || data.gate2DecidedAt is timestamp) &&
+        (!('gate2DecidedBy' in data) || isValidString(data.gate2DecidedBy, 0, 254)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        isValidString(data.createdBy, 3, 254) &&
+        isCallerEmail(data.updatedBy) &&
+        (
+          (data.gate2Status == 'pending' &&
+            (!('gate2DecidedAt' in data) || data.gate2DecidedAt == null) &&
+            (!('gate2DecidedBy' in data) || data.gate2DecidedBy == '')) ||
+          (data.gate2Status in ['ratified', 'rejected'] &&
+            'gate2DecidedAt' in data && data.gate2DecidedAt is timestamp &&
+            'gate2DecidedBy' in data && isCallerEmail(data.gate2DecidedBy))
+        );
+    }
+
+    function isValidPermit(data) {
+      return hasOnlyAllowedFields(data, [
+          'title', 'departmentId', 'requestedBy', 'actionType', 'details',
+          'riskLevel', 'status', 'createdAt', 'decisionNote', 'decidedBy', 'decidedAt'
+        ]) &&
+        hasRequiredFields(data, [
+          'title', 'departmentId', 'requestedBy', 'actionType', 'details',
+          'riskLevel', 'status', 'createdAt', 'decisionNote', 'decidedBy', 'decidedAt'
+        ]) &&
+        isValidString(data.title, 1, 200) &&
+        isValidSlug(data.departmentId) &&
+        isValidString(data.requestedBy, 1, 120) &&
+        isValidString(data.actionType, 1, 80) &&
+        isValidString(data.details, 1, 8000) &&
+        data.riskLevel in ['low', 'medium', 'high', 'critical'] &&
+        data.status in ['pending', 'approved', 'denied'] &&
+        data.createdAt is timestamp &&
+        isValidString(data.decisionNote, 0, 2000) &&
+        isValidString(data.decidedBy, 0, 254) &&
+        (data.decidedAt == null || data.decidedAt is timestamp);
+    }
+
+    function isValidConductLog(data) {
+      return hasOnlyAllowedFields(data, [
+          'category', 'severity', 'departmentId', 'actor',
+          'summary', 'remediationOrder', 'createdAt'
+        ]) &&
+        hasRequiredFields(data, [
+          'category', 'severity', 'departmentId', 'actor',
+          'summary', 'remediationOrder', 'createdAt'
+        ]) &&
+        data.category in [
+          'audit', 'policy_violation', 'watchdog_alert', 'remediation',
+          'permit_audit', 'governance', 'incident', 'commendation'
+        ] &&
+        data.severity in ['info', 'low', 'medium', 'high', 'critical'] &&
+        isValidSlug(data.departmentId) &&
+        isValidString(data.actor, 1, 120) &&
+        isValidString(data.summary, 1, 4000) &&
+        isValidString(data.remediationOrder, 0, 4000) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSkill(data) {
+      return hasOnlyAllowedFields(data, [
+          'name', 'scope', 'departmentId', 'description',
+          'status', 'location', 'updatedAt', 'updatedBy'
+        ]) &&
+        hasRequiredFields(data, [
+          'name', 'scope', 'departmentId', 'description',
+          'status', 'location', 'updatedAt', 'updatedBy'
+        ]) &&
+        isValidString(data.name, 1, 120) &&
+        data.scope in ['campus', 'department', 'local', 'external', 'restricted'] &&
+        isValidSlug(data.departmentId) &&
+        isValidString(data.description, 1, 2000) &&
+        data.status in ['draft', 'active', 'under_review', 'deprecated', 'revoked'] &&
+        isValidString(data.location, 0, 500) &&
+        data.updatedAt is timestamp &&
+        isCallerEmail(data.updatedBy);
+    }
+
+    function isValidAirBridge(data) {
+      return hasOnlyAllowedFields(data, [
+          'name', 'host', 'type', 'status',
+          'hardware', 'notes', 'updatedAt', 'updatedBy'
+        ]) &&
+        hasRequiredFields(data, [
+          'name', 'host', 'type', 'status',
+          'hardware', 'notes', 'updatedAt', 'updatedBy'
+        ]) &&
+        isValidString(data.name, 1, 120) &&
+        isValidString(data.host, 1, 255) &&
+        data.type in ['comfyui', 'agent_zero', 'mcp', 'ollama', 'llm', 'gpu_worker', 'api', 'custom'] &&
+        data.status in ['online', 'offline', 'degraded', 'standby', 'maintenance'] &&
+        isValidString(data.hardware, 0, 300) &&
+        isValidString(data.notes, 0, 2000) &&
+        data.updatedAt is timestamp &&
+        isCallerEmail(data.updatedBy);
+    }
+
+    // Flexible bounded validator for sanctuary & private vault documents
+    function isValidVaultDocument(data) {
+      return data.keys().size() > 0 &&
+        data.keys().size() <= 50 &&
+        (!('createdAt' in data) || data.createdAt is timestamp) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+        isValidOptionalString(data, 'title', 0, 200) &&
+        isValidOptionalString(data, 'name', 0, 200) &&
+        isValidOptionalString(data, 'notes', 0, 20000) &&
+        isValidOptionalString(data, 'description', 0, 10000) &&
+        isValidOptionalString(data, 'updatedBy', 0, 254);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // 1. Dynamic Access Roles (PII-protected; Chancellor-managed)
+    match /access_roles/{emailLower} {
+      allow get: if isChancellor() ||
+        (isAuthenticated() && authEmailLower() == emailLower);
+      allow list: if isChancellor();
+      allow create: if isChancellor() &&
+        isValidAccessRole(request.resource.data, emailLower);
+      allow update: if isChancellor() &&
+        isValidAccessRole(request.resource.data, emailLower);
+      allow delete: if isChancellor();
+    }
+
+    // 2. Campus Departments
+    match /campus_departments/{deptId} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidCampusDepartment(request.resource.data, deptId);
+      allow update: if isCampusOperator() &&
+        isValidCampusDepartment(request.resource.data, deptId);
+      allow delete: if isChancellor();
+    }
+
+    // 3. Governance Proposals (Town Hall — Gate 1 Drafts & Gate 2 Chancellor Ratification)
+    match /governance_proposals/{proposalId} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidGovernanceProposal(request.resource.data) &&
+        isCallerEmail(request.resource.data.createdBy) &&
+        (isChancellor() || request.resource.data.gate2Status == 'pending');
+      allow update: if isCampusOperator() &&
+        isValidGovernanceProposal(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt', 'createdBy']) &&
+        (
+          isChancellor() ||
+          (
+            isUniversity() &&
+            resource.data.gate2Status == 'pending' &&
+            request.resource.data.gate2Status == 'pending' &&
+            areImmutableFieldsUnchanged(['gate2Status', 'gate2DecidedAt', 'gate2DecidedBy'])
+          )
+        );
+      allow delete: if isChancellor();
+    }
+
+    // 4. Permits (Executive / Police — Article II Chancellor Permit Gate)
+    match /permits/{permitId} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidPermit(request.resource.data) &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.decisionNote == '' &&
+        request.resource.data.decidedBy == '' &&
+        request.resource.data.decidedAt == null;
+      allow update: if isChancellor() &&
+        isValidPermit(request.resource.data) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status in ['approved', 'denied'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'decisionNote', 'decidedBy', 'decidedAt'
+        ]) &&
+        isCallerEmail(request.resource.data.decidedBy) &&
+        request.resource.data.decidedAt is timestamp;
+      allow delete: if false;
+    }
+
+    // 5. Conduct Logs (Courthouse — Article IX.2 Append-Only / Zero Tampering)
+    match /conduct_logs/{logId} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidConductLog(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // 6. Skills Registry (Town Hall)
+    match /skills_registry/{skillId} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidSkill(request.resource.data);
+      allow update: if isCampusOperator() &&
+        isValidSkill(request.resource.data);
+      allow delete: if isChancellor();
+    }
+
+    // 7. A.I.R. Bridges (Local GPU & External Compute Bridges)
+    match /air_bridges/{bridgeId} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidAirBridge(request.resource.data);
+      allow update: if isCampusOperator() &&
+        isValidAirBridge(request.resource.data);
+      allow delete: if isChancellor();
+    }
+
+    // 8. Home and Garden Sanctuary (Strictly isolated from Guest & Unauthenticated)
+    match /home_and_garden/{document=**} {
+      allow read: if isSanctuaryMember();
+      allow create: if isSanctuaryMember() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isSanctuaryMember() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        (!('createdAt' in resource.data) ||
+          ('createdAt' in request.resource.data && request.resource.data.createdAt == resource.data.createdAt));
+      allow delete: if isSanctuaryMember();
+    }
+
+    // 9. Private Vaults (Chancellor & University ONLY — Hard-denied for Guest, Family, Unauthenticated)
+    match /private_health/{document=**} {
+      allow read: if isCampusOperator();
+      allow create: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        (!('createdAt' in resource.data) ||
+          ('createdAt' in request.resource.data && request.resource.data.createdAt == resource.data.createdAt));
+      allow delete: if isCampusOperator();
+    }
+
+    match /private_finance/{document=**} {
+      allow read: if isCampusOperator();
+      allow create: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        (!('createdAt' in resource.data) ||
+          ('createdAt' in request.resource.data && request.resource.data.createdAt == resource.data.createdAt));
+      allow delete: if isCampusOperator();
+    }
+
+    match /private_stocks/{document=**} {
+      allow read: if isCampusOperator();
+      allow create: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        (!('createdAt' in resource.data) ||
+          ('createdAt' in request.resource.data && request.resource.data.createdAt == resource.data.createdAt));
+      allow delete: if isCampusOperator();
+    }
+
+    // 10. Explicit Default Deny-All Fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

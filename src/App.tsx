@@ -1,22 +1,88 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, resolveUserRole } from './firebase';
+import { auth, resolveUserRoleAsync, type CampusRole } from './firebase';
+import {
+  ensureStarterGovernanceSeeded,
+  subscribeAccessRoles,
+  subscribeAirBridges,
+  subscribeConductLogs,
+  subscribeDepartments,
+  subscribePermits,
+  subscribeProposals,
+  subscribeSkills,
+  type AccessRoleRecord,
+  type AirBridgeRecord,
+  type ConductLogRecord,
+  type DepartmentRecord,
+  type GovernanceProposal,
+  type PermitRecord,
+  type SkillRegistryRecord,
+} from './services/firestoreService';
 import { AuthGate } from './components/AuthGate';
 import { CampusMap } from './components/CampusMap';
 import { HomeAndGardenView } from './components/HomeAndGardenView';
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<CampusRole>('unauthorized');
   const [authReady, setAuthReady] = useState(false);
   const [familyPreviewOpen, setFamilyPreviewOpen] = useState(false);
+
+  // Live Firestore collections
+  const [departments, setDepartments] = useState<Record<string, DepartmentRecord>>({});
+  const [proposals, setProposals] = useState<GovernanceProposal[]>([]);
+  const [permits, setPermits] = useState<PermitRecord[]>([]);
+  const [conductLogs, setConductLogs] = useState<ConductLogRecord[]>([]);
+  const [skills, setSkills] = useState<SkillRegistryRecord[]>([]);
+  const [bridges, setBridges] = useState<AirBridgeRecord[]>([]);
+  const [accessRoles, setAccessRoles] = useState<AccessRoleRecord[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
-      setAuthReady(true);
+      if (!nextUser) {
+        setRole('unauthorized');
+        setAuthReady(true);
+        return;
+      }
+      void resolveUserRoleAsync(nextUser).then((resolved) => {
+        setRole(resolved);
+        setAuthReady(true);
+      });
     });
     return unsub;
   }, []);
+
+  // Seed starter governance records once when Chancellor opens v2
+  useEffect(() => {
+    if (!user?.email || role !== 'chancellor') return;
+    void ensureStarterGovernanceSeeded(user.email).catch((err: unknown) => {
+      setSyncError(err instanceof Error ? err.message : 'Could not seed starter governance data.');
+    });
+  }, [user?.email, role]);
+
+  // Live Firestore subscriptions for Campus roles (Chancellor, University, Read-Only Guest)
+  useEffect(() => {
+    if (!user || (role !== 'chancellor' && role !== 'university' && role !== 'guest')) return;
+    setSyncError(null);
+    const onErr = (err: Error) => setSyncError(err.message);
+
+    const unsubs = [
+      subscribeDepartments(setDepartments, onErr),
+      subscribeProposals(setProposals, onErr),
+      subscribePermits(setPermits, onErr),
+      subscribeConductLogs(setConductLogs, onErr),
+      subscribeSkills(setSkills, onErr),
+      subscribeAirBridges(setBridges, onErr),
+    ];
+    if (role === 'chancellor') {
+      unsubs.push(subscribeAccessRoles(setAccessRoles, onErr));
+    }
+    return () => {
+      unsubs.forEach((u) => u());
+    };
+  }, [user, role]);
 
   if (!authReady) {
     return (
@@ -29,19 +95,15 @@ export function App() {
     );
   }
 
-  const role = resolveUserRole(user);
-
   if (!user || role === 'unauthorized') {
     return <AuthGate user={user} unauthorized={Boolean(user)} />;
   }
 
-  // Family-only accounts drop directly inside Home and Garden — zero campus map rendered
   if (role === 'family') {
     return <HomeAndGardenView canExitToCampus={false} userEmail={user.email} />;
   }
 
-  // Chancellor (Amarette) & University Full Access (Ray)
-  if (familyPreviewOpen) {
+  if (familyPreviewOpen && (role === 'chancellor' || role === 'university')) {
     return (
       <HomeAndGardenView
         canExitToCampus={true}
@@ -54,7 +116,15 @@ export function App() {
   return (
     <CampusMap
       role={role}
-      userEmail={user.email}
+      userEmail={user.email || ''}
+      departments={departments}
+      proposals={proposals}
+      permits={permits}
+      conductLogs={conductLogs}
+      skills={skills}
+      bridges={bridges}
+      accessRoles={accessRoles}
+      syncError={syncError}
       onOpenFamilyPreview={() => setFamilyPreviewOpen(true)}
     />
   );

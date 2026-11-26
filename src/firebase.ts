@@ -7,6 +7,7 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,6 +20,7 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -62,7 +64,46 @@ const UNIVERSITY_EMAILS = parseEmailList(import.meta.env.VITE_UNIVERSITY_EMAILS)
 const GUEST_EMAILS = parseEmailList(import.meta.env.VITE_GUEST_EMAILS);
 const FAMILY_EMAILS = parseEmailList(import.meta.env.VITE_FAMILY_EMAILS);
 
-export function resolveUserRole(user: User | null): CampusRole {
+export function getSeedAllowlistEntries(): Array<{
+  email: string;
+  role: 'university' | 'guest' | 'family';
+  displayName: string;
+  notes: string;
+}> {
+  const entries: Array<{
+    email: string;
+    role: 'university' | 'guest' | 'family';
+    displayName: string;
+    notes: string;
+  }> = [];
+  for (const email of UNIVERSITY_EMAILS) {
+    entries.push({
+      email,
+      role: 'university',
+      displayName: 'Ray',
+      notes: 'Full University access (ratified Article III.1)',
+    });
+  }
+  for (const email of GUEST_EMAILS) {
+    entries.push({
+      email,
+      role: 'guest',
+      displayName: 'Mom (Campus Guest)',
+      notes: 'Read-only Campus Explorer — can tour all halls without changing data or commanding agents',
+    });
+  }
+  for (const email of FAMILY_EMAILS) {
+    entries.push({
+      email,
+      role: 'family',
+      displayName: 'Family Member',
+      notes: 'Strictly isolated inside Home and Garden',
+    });
+  }
+  return entries;
+}
+
+export function resolveFallbackRole(user: User | null): CampusRole {
   const email = user?.email?.trim().toLowerCase();
   if (!email) return 'unauthorized';
   if (CHANCELLOR_EMAILS.has(email)) return 'chancellor';
@@ -70,4 +111,24 @@ export function resolveUserRole(user: User | null): CampusRole {
   if (GUEST_EMAILS.has(email)) return 'guest';
   if (FAMILY_EMAILS.has(email)) return 'family';
   return 'unauthorized';
+}
+
+export async function resolveUserRoleAsync(user: User | null): Promise<CampusRole> {
+  const email = user?.email?.trim().toLowerCase();
+  if (!email) return 'unauthorized';
+  if (CHANCELLOR_EMAILS.has(email)) return 'chancellor';
+
+  try {
+    const snap = await getDoc(doc(db, 'access_roles', email));
+    if (snap.exists()) {
+      const r = snap.data()?.role;
+      if (r === 'university' || r === 'guest' || r === 'family') {
+        return r;
+      }
+    }
+  } catch {
+    // Fall back cleanly if Firestore is temporarily unreachable or not seeded yet
+  }
+
+  return resolveFallbackRole(user);
 }

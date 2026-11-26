@@ -9,11 +9,28 @@ import {
 } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
 import { signOutUser, type CampusRole } from '../firebase';
+import type {
+  AccessRoleRecord,
+  AirBridgeRecord,
+  ConductLogRecord,
+  DepartmentRecord,
+  GovernanceProposal,
+  PermitRecord,
+  SkillRegistryRecord,
+} from '../services/firestoreService';
 import { InteriorModal } from './InteriorModal';
 
 interface CampusMapProps {
   role: CampusRole;
-  userEmail: string | null;
+  userEmail: string;
+  departments: Record<string, DepartmentRecord>;
+  proposals: GovernanceProposal[];
+  permits: PermitRecord[];
+  conductLogs: ConductLogRecord[];
+  skills: SkillRegistryRecord[];
+  bridges: AirBridgeRecord[];
+  accessRoles: AccessRoleRecord[];
+  syncError: string | null;
   onOpenFamilyPreview: () => void;
 }
 
@@ -29,7 +46,19 @@ interface ActiveSprite extends SpriteDef {
 
 const wpMap = Object.fromEntries(WAYPOINTS.map((w) => [w.id, w]));
 
-export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapProps) {
+export function CampusMap({
+  role,
+  userEmail,
+  departments,
+  proposals,
+  permits,
+  conductLogs,
+  skills,
+  bridges,
+  accessRoles,
+  syncError,
+  onOpenFamilyPreview,
+}: CampusMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [spritesEnabled, setSpritesEnabled] = useState(true);
   const [activeBuilding, setActiveBuilding] = useState<BuildingDef | null>(null);
@@ -47,7 +76,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
     spritesEnabledRef.current = spritesEnabled;
   }, [spritesEnabled]);
 
-  // Pan & Zoom state (including multi-touch pinch zoom for mobile/tablet)
   const transformRef = useRef({ panX: 0, panY: 0, scale: 1 });
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const dragOriginRef = useRef({ startX: 0, startY: 0, dragging: false });
@@ -79,7 +107,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
     applyTransform();
   }
 
-  // Main animation loop (Sprites + Geology Stone Train + Stocks LED Ticker)
   useEffect(() => {
     const activeSprites: ActiveSprite[] = SPRITES_DATA.map((s, idx) => {
       const start = wpMap[s.node] || WAYPOINTS[0];
@@ -155,7 +182,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Pointer & pinch-zoom event handlers
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -231,13 +257,18 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
 
   const trainAsset = ASSETS['stone-train'];
   const trainDrawW = 92;
-  const trainDrawH = trainAsset?.w && trainAsset?.h ? (trainAsset.h / trainAsset.w) * trainDrawW : 46;
+  const trainDrawH =
+    trainAsset?.w && trainAsset?.h ? (trainAsset.h / trainAsset.w) * trainDrawW : 46;
   const roleLabel =
     role === 'chancellor'
       ? 'Chancellor View'
       : role === 'guest'
-        ? 'Campus Guest View'
+        ? 'Campus Guest · Read-Only'
         : 'University Full Access';
+
+  const pendingPermitCount = permits.filter((p) => p.status === 'pending').length;
+  const canPreviewFamily = role === 'chancellor' || role === 'university';
+  const watchBuilding = BUILDINGS.find((b) => b.id === 'executive') || null;
 
   return (
     <div className="h-screen w-screen flex flex-col select-none">
@@ -254,12 +285,23 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
               Cairnspire University
             </h1>
             <p className="text-[11px] text-[#d9be8c] leading-tight truncate">
-              Living Parchment Atlas · 14 Halls · {roleLabel}
+              v2 Governance Atlas · 14 Halls · {roleLabel}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {pendingPermitCount > 0 && watchBuilding && (
+            <button
+              onClick={() => {
+                focusBuilding(watchBuilding);
+                setActiveBuilding(watchBuilding);
+              }}
+              className="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 hover:bg-amber-400 text-[#2b1d13] shadow cursor-pointer"
+            >
+              ! {pendingPermitCount} Permit{pendingPermitCount === 1 ? '' : 's'}
+            </button>
+          )}
           <button
             onClick={() => setLabelsVisible((v) => !v)}
             className="px-2 py-1 rounded-md text-xs font-medium bg-[#402c1e] hover:bg-[#573c29] border border-[#a57b42]/60 text-[#f5dfaf] cursor-pointer"
@@ -268,19 +310,21 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
           </button>
           <button
             onClick={() => setSpritesEnabled((v) => !v)}
-            className="hidden xs:inline-block sm:inline-block px-2 py-1 rounded-md text-xs font-medium bg-[#402c1e] hover:bg-[#573c29] border border-[#a57b42]/60 text-[#f5dfaf] cursor-pointer"
+            className="hidden sm:inline-block px-2 py-1 rounded-md text-xs font-medium bg-[#402c1e] hover:bg-[#573c29] border border-[#a57b42]/60 text-[#f5dfaf] cursor-pointer"
           >
             Sprites: {spritesEnabled ? 'On' : 'Off'}
           </button>
-          <button
-            onClick={onOpenFamilyPreview}
-            className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#2d7a4f] hover:bg-[#379460] border border-[#8ce0ad]/60 text-white cursor-pointer"
-          >
-            Family / Kid Mode
-          </button>
+          {canPreviewFamily && (
+            <button
+              onClick={onOpenFamilyPreview}
+              className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#2d7a4f] hover:bg-[#379460] border border-[#8ce0ad]/60 text-white cursor-pointer"
+            >
+              Family / Kid Mode
+            </button>
+          )}
           <button
             onClick={() => void signOutUser()}
-            title={userEmail || 'Sign out'}
+            title={userEmail}
             className="px-2 py-1 rounded-md text-xs font-medium bg-[#402c1e] hover:bg-[#573c29] border border-[#a57b42]/60 text-[#f5dfaf] cursor-pointer"
           >
             Sign Out
@@ -290,6 +334,12 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
 
       {/* MAIN INTERACTIVE WORLD MAP VIEWPORT */}
       <main className="relative flex-1 overflow-hidden bg-[#2b1e14]">
+        {syncError && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-500 text-xs text-amber-950 shadow">
+            Firestore sync notice: {syncError}
+          </div>
+        )}
+
         <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
           <button
             onClick={() => adjustZoom(1.2)}
@@ -319,7 +369,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
           <span>Drag to pan · Pinch/wheel to zoom · Tap any hall or wandering D&amp;D sprite</span>
         </div>
 
-        {/* Sprite Speech Toast */}
         {activeSpriteToast && (
           <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 parchment-panel rounded-xl px-4 py-3 max-w-sm w-[92%] text-xs">
             <div className="flex items-start gap-3">
@@ -352,7 +401,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
           </div>
         )}
 
-        {/* INTERACTIVE UNIFIED PAINTED WORLD SVG */}
         <svg
           ref={svgRef}
           className="w-full h-full touch-none cursor-grab active:cursor-grabbing"
@@ -387,7 +435,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
               preserveAspectRatio="none"
             />
 
-            {/* LIVE SCROLLING WALL STREET LED STOCK TICKER */}
             <g transform="translate(201, 250) skewY(-19.5)" pointerEvents="none">
               <rect x="0" y="0" width="174" height="15" rx="1.5" fill="#07131c" opacity="0.88" />
               <g clipPath="url(#stocksLedClip)">
@@ -406,7 +453,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
               </g>
             </g>
 
-            {/* ELEMENTAL CRYSTAL SHIMMERS */}
             <g pointerEvents="none" filter="url(#softGlow)">
               <circle cx="786" cy="342" r="10" fill="#e0aaff" className="shimmer-a" />
               <circle cx="765" cy="422" r="8" fill="#52b788" className="shimmer-b" />
@@ -416,7 +462,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
               <circle cx="1024" cy="96" r="14" fill="#ffbe0b" opacity="0.38" className="shimmer-b" />
             </g>
 
-            {/* GEOLOGY RAIL PATH + ANIMATED STONE TRAIN */}
             <path
               ref={trackPathRef}
               d="M 1358,270 C 1278,334 1192,388 1098,376 C 1020,366 942,340 882,320"
@@ -437,7 +482,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
               </g>
             </g>
 
-            {/* INTERACTIVE BUILDING HOTSPOTS & RIBBON LABELS */}
             <g>
               {BUILDINGS.map((b) => {
                 const bannerW = Math.max(108, b.label.length * 7.8 + 22);
@@ -446,6 +490,7 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
                 const strokeCol = b.greenBanner ? '#205c3c' : '#634320';
                 const textCol = b.greenBanner ? '#153b26' : '#331d0b';
                 const tailFill = b.greenBanner ? '#b7e4c7' : '#e0c594';
+                const showPermitPin = b.id === 'executive' && pendingPermitCount > 0;
 
                 return (
                   <g
@@ -503,6 +548,21 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
                         >
                           {b.label}
                         </text>
+                        {showPermitPin && (
+                          <g transform={`translate(${halfW + 2}, -12)`}>
+                            <circle cx="0" cy="0" r="11" fill="#f59e0b" stroke="#2b1d13" strokeWidth="2" />
+                            <text
+                              x="0"
+                              y="4"
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="bold"
+                              fill="#2b1d13"
+                            >
+                              !
+                            </text>
+                          </g>
+                        )}
                       </g>
                     )}
                   </g>
@@ -510,7 +570,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
               })}
             </g>
 
-            {/* WANDERING D&D FANTASY SPRITES */}
             <g style={{ display: spritesEnabled ? 'block' : 'none' }}>
               {SPRITES_DATA.map((s, idx) => {
                 const asset = ASSETS[s.spriteKey];
@@ -546,7 +605,6 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
           </g>
         </svg>
 
-        {/* MOBILE-FIRST BOTTOM QUICK-JUMP BUILDING DOCK */}
         <nav className="absolute bottom-2 left-2 right-2 z-20 flex items-center gap-1.5 overflow-x-auto no-scrollbar px-2.5 py-1.5 rounded-xl bg-[#2b1d13]/92 border border-[#a57b42] shadow-lg backdrop-blur-sm">
           <span className="text-[11px] font-atlas font-bold text-[#f7d992] px-1 shrink-0">
             Jump:
@@ -570,7 +628,20 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
 
       <InteriorModal
         building={activeBuilding}
+        role={role}
+        userEmail={userEmail}
+        departments={departments}
+        proposals={proposals}
+        permits={permits}
+        conductLogs={conductLogs}
+        skills={skills}
+        bridges={bridges}
+        accessRoles={accessRoles}
         onClose={() => setActiveBuilding(null)}
+        onSelectBuilding={(b) => {
+          focusBuilding(b);
+          setActiveBuilding(b);
+        }}
         onOpenFamilyPreview={onOpenFamilyPreview}
       />
     </div>
