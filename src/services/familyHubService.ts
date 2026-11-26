@@ -763,15 +763,20 @@ export async function importFamilyHubBundle(
   const writeStep = async (
     label: string,
     path: string[],
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    merge = false
   ): Promise<void> => {
     try {
       const cleanPayload = sanitize(payload);
-      await setDoc(doc(db, path[0], ...path.slice(1)), {
-        ...cleanPayload,
-        updatedAt: serverTimestamp(),
-        updatedBy: email,
-      });
+      await setDoc(
+        doc(db, path[0], ...path.slice(1)),
+        {
+          ...cleanPayload,
+          updatedAt: serverTimestamp(),
+          updatedBy: email,
+        },
+        merge ? { merge: true } : {}
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Import step "${label}" failed (${user.email}): ${msg}`);
@@ -826,7 +831,7 @@ export async function importFamilyHubBundle(
     bought: bundle.homeAndGardenParents?.giftBought || {},
   });
 
-  // Omit createdAt on deterministic message IDs so re-imports never violate immutableCreatedAtIfPresent
+  // Merge on deterministic message IDs so any previously written createdAt stays untouched
   const msgs = hg.chats?.messages || [];
   for (let i = 0; i < msgs.length; i++) {
     const m = msgs[i];
@@ -838,7 +843,8 @@ export async function importFamilyHubBundle(
         sender: m.sender,
         text: m.text,
         ts: m.ts,
-      }
+      },
+      true
     );
   }
 

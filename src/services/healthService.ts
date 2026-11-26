@@ -335,7 +335,12 @@ export async function importHealthBundle(
 
   const writeHealthStep = async (label: string, path: [string, string], payload: Record<string, unknown>) => {
     try {
-      await setDoc(doc(db, path[0], path[1]), sanitize(payload));
+      const cleanPayload = sanitize(payload);
+      await setDoc(doc(db, path[0], path[1]), {
+        ...cleanPayload,
+        updatedAt: serverTimestamp(),
+        updatedBy: email,
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`${label} failed (${auth.currentUser?.email || 'no-auth'}): ${msg}`);
@@ -345,15 +350,11 @@ export async function importHealthBundle(
   if (bundle.privateHealth?.familyMedical) {
     await writeHealthStep('private_health/family_medical', ['private_health', 'family_medical'], {
       cards: bundle.privateHealth.familyMedical,
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
     });
   }
   if (bundle.privateHealthOwner?.amaretteMedical) {
     await writeHealthStep('private_health_owner/amarette_medical', ['private_health_owner', 'amarette_medical'], {
       items: bundle.privateHealthOwner.amaretteMedical.items || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
     });
   }
   if (bundle.privateHealthOwner?.healthFitnessDays) {
@@ -362,8 +363,6 @@ export async function importHealthBundle(
       ['private_health_owner', 'health_fitness_days'],
       {
         days: bundle.privateHealthOwner.healthFitnessDays.days || [],
-        updatedAt: serverTimestamp(),
-        updatedBy: email,
       }
     );
   }
@@ -375,8 +374,6 @@ export async function importHealthBundle(
       {
         contentJson: JSON.stringify(bundle.privateHealthOwner.healthFitnessContent.content || null),
         menoJson: JSON.stringify(bundle.privateHealthOwner.healthFitnessContent.meno || null),
-        updatedAt: serverTimestamp(),
-        updatedBy: email,
       }
     );
   }

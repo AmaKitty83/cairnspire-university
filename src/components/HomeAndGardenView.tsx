@@ -490,8 +490,19 @@ export function HomeAndGardenView({
             </button>
           </div>
         </div>
-        {importStatus && <div className="text-emerald-800 font-semibold">✅ {importStatus}</div>}
-        {syncError && <div className="text-red-800 font-semibold">⚠️ {syncError}</div>}
+        {importStatus && <div className="text-emerald-800 font-semibold select-text">✅ {importStatus}</div>}
+        {syncError && (
+          <div className="text-red-800 font-semibold flex items-start justify-between gap-2 select-text">
+            <span className="break-words select-all">⚠️ {syncError}</span>
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard?.writeText(syncError)}
+              className="px-2 py-0.5 rounded bg-white border border-red-300 text-[10px] font-bold shrink-0 cursor-pointer"
+            >
+              Copy
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -687,8 +698,15 @@ export function HomeAndGardenView({
       {adminDrawer}
 
       {syncError && (
-        <div className="bg-red-100 border-b border-red-300 px-4 py-1.5 text-xs text-red-900 text-center">
-          ⚠️ {syncError}
+        <div className="bg-red-100 border-b border-red-300 px-4 py-1.5 text-xs text-red-900 flex items-center justify-center gap-2 select-text">
+          <span className="break-words select-all">⚠️ {syncError}</span>
+          <button
+            type="button"
+            onClick={() => void navigator.clipboard?.writeText(syncError)}
+            className="px-2 py-0.5 rounded bg-white border border-red-300 text-[10px] font-bold shrink-0 cursor-pointer"
+          >
+            Copy
+          </button>
         </div>
       )}
 
