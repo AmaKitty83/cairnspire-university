@@ -19,6 +19,7 @@ import type {
   SkillRegistryRecord,
 } from '../services/firestoreService';
 import { InteriorModal } from './InteriorModal';
+import { InteriorRoomView } from './InteriorRoomView';
 
 interface CampusMapProps {
   role: CampusRole;
@@ -61,7 +62,8 @@ export function CampusMap({
 }: CampusMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [spritesEnabled, setSpritesEnabled] = useState(true);
-  const [activeBuilding, setActiveBuilding] = useState<BuildingDef | null>(null);
+  const [zonedBuilding, setZonedBuilding] = useState<BuildingDef | null>(null);
+  const [dashboardBuilding, setDashboardBuilding] = useState<BuildingDef | null>(null);
   const [activeSpriteToast, setActiveSpriteToast] = useState<SpriteDef | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -273,7 +275,7 @@ export function CampusMap({
   return (
     <div className="h-screen w-screen flex flex-col select-none">
       {/* TOP ATLAS BAR */}
-      <header className="z-30 flex items-center justify-between gap-2 px-3 py-2 bg-[#2b1d13] text-[#f7e8c6] border-b-2 border-[#a57b42] shadow-md">
+      <header className="z-20 flex items-center justify-between gap-2 px-3 py-2 bg-[#2b1d13] text-[#f7e8c6] border-b-2 border-[#a57b42] shadow-md">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ffd166] via-[#c77dff] to-[#00bbf9] p-[2px] shrink-0">
             <div className="w-full h-full rounded-full bg-[#2b1d13] flex items-center justify-center text-xs font-atlas font-bold text-[#fbe8b5]">
@@ -285,7 +287,7 @@ export function CampusMap({
               Cairnspire University
             </h1>
             <p className="text-[11px] text-[#d9be8c] leading-tight truncate">
-              v2 Governance Atlas · 14 Halls · {roleLabel}
+              v2 RPG Campus · 14 Halls · {roleLabel}
             </p>
           </div>
         </div>
@@ -295,7 +297,7 @@ export function CampusMap({
             <button
               onClick={() => {
                 focusBuilding(watchBuilding);
-                setActiveBuilding(watchBuilding);
+                setDashboardBuilding(watchBuilding);
               }}
               className="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 hover:bg-amber-400 text-[#2b1d13] shadow cursor-pointer"
             >
@@ -335,7 +337,7 @@ export function CampusMap({
       {/* MAIN INTERACTIVE WORLD MAP VIEWPORT */}
       <main className="relative flex-1 overflow-hidden bg-[#2b1e14]">
         {syncError && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-500 text-xs text-amber-950 shadow">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-500 text-xs text-amber-950 shadow">
             Firestore sync notice: {syncError}
           </div>
         )}
@@ -366,11 +368,14 @@ export function CampusMap({
 
         <div className="hidden sm:flex absolute top-3 left-3 z-20 items-center gap-2 px-3 py-1.5 rounded-full ribbon-btn text-xs">
           <span className="w-2 h-2 rounded-full bg-[#2a9d8f]" />
-          <span>Drag to pan · Pinch/wheel to zoom · Tap any hall or wandering D&amp;D sprite</span>
+          <span>
+            Tap any <strong>building</strong> to zone inside · Tap its <strong>cairn / ribbon</strong>{' '}
+            for Dashboard
+          </span>
         </div>
 
         {activeSpriteToast && (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 parchment-panel rounded-xl px-4 py-3 max-w-sm w-[92%] text-xs">
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 parchment-panel rounded-xl px-4 py-3 max-w-sm w-[92%] text-xs">
             <div className="flex items-start gap-3">
               <img
                 src={ASSETS[activeSpriteToast.spriteKey]?.src || ''}
@@ -482,9 +487,10 @@ export function CampusMap({
               </g>
             </g>
 
+            {/* SPLIT CLICK HOTSPOTS: Building Body = Zone Inside · Cairn / Ribbon = Direct Dashboard */}
             <g>
               {BUILDINGS.map((b) => {
-                const bannerW = Math.max(108, b.label.length * 7.8 + 22);
+                const bannerW = Math.max(114, b.label.length * 7.8 + 30);
                 const halfW = bannerW / 2;
                 const fillCol = b.greenBanner ? '#dcf5e4' : '#fbf1d7';
                 const strokeCol = b.greenBanner ? '#205c3c' : '#634320';
@@ -493,26 +499,40 @@ export function CampusMap({
                 const showPermitPin = b.id === 'executive' && pendingPermitCount > 0;
 
                 return (
-                  <g
-                    key={b.id}
-                    className="hotspot-group"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveBuilding(b);
-                    }}
-                  >
-                    <ellipse
-                      className="hover-aura"
-                      cx={b.x}
-                      cy={b.y}
-                      rx={b.rx}
-                      ry={b.ry}
-                      fill="#ffd166"
-                      filter="url(#softGlow)"
-                    />
-                    <ellipse cx={b.x} cy={b.y} rx={b.rx} ry={b.ry} fill="transparent" />
+                  <g key={b.id}>
+                    {/* 1. BUILDING BODY: Click to ZONE INSIDE */}
+                    <g
+                      className="hotspot-group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveSpriteToast(null);
+                        setZonedBuilding(b);
+                      }}
+                    >
+                      <title>Enter {b.name} (Zone Inside)</title>
+                      <ellipse
+                        className="hover-aura"
+                        cx={b.x}
+                        cy={b.y}
+                        rx={b.rx}
+                        ry={b.ry}
+                        fill="#ffd166"
+                        filter="url(#softGlow)"
+                      />
+                      <ellipse cx={b.x} cy={b.y} rx={b.rx} ry={b.ry} fill="transparent" />
+                    </g>
+
+                    {/* 2. CAIRN STONE & RIBBON PLAQUE: Click for DIRECT DASHBOARD */}
                     {labelsVisible && (
-                      <g className="ribbon-tag" transform={`translate(${b.lx}, ${b.ly})`}>
+                      <g
+                        className="hotspot-group ribbon-tag"
+                        transform={`translate(${b.lx}, ${b.ly})`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDashboardBuilding(b);
+                        }}
+                      >
+                        <title>Open {b.name} Dashboard</title>
                         <path
                           d={`M ${-halfW - 9},-8 L ${-halfW + 2},-8 L ${-halfW + 2},10 L ${-halfW - 9},10 L ${-halfW - 4},1 Z`}
                           fill={tailFill}
@@ -532,19 +552,26 @@ export function CampusMap({
                           height="22"
                           rx="4"
                           fill={fillCol}
-                          fillOpacity="0.94"
+                          fillOpacity="0.95"
                           stroke={strokeCol}
                           strokeWidth="1.7"
                         />
+                        {/* Sculpted 3-stone Cairn icon on left of ribbon = Dashboard indicator */}
+                        <g transform={`translate(${-halfW + 11}, 0)`}>
+                          <ellipse cx="0" cy="5.5" rx="6" ry="2.6" fill="#8b7355" stroke="#3c2a17" strokeWidth="0.9" />
+                          <ellipse cx="0" cy="1.2" rx="4.5" ry="2.2" fill="#a68b67" stroke="#3c2a17" strokeWidth="0.9" />
+                          <ellipse cx="0" cy="-2.8" rx="3" ry="1.8" fill="#c7b08e" stroke="#3c2a17" strokeWidth="0.9" />
+                          <circle cx="0" cy="-5.2" r="1.5" fill="#00d4ff" />
+                        </g>
                         <text
-                          x="0"
+                          x="7"
                           y="3.5"
                           textAnchor="middle"
                           className="font-atlas"
-                          fontSize="11"
+                          fontSize="10.5"
                           fontWeight="bold"
                           fill={textCol}
-                          letterSpacing="0.5"
+                          letterSpacing="0.45"
                         >
                           {b.label}
                         </text>
@@ -570,6 +597,7 @@ export function CampusMap({
               })}
             </g>
 
+            {/* WANDERING D&D FANTASY SPRITES ON COBBLESTONE ROADS */}
             <g style={{ display: spritesEnabled ? 'block' : 'none' }}>
               {SPRITES_DATA.map((s, idx) => {
                 const asset = ASSETS[s.spriteKey];
@@ -605,9 +633,10 @@ export function CampusMap({
           </g>
         </svg>
 
+        {/* MOBILE-FIRST BOTTOM QUICK-JUMP BUILDING DOCK (Zones right inside!) */}
         <nav className="absolute bottom-2 left-2 right-2 z-20 flex items-center gap-1.5 overflow-x-auto no-scrollbar px-2.5 py-1.5 rounded-xl bg-[#2b1d13]/92 border border-[#a57b42] shadow-lg backdrop-blur-sm">
           <span className="text-[11px] font-atlas font-bold text-[#f7d992] px-1 shrink-0">
-            Jump:
+            Enter:
           </span>
           <div className="flex items-center gap-1.5">
             {BUILDINGS.map((b) => (
@@ -615,7 +644,7 @@ export function CampusMap({
                 key={b.id}
                 onClick={() => {
                   focusBuilding(b);
-                  setActiveBuilding(b);
+                  setZonedBuilding(b);
                 }}
                 className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#402c1e] hover:bg-[#5b3f2b] text-[#f8e6bd] border border-[#a57b42]/50 whitespace-nowrap shrink-0 cursor-pointer"
               >
@@ -626,8 +655,21 @@ export function CampusMap({
         </nav>
       </main>
 
+      {/* FULL-SCREEN RPG ZONED INTERIOR ROOM */}
+      {zonedBuilding && (
+        <InteriorRoomView
+          building={zonedBuilding}
+          role={role}
+          departmentRecord={departments[zonedBuilding.id]}
+          pendingPermitCount={pendingPermitCount}
+          onExitToCampus={() => setZonedBuilding(null)}
+          onOpenDashboard={() => setDashboardBuilding(zonedBuilding)}
+        />
+      )}
+
+      {/* DEPARTMENT DASHBOARD MODAL (Can open from outside Cairn/Ribbon OR from inside Room!) */}
       <InteriorModal
-        building={activeBuilding}
+        building={dashboardBuilding}
         role={role}
         userEmail={userEmail}
         departments={departments}
@@ -637,10 +679,11 @@ export function CampusMap({
         skills={skills}
         bridges={bridges}
         accessRoles={accessRoles}
-        onClose={() => setActiveBuilding(null)}
+        onClose={() => setDashboardBuilding(null)}
         onSelectBuilding={(b) => {
+          setDashboardBuilding(null);
           focusBuilding(b);
-          setActiveBuilding(b);
+          setZonedBuilding(b);
         }}
         onOpenFamilyPreview={onOpenFamilyPreview}
       />
