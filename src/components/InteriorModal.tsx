@@ -18,6 +18,7 @@ import { CampusWatchInterior } from './interiors/CampusWatchInterior';
 import { CourthouseInterior } from './interiors/CourthouseInterior';
 import { CommonsSquareInterior } from './interiors/CommonsSquareInterior';
 import { AirInterior } from './interiors/AirInterior';
+import { HealthInterior } from './interiors/HealthInterior';
 
 interface InteriorModalProps {
   building: BuildingDef | null;
@@ -35,7 +36,7 @@ interface InteriorModalProps {
   onOpenFamilyPreview: () => void;
 }
 
-const DEEP_V2_IDS = new Set(['town-hall', 'executive', 'courthouse', 'commons', 'air']);
+const DEEP_V2_IDS = new Set(['town-hall', 'executive', 'courthouse', 'commons', 'air', 'health']);
 
 export function InteriorModal({
   building,
@@ -257,6 +258,10 @@ export function InteriorModal({
             />
           )}
 
+          {building.special === 'health' && (
+            <HealthInterior role={role} userEmail={userEmail} />
+          )}
+
           {building.special === 'stocks' && (
             <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] space-y-1.5">
               <div className="font-atlas font-bold text-sm text-[#4a2b0f]">
@@ -282,7 +287,7 @@ export function InteriorModal({
                 Oliver’s Parent-Paired Kid Mode) open <strong>strictly inside Home and Garden</strong>.
                 Server-side Firestore rules enforce this boundary.
               </p>
-              {canWrite && (
+              {(canWrite || role === 'guest') && (
                 <button
                   onClick={() => {
                     onClose();
@@ -290,7 +295,7 @@ export function InteriorModal({
                   }}
                   className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs font-semibold cursor-pointer"
                 >
-                  Test Liam &amp; Oliver Kid Mode →
+                  Open Home &amp; Garden Family Hub →
                 </button>
               )}
             </div>

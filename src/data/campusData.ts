@@ -14,7 +14,7 @@ export interface BuildingDef {
   repSprite: string;
   motif: string;
   zones: string[];
-  special: 'commons' | 'town-hall' | 'executive' | 'courthouse' | 'stocks' | 'air' | 'home-garden' | 'default';
+  special: 'commons' | 'town-hall' | 'executive' | 'courthouse' | 'stocks' | 'air' | 'health' | 'home-garden' | 'default';
   greenBanner?: boolean;
 }
 
@@ -206,13 +206,13 @@ export const BUILDINGS: BuildingDef[] = [
     ry: 92,
     lx: 535,
     ly: 842,
-    phase: 'v4 Department Interior',
+    phase: 'v3 Live Private Health Vault',
     headRole: 'Dean of Health (Wellness Department Rep)',
     repSprite: 'sprite-fae',
     motif:
       'Sunlit glass apothecary greenhouse surrounded by botanical herb beds under the strictest Bill of Rights confidentiality protections.',
-    zones: ['Care & Appointment Organizer', 'Wellness Routines', 'Private Vault (Strict Confidentiality)'],
-    special: 'default',
+    zones: ['Health & Fitness (Oura Dashboard)', 'Amarette Medical Vault (Chancellor-Only)', 'Family Health & Insurance Cards'],
+    special: 'health',
   },
   {
     id: 'finance',

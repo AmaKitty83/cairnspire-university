@@ -100,15 +100,16 @@ export function App() {
   }
 
   if (role === 'family') {
-    return <HomeAndGardenView canExitToCampus={false} userEmail={user.email} />;
+    return <HomeAndGardenView canExitToCampus={false} userEmail={user.email} role={role} />;
   }
 
-  if (familyPreviewOpen && (role === 'chancellor' || role === 'university')) {
+  if (familyPreviewOpen && (role === 'chancellor' || role === 'university' || role === 'guest')) {
     return (
       <HomeAndGardenView
         canExitToCampus={true}
         onExitToCampus={() => setFamilyPreviewOpen(false)}
         userEmail={user.email}
+        role={role}
       />
     );
   }
