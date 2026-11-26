@@ -232,7 +232,12 @@ export function CampusMap({ role, userEmail, onOpenFamilyPreview }: CampusMapPro
   const trainAsset = ASSETS['stone-train'];
   const trainDrawW = 92;
   const trainDrawH = trainAsset?.w && trainAsset?.h ? (trainAsset.h / trainAsset.w) * trainDrawW : 46;
-  const roleLabel = role === 'chancellor' ? 'Chancellor View' : 'University Full Access';
+  const roleLabel =
+    role === 'chancellor'
+      ? 'Chancellor View'
+      : role === 'guest'
+        ? 'Campus Guest View'
+        : 'University Full Access';
 
   return (
     <div className="h-screen w-screen flex flex-col select-none">

@@ -43,7 +43,7 @@ export async function signOutUser(): Promise<void> {
   await signOut(auth);
 }
 
-export type CampusRole = 'chancellor' | 'university' | 'family' | 'unauthorized';
+export type CampusRole = 'chancellor' | 'university' | 'guest' | 'family' | 'unauthorized';
 
 function parseEmailList(raw: string | undefined): Set<string> {
   if (!raw) return new Set();
@@ -59,6 +59,7 @@ const CHANCELLOR_EMAILS = parseEmailList(
   import.meta.env.VITE_CHANCELLOR_EMAILS || 'amarette83@gmail.com'
 );
 const UNIVERSITY_EMAILS = parseEmailList(import.meta.env.VITE_UNIVERSITY_EMAILS);
+const GUEST_EMAILS = parseEmailList(import.meta.env.VITE_GUEST_EMAILS);
 const FAMILY_EMAILS = parseEmailList(import.meta.env.VITE_FAMILY_EMAILS);
 
 export function resolveUserRole(user: User | null): CampusRole {
@@ -66,6 +67,7 @@ export function resolveUserRole(user: User | null): CampusRole {
   if (!email) return 'unauthorized';
   if (CHANCELLOR_EMAILS.has(email)) return 'chancellor';
   if (UNIVERSITY_EMAILS.has(email)) return 'university';
+  if (GUEST_EMAILS.has(email)) return 'guest';
   if (FAMILY_EMAILS.has(email)) return 'family';
   return 'unauthorized';
 }
