@@ -282,16 +282,16 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
 
   air: {
     hasPaintedBackdrop: true,
-    backdropSrc: '/assets/interiors/interior-air.png',
+    backdropSrc: '/assets/interiors/interior-air.png?v=2',
     ambientGlows: [
-      { x: 606, y: 290, r: 72, color: '#00e5ff', pulse: 'a' },
-      { x: 350, y: 175, r: 26, color: '#00d4ff', pulse: 'b' },
-      { x: 878, y: 175, r: 26, color: '#ffbe0b', pulse: 'b' },
+      { x: 606, y: 305, r: 72, color: '#00e5ff', pulse: 'a' },
+      { x: 175, y: 285, r: 26, color: '#00d4ff', pulse: 'b' },
+      { x: 1045, y: 285, r: 26, color: '#ffbe0b', pulse: 'b' },
     ],
     stations: [
-      { id: 'core', label: 'Neural Core & Compute Bridges · Dashboard', x: 608, y: 295, action: 'dashboard', icon: '⚡' },
-      { id: 'roster', label: 'Agent Roster Console', x: 365, y: 315, action: 'dashboard', icon: '🧭' },
-      { id: 'exit', label: 'Exit AIR Lab', x: 608, y: 648, action: 'exit', icon: '🚪' },
+      { id: 'core', label: 'Neural Core & Compute Bridges · Dashboard', x: 606, y: 305, action: 'dashboard', icon: '⚡' },
+      { id: 'roster', label: 'Agent Roster Console', x: 415, y: 345, action: 'dashboard', icon: '🧭' },
+      { id: 'exit', label: 'Exit AIR Lab', x: 608, y: 638, action: 'exit', icon: '🚪' },
     ],
     workers: [
       {
@@ -321,9 +321,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '🔮',
         taskLine: 'Monitoring RTX 5090 VRAM headroom so ComfyUI and local LLMs share compute smoothly under Article V.',
         route: [
-          { x: 390, y: 455 },
-          { x: 485, y: 525 },
-          { x: 425, y: 550 },
+          { x: 405, y: 465 },
+          { x: 495, y: 535 },
+          { x: 435, y: 555 },
         ],
         speed: 0.0058,
       },
@@ -337,9 +337,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '🔐',
         taskLine: 'Keeping server-side access roles tidy — zero credentials in chat or GitHub!',
         route: [
-          { x: 825, y: 455 },
-          { x: 730, y: 530 },
-          { x: 790, y: 555 },
+          { x: 805, y: 465 },
+          { x: 720, y: 535 },
+          { x: 780, y: 555 },
         ],
         speed: 0.0046,
       },
@@ -348,15 +348,15 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
 
   'home-garden': {
     hasPaintedBackdrop: true,
-    backdropSrc: '/assets/interiors/interior-home-garden.png',
+    backdropSrc: '/assets/interiors/interior-home-garden.png?v=2',
     ambientGlows: [
-      { x: 128, y: 245, r: 28, color: '#ffbe0b', pulse: 'a' },
-      { x: 618, y: 112, r: 26, color: '#ffbe0b', pulse: 'b' },
-      { x: 1090, y: 248, r: 28, color: '#ffbe0b', pulse: 'a' },
+      { x: 606, y: 165, r: 34, color: '#ffbe0b', pulse: 'a' },
+      { x: 545, y: 230, r: 22, color: '#fef08a', pulse: 'b' },
+      { x: 670, y: 230, r: 22, color: '#fef08a', pulse: 'b' },
     ],
     stations: [
-      { id: 'chore-board', label: 'Family Chore Board · Dashboard', x: 865, y: 205, action: 'dashboard', icon: '🏡' },
-      { id: 'table', label: 'Family Table & Kid Mode', x: 738, y: 410, action: 'dashboard', icon: '🌿' },
+      { id: 'chore-board', label: 'Family Chore Board · Dashboard', x: 608, y: 230, action: 'dashboard', icon: '🏡' },
+      { id: 'table', label: 'Family Table & Kid Mode', x: 608, y: 410, action: 'dashboard', icon: '🌿' },
       { id: 'exit', label: 'Exit to Campus Map', x: 608, y: 638, action: 'exit', icon: '🚪' },
     ],
     workers: [
@@ -371,9 +371,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '🌿',
         taskLine: 'Watering the rosemary and lavender on the window sill and preparing today’s chore chart for Liam & Oliver!',
         route: [
-          { x: 435, y: 445 },
-          { x: 565, y: 475 },
-          { x: 470, y: 545 },
+          { x: 375, y: 470 },
+          { x: 475, y: 535 },
+          { x: 395, y: 520 },
         ],
         speed: 0.0045,
       },
@@ -387,9 +387,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '🌸',
         taskLine: 'Keeping Family Sanctuary cheerful, child-safe, and ready for our v3 native Family Hub!',
         route: [
-          { x: 845, y: 455 },
-          { x: 920, y: 515 },
-          { x: 790, y: 565 },
+          { x: 845, y: 470 },
+          { x: 745, y: 550 },
+          { x: 860, y: 520 },
         ],
         speed: 0.0054,
       },
@@ -647,15 +647,14 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
 
   'childrens-books': {
     hasPaintedBackdrop: true,
-    backdropSrc: '/assets/interiors/interior-childrens-books.png',
+    backdropSrc: '/assets/interiors/interior-childrens-books.png?v=2',
     ambientGlows: [
-      { x: 272, y: 175, r: 26, color: '#ffbe0b', pulse: 'a' },
-      { x: 392, y: 128, r: 26, color: '#ffbe0b', pulse: 'b' },
-      { x: 945, y: 205, r: 26, color: '#ffbe0b', pulse: 'a' },
+      { x: 552, y: 162, r: 30, color: '#ffbe0b', pulse: 'a' },
+      { x: 975, y: 265, r: 28, color: '#ffbe0b', pulse: 'b' },
     ],
     stations: [
-      { id: 'studio', label: 'Illustration & Story Desk · Dashboard', x: 365, y: 365, action: 'dashboard', icon: '🎨' },
-      { id: 'nook', label: 'Storybook Reading Nook', x: 785, y: 325, action: 'dashboard', icon: '📖' },
+      { id: 'studio', label: 'Illustration & Story Desk · Dashboard', x: 465, y: 355, action: 'dashboard', icon: '🎨' },
+      { id: 'nook', label: 'Storybook Reading Nook', x: 810, y: 380, action: 'dashboard', icon: '📖' },
       { id: 'exit', label: 'Exit Storybook Library', x: 608, y: 638, action: 'exit', icon: '🚪' },
     ],
     workers: [
@@ -670,9 +669,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '📖',
         taskLine: 'Reviewing Bramblewood Friends manuscripts and pairing warm watercolor sketches with Ray’s local ComfyUI!',
         route: [
-          { x: 525, y: 465 },
-          { x: 685, y: 495 },
-          { x: 575, y: 585 },
+          { x: 560, y: 480 },
+          { x: 700, y: 510 },
+          { x: 600, y: 580 },
         ],
         speed: 0.0046,
       },
@@ -686,9 +685,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '🎨',
         taskLine: 'Mixing jewel-tone watercolors and making sure every page follows Article VII child-safe warmth!',
         route: [
-          { x: 435, y: 535 },
-          { x: 615, y: 555 },
-          { x: 775, y: 515 },
+          { x: 485, y: 540 },
+          { x: 655, y: 565 },
+          { x: 785, y: 525 },
         ],
         speed: 0.0054,
       },
@@ -697,15 +696,15 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
 
   'social-media': {
     hasPaintedBackdrop: true,
-    backdropSrc: '/assets/interiors/interior-social-media.png',
+    backdropSrc: '/assets/interiors/interior-social-media.png?v=2',
     ambientGlows: [
-      { x: 312, y: 175, r: 26, color: '#ffbe0b', pulse: 'a' },
-      { x: 888, y: 175, r: 26, color: '#ffbe0b', pulse: 'b' },
-      { x: 608, y: 265, r: 54, color: '#e0aaff', pulse: 'a' },
+      { x: 170, y: 265, r: 26, color: '#ffbe0b', pulse: 'a' },
+      { x: 1045, y: 265, r: 26, color: '#ffbe0b', pulse: 'b' },
+      { x: 608, y: 285, r: 54, color: '#e0aaff', pulse: 'a' },
     ],
     stations: [
       { id: 'stage', label: 'Persona Playhouse Stage · Dashboard', x: 608, y: 285, action: 'dashboard', icon: '🎭' },
-      { id: 'calendar', label: 'Content & Draft Studio', x: 195, y: 445, action: 'dashboard', icon: '🗓️' },
+      { id: 'calendar', label: 'Content & Draft Studio', x: 265, y: 385, action: 'dashboard', icon: '🗓️' },
       { id: 'exit', label: 'Exit Playhouse', x: 608, y: 638, action: 'exit', icon: '🚪' },
     ],
     workers: [
@@ -736,9 +735,9 @@ export const ROOM_INTERIORS: Record<string, RoomInteriorConfig> = {
         workIcon: '✨',
         taskLine: 'Coordinating visual reels and persona lore with the creative desks.',
         route: [
-          { x: 355, y: 525 },
-          { x: 545, y: 565 },
-          { x: 845, y: 525 },
+          { x: 375, y: 515 },
+          { x: 565, y: 575 },
+          { x: 835, y: 515 },
         ],
         speed: 0.0048,
       },
