@@ -12,7 +12,7 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import { importHealthBundle, type HealthImportSection } from './healthService';
 
 export type FamilyMode = 'parent' | 'little' | 'teen' | 'gabe';
@@ -750,95 +750,96 @@ export async function importFamilyHubBundle(
   bundle: FamilyHubBundle,
   actorEmail: string
 ): Promise<{ counts: Record<string, number> }> {
-  const email = actorEmail.trim().toLowerCase();
+  const user = auth.currentUser;
+  if (!user || !user.email) {
+    throw new Error('Not signed in to Firebase Auth. Please refresh and sign in as amarette83@gmail.com.');
+  }
+  await user.getIdToken(true);
+
+  const email = (actorEmail || user.email).trim().toLowerCase();
   const hg = bundle.homeAndGarden;
+  const sanitize = <T,>(val: T): T => JSON.parse(JSON.stringify(val ?? null)) as T;
 
-  await Promise.all([
-    setDoc(doc(db, 'home_and_garden', 'chores'), {
-      weekOf: hg.chores?.weekOf || '',
-      items: hg.chores?.items || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'grocery'), {
-      items: hg.grocery?.items || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'meals'), {
-      weekOf: hg.meals?.weekOf || '',
-      week: hg.meals?.week || [],
-      anchors: hg.meals?.anchors || [],
-      picks: hg.meals?.picks || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'recipes'), {
-      items: hg.recipes?.items || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'pantry'), {
-      items: hg.pantry?.items || [],
-      dietaryProfiles: hg.pantry?.dietaryProfiles || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'announcements'), {
-      announcements: hg.announcements?.announcements || [],
-      info: hg.announcements?.info || [],
-      rules: hg.announcements?.rules || [],
-      contacts: hg.announcements?.contacts || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'goals'), {
-      items: hg.goals?.items || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'gifts'), {
-      sections: hg.gifts?.sections || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'links'), {
-      groups: hg.links?.groups || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'calendar'), {
-      events: hg.calendar?.events || [],
-      reminders: hg.calendar?.reminders || [],
-      prestonDue: hg.calendar?.prestonDue || [],
-      ccccCalendar: hg.calendar?.ccccCalendar || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden', 'chats'), {
-      rooms: hg.chats?.rooms || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-    setDoc(doc(db, 'home_and_garden_parents', 'gift_bought'), {
-      bought: bundle.homeAndGardenParents?.giftBought || {},
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    }),
-  ]);
+  const writeStep = async (
+    label: string,
+    path: string[],
+    payload: Record<string, unknown>
+  ): Promise<void> => {
+    try {
+      const cleanPayload = sanitize(payload);
+      await setDoc(doc(db, path[0], ...path.slice(1)), {
+        ...cleanPayload,
+        updatedAt: serverTimestamp(),
+        updatedBy: email,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Import step "${label}" failed (${user.email}): ${msg}`);
+    }
+  };
 
-  // Seed chat messages with deterministic IDs so re-importing doesn't duplicate
+  await writeStep('home_and_garden/chores', ['home_and_garden', 'chores'], {
+    weekOf: hg.chores?.weekOf || '',
+    items: hg.chores?.items || [],
+  });
+  await writeStep('home_and_garden/grocery', ['home_and_garden', 'grocery'], {
+    items: hg.grocery?.items || [],
+  });
+  await writeStep('home_and_garden/meals', ['home_and_garden', 'meals'], {
+    weekOf: hg.meals?.weekOf || '',
+    week: hg.meals?.week || [],
+    anchors: hg.meals?.anchors || [],
+    picks: hg.meals?.picks || [],
+  });
+  await writeStep('home_and_garden/recipes', ['home_and_garden', 'recipes'], {
+    items: hg.recipes?.items || [],
+  });
+  await writeStep('home_and_garden/pantry', ['home_and_garden', 'pantry'], {
+    items: hg.pantry?.items || [],
+    dietaryProfiles: hg.pantry?.dietaryProfiles || [],
+  });
+  await writeStep('home_and_garden/announcements', ['home_and_garden', 'announcements'], {
+    announcements: hg.announcements?.announcements || [],
+    info: hg.announcements?.info || [],
+    rules: hg.announcements?.rules || [],
+    contacts: hg.announcements?.contacts || [],
+  });
+  await writeStep('home_and_garden/goals', ['home_and_garden', 'goals'], {
+    items: hg.goals?.items || [],
+  });
+  await writeStep('home_and_garden/gifts', ['home_and_garden', 'gifts'], {
+    sections: hg.gifts?.sections || [],
+  });
+  await writeStep('home_and_garden/links', ['home_and_garden', 'links'], {
+    groups: hg.links?.groups || [],
+  });
+  await writeStep('home_and_garden/calendar', ['home_and_garden', 'calendar'], {
+    events: hg.calendar?.events || [],
+    reminders: hg.calendar?.reminders || [],
+    prestonDue: hg.calendar?.prestonDue || [],
+    ccccCalendar: hg.calendar?.ccccCalendar || [],
+  });
+  await writeStep('home_and_garden/chats', ['home_and_garden', 'chats'], {
+    rooms: hg.chats?.rooms || [],
+  });
+  await writeStep('home_and_garden_parents/gift_bought', ['home_and_garden_parents', 'gift_bought'], {
+    bought: bundle.homeAndGardenParents?.giftBought || {},
+  });
+
+  // Omit createdAt on deterministic message IDs so re-imports never violate immutableCreatedAtIfPresent
   const msgs = hg.chats?.messages || [];
   for (let i = 0; i < msgs.length; i++) {
     const m = msgs[i];
-    await setDoc(doc(db, 'home_and_garden', 'chats', 'messages', `imp_${i + 1}`), {
-      chatId: m.chatId,
-      sender: m.sender,
-      text: m.text,
-      ts: m.ts,
-      createdAt: serverTimestamp(),
-      updatedBy: email,
-    });
+    await writeStep(
+      `home_and_garden/chats/messages/imp_${i + 1}`,
+      ['home_and_garden', 'chats', 'messages', `imp_${i + 1}`],
+      {
+        chatId: m.chatId,
+        sender: m.sender,
+        text: m.text,
+        ts: m.ts,
+      }
+    );
   }
 
   await importHealthBundle(bundle, email);

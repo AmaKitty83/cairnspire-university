@@ -433,6 +433,69 @@ export function HomeAndGardenView({
     </div>
   );
 
+  // Chancellor Admin Drawer (Import JSON + Kid PIN Setup)
+  const adminDrawer = adminOpen && isChancellor && (
+    <div className="bg-[#f4fbf6] border-b-2 border-[#52b788] p-4 space-y-3 shrink-0">
+      <div className="max-w-3xl mx-auto space-y-3 text-xs">
+        <div className="flex items-center justify-between">
+          <strong className="text-sm text-[#1b4332]">⚙️ Chancellor Setup: Data Import &amp; Kid PINs</strong>
+          <button onClick={() => setAdminOpen(false)} className="underline cursor-pointer">
+            Close
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl bg-white border border-[#95d5b2] space-y-1.5">
+            <div className="font-bold text-[#1b4332]">📥 Import Family Hub Bundle (.json)</div>
+            <p className="text-[11px] text-[#40916c]">
+              Upload your private <code>cairnspire_v3a_import.json</code> to load live Sheet data +
+              Family Calendar + Oura/Health Vault into Firestore.
+            </p>
+            <label className="inline-block px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer">
+              {importing ? 'Importing…' : 'Choose cairnspire_v3a_import.json'}
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={(e) => void handleBundleUpload(e)}
+                className="hidden"
+                disabled={importing}
+              />
+            </label>
+          </div>
+          <div className="p-3 rounded-xl bg-white border border-[#95d5b2] space-y-1.5">
+            <div className="font-bold text-[#1b4332]">🔐 Liam &amp; Oliver Tablet PINs</div>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                inputMode="numeric"
+                value={liamPinDraft}
+                onChange={(e) => setLiamPinDraft(e.target.value)}
+                placeholder="Liam PIN"
+                className="w-1/2 px-2 py-1 rounded border border-[#95d5b2]"
+              />
+              <input
+                type="password"
+                inputMode="numeric"
+                value={oliverPinDraft}
+                onChange={(e) => setOliverPinDraft(e.target.value)}
+                placeholder="Oliver PIN"
+                className="w-1/2 px-2 py-1 rounded border border-[#95d5b2]"
+              />
+            </div>
+            <button
+              disabled={savingPins}
+              onClick={() => void handleSaveKidPins()}
+              className="px-3 py-1 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer"
+            >
+              {savingPins ? 'Saving…' : 'Save Kid PINs'}
+            </button>
+          </div>
+        </div>
+        {importStatus && <div className="text-emerald-800 font-semibold">✅ {importStatus}</div>}
+        {syncError && <div className="text-red-800 font-semibold">⚠️ {syncError}</div>}
+      </div>
+    </div>
+  );
+
   // Person Picker Screen (when nobody picked yet or clicking Switch Person)
   if (!activePerson) {
     return (
@@ -470,6 +533,7 @@ export function HomeAndGardenView({
             )}
           </div>
         </div>
+        {adminDrawer}
 
         <div className="max-w-lg w-full mx-auto p-5 space-y-5">
           {ASSETS['crop-home-garden']?.src && (
@@ -620,66 +684,7 @@ export function HomeAndGardenView({
       )}
 
       {/* Chancellor Admin Drawer (Import JSON + Kid PIN Setup) */}
-      {adminOpen && isChancellor && (
-        <div className="bg-[#f4fbf6] border-b-2 border-[#52b788] p-4 space-y-3 shrink-0">
-          <div className="max-w-3xl mx-auto space-y-3 text-xs">
-            <div className="flex items-center justify-between">
-              <strong className="text-sm text-[#1b4332]">⚙️ Chancellor Setup: Data Import &amp; Kid PINs</strong>
-              <button onClick={() => setAdminOpen(false)} className="underline cursor-pointer">
-                Close
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-white border border-[#95d5b2] space-y-1.5">
-                <div className="font-bold text-[#1b4332]">📥 Import Family Hub Bundle (.json)</div>
-                <p className="text-[11px] text-[#40916c]">
-                  Upload your private <code>cairnspire_v3a_import.json</code> to load live Sheet data +
-                  Family Calendar + Oura/Health Vault into Firestore.
-                </p>
-                <label className="inline-block px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer">
-                  {importing ? 'Importing…' : 'Choose cairnspire_v3a_import.json'}
-                  <input
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={(e) => void handleBundleUpload(e)}
-                    className="hidden"
-                    disabled={importing}
-                  />
-                </label>
-              </div>
-              <div className="p-3 rounded-xl bg-white border border-[#95d5b2] space-y-1.5">
-                <div className="font-bold text-[#1b4332]">🔐 Liam &amp; Oliver Tablet PINs</div>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    value={liamPinDraft}
-                    onChange={(e) => setLiamPinDraft(e.target.value)}
-                    placeholder="Liam PIN"
-                    className="w-1/2 px-2 py-1 rounded border border-[#95d5b2]"
-                  />
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    value={oliverPinDraft}
-                    onChange={(e) => setOliverPinDraft(e.target.value)}
-                    placeholder="Oliver PIN"
-                    className="w-1/2 px-2 py-1 rounded border border-[#95d5b2]"
-                  />
-                </div>
-                <button
-                  disabled={savingPins}
-                  onClick={() => void handleSaveKidPins()}
-                  className="px-3 py-1 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer"
-                >
-                  {savingPins ? 'Saving…' : 'Save Kid PINs'}
-                </button>
-              </div>
-            </div>
-            {importStatus && <div className="text-emerald-800 font-semibold">✅ {importStatus}</div>}
-          </div>
-        </div>
-      )}
+      {adminDrawer}
 
       {syncError && (
         <div className="bg-red-100 border-b border-red-300 px-4 py-1.5 text-xs text-red-900 text-center">

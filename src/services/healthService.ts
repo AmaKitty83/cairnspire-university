@@ -7,7 +7,7 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 
 export interface OuraDayRecord {
   date: string;
@@ -173,7 +173,23 @@ export function subscribeHealthFitnessContent(
         cb(null);
         return;
       }
-      cb(snap.data() as HealthFitnessContentDoc);
+      const raw = snap.data() as HealthFitnessContentDoc & {
+        contentJson?: string;
+        menoJson?: string;
+      };
+      let content = raw.content ?? null;
+      let meno = raw.meno ?? null;
+      try {
+        if (!content && raw.contentJson) content = JSON.parse(raw.contentJson);
+      } catch {
+        // ignore parse fallback
+      }
+      try {
+        if (!meno && raw.menoJson) meno = JSON.parse(raw.menoJson);
+      } catch {
+        // ignore parse fallback
+      }
+      cb({ content, meno, updatedAt: raw.updatedAt });
     },
     (err) => onError?.(err)
   );
@@ -314,34 +330,54 @@ export async function importHealthBundle(
   bundle: HealthImportSection,
   actorEmail: string
 ): Promise<void> {
-  const email = actorEmail.trim().toLowerCase();
+  const email = (actorEmail || auth.currentUser?.email || '').trim().toLowerCase();
+  const sanitize = <T,>(val: T): T => JSON.parse(JSON.stringify(val ?? null)) as T;
+
+  const writeHealthStep = async (label: string, path: [string, string], payload: Record<string, unknown>) => {
+    try {
+      await setDoc(doc(db, path[0], path[1]), sanitize(payload));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`${label} failed (${auth.currentUser?.email || 'no-auth'}): ${msg}`);
+    }
+  };
+
   if (bundle.privateHealth?.familyMedical) {
-    await setDoc(doc(db, 'private_health', 'family_medical'), {
+    await writeHealthStep('private_health/family_medical', ['private_health', 'family_medical'], {
       cards: bundle.privateHealth.familyMedical,
       updatedAt: serverTimestamp(),
       updatedBy: email,
     });
   }
   if (bundle.privateHealthOwner?.amaretteMedical) {
-    await setDoc(doc(db, 'private_health_owner', 'amarette_medical'), {
+    await writeHealthStep('private_health_owner/amarette_medical', ['private_health_owner', 'amarette_medical'], {
       items: bundle.privateHealthOwner.amaretteMedical.items || [],
       updatedAt: serverTimestamp(),
       updatedBy: email,
     });
   }
   if (bundle.privateHealthOwner?.healthFitnessDays) {
-    await setDoc(doc(db, 'private_health_owner', 'health_fitness_days'), {
-      days: bundle.privateHealthOwner.healthFitnessDays.days || [],
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    });
+    await writeHealthStep(
+      'private_health_owner/health_fitness_days',
+      ['private_health_owner', 'health_fitness_days'],
+      {
+        days: bundle.privateHealthOwner.healthFitnessDays.days || [],
+        updatedAt: serverTimestamp(),
+        updatedBy: email,
+      }
+    );
   }
   if (bundle.privateHealthOwner?.healthFitnessContent) {
-    await setDoc(doc(db, 'private_health_owner', 'health_fitness_content'), {
-      content: bundle.privateHealthOwner.healthFitnessContent.content || null,
-      meno: bundle.privateHealthOwner.healthFitnessContent.meno || null,
-      updatedAt: serverTimestamp(),
-      updatedBy: email,
-    });
+    // Store nested-array content & meno cleanly as JSON strings because Firestore forbids nested arrays
+    await writeHealthStep(
+      'private_health_owner/health_fitness_content',
+      ['private_health_owner', 'health_fitness_content'],
+      {
+        contentJson: JSON.stringify(bundle.privateHealthOwner.healthFitnessContent.content || null),
+        menoJson: JSON.stringify(bundle.privateHealthOwner.healthFitnessContent.meno || null),
+        updatedAt: serverTimestamp(),
+        updatedBy: email,
+      }
+    );
   }
 }
