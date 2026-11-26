@@ -231,6 +231,35 @@ export function subscribeFamilyMedical(
   );
 }
 
+export function subscribeShowedUpLog(
+  cb: (dates: string[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'private_health_owner', 'showed_up_log'),
+    (snap) => {
+      if (!snap.exists()) return cb([]);
+      const d = snap.data() as { dates?: string[] };
+      cb(Array.isArray(d.dates) ? d.dates : []);
+    },
+    (err) => onError?.(err)
+  );
+}
+
+export async function saveShowedUpDate(
+  dateKey: string,
+  currentDates: string[],
+  actorEmail: string
+): Promise<void> {
+  const email = (actorEmail || auth.currentUser?.email || '').trim().toLowerCase();
+  const next = currentDates.includes(dateKey) ? currentDates : [...currentDates, dateKey].slice(-60);
+  await setDoc(doc(db, 'private_health_owner', 'showed_up_log'), {
+    dates: next,
+    updatedAt: serverTimestamp(),
+    updatedBy: email,
+  });
+}
+
 // ============================================================================
 // MUTATIONS
 // ============================================================================

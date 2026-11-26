@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 4: Inherited Marks</title>
+<style>
+:root{
+  --bg:#1d2326;--bg2:#252d31;--parch:#efe3c8;--parch2:#e4d4b0;--ink:#2e2619;--ink2:#5a4a33;
+  --teal:#3f8f8a;--teal2:#2c6b67;--tealsoft:#cfe6e2;--gold:#c9a24a;--gold2:#9c7a2e;--line:#c7b48a;
+  --text:#f1eadb;--soft:#c9c1ae;--r:16px;--acc:#2c6b67;--accsoft:#cfe6e2;
+  font-size:17px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.app{display:grid;grid-template-columns:1fr 300px;gap:16px;max-width:1200px;margin:0 auto;padding:16px}
+@media (max-width:900px){.app{grid-template-columns:1fr}.side .card{position:static}}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:14px 16px 0}
+header.top h1{margin:0;font-size:1.45rem;color:var(--gold);font-family:Georgia,"Times New Roman",serif;letter-spacing:.3px}
+.sub{color:var(--soft);font-size:.92rem}
+.btn{border:0;border-radius:12px;padding:10px 16px;min-height:44px;background:var(--teal2);color:#fff;font-weight:700}
+.btn:hover{background:#245a56}
+.btn.alt{background:transparent;color:var(--text);border:1px solid #4a5559}
+.parch .btn.alt,.guide .btn.alt{color:var(--ink);border-color:var(--gold2)}
+.btn.gold{background:var(--gold);color:#2b2210}
+.btn.big{font-size:1.05rem;padding:12px 20px;box-shadow:0 0 0 3px #f3e6c4}
+.btn[disabled]{opacity:.5;cursor:default}
+.card{background:var(--bg2);border:1px solid #39454a;border-radius:var(--r);padding:16px;margin-bottom:16px}
+.parch{background:var(--parch);color:var(--ink);border:1px solid var(--line)}
+.parch .sub{color:var(--ink2)}
+h2,h3,h4{font-family:Georgia,"Times New Roman",serif;margin:.2em 0 .5em}
+.parch h2,.parch h3,.parch h4{color:#3b2e17}
+.pvbar{background:#2f3a3e;border:1px solid var(--gold2);color:var(--text);border-radius:12px;padding:10px 14px;margin:12px auto 0;max-width:1168px}
+.hidden{display:none!important}
+.note{font-size:.88rem;color:var(--soft)}
+.parch .note{color:var(--ink2)}
+/* map */
+.mapwrap{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.mapwrap svg{display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node circle.ring{fill:var(--parch);stroke:var(--gold2);stroke-width:3}
+.node.done circle.ring{fill:var(--accsoft);stroke:var(--acc)}
+.node.pinned circle.ring{fill:#f3e6c4;stroke:var(--gold2);stroke-dasharray:4 3}
+.node.locked{cursor:default;opacity:.45}
+.node.next circle.ring{stroke:var(--acc);stroke-width:5}
+.node text{font-family:Georgia,serif;font-size:17px;fill:#2e2619;font-weight:700;pointer-events:none}
+.node text.lbl{font-size:13px;font-weight:700;paint-order:stroke;stroke:#f3e8cf;stroke-width:3px}
+.node:focus{outline:none}.node:not(.locked):focus circle.ring,.node:not(.locked):hover circle.ring{stroke:var(--teal);stroke-width:5}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+/* quest log */
+.qlog{display:grid;gap:10px}
+.qsess{border:1px solid #39454a;border-radius:12px;padding:10px 12px;background:#20282b}
+.qsess.locked{opacity:.6}
+.qsess h4{margin:0 0 6px;color:var(--text)}
+.qbtns{display:flex;flex-wrap:wrap;gap:6px}
+.qb{border:1px solid #4a5559;background:#2f3a3e;color:var(--text);border-radius:10px;padding:8px 10px;min-height:40px;font-size:.92rem}
+.qb.done{background:#2b4643;border-color:var(--teal)}
+.qb[disabled]{opacity:.5;cursor:default}
+/* dialogue */
+.dlg{display:flex;gap:14px;align-items:flex-start;margin:10px 0}
+.portrait{flex:0 0 76px;height:76px;border-radius:14px;background:#2f3a3e;border:2px solid var(--gold2);overflow:hidden}
+.portrait svg{width:100%;height:100%}
+.bubble{flex:1;background:#fffaf0;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.bubble b.who{display:block;color:var(--teal2);font-family:Georgia,serif}
+/* scene */
+.scene{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#2a3236;position:relative}
+.scene svg{display:block;width:100%;height:auto;max-height:260px}
+.mover{transition:transform 1.4s ease-in-out}
+.won .mover{transform:translate(var(--dx),var(--dy))}
+.glow{opacity:0;transition:opacity 1s}
+.won .glow{opacity:.8}
+.spark{opacity:0;transition:opacity .6s .9s}
+.won .spark{opacity:1}
+.bob{animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* boxes */
+.boxes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:12px 0}
+.kbox{background:#fffaf0;border:1px solid var(--line);border-left:6px solid var(--acc);border-radius:12px;padding:10px 14px}
+.kbox h4{margin:0 0 4px;font-size:1rem}
+.kbox ul{margin:0;padding-left:18px}.kbox li{margin:3px 0}
+.kbox.strip{border-left-color:var(--gold2);background:repeating-linear-gradient(0deg,#fffaf0,#fffaf0 26px,#f6ecd6 27px)}
+.task{background:#f6ecd6;border:1px dashed var(--gold2);border-radius:12px;padding:10px 14px;margin:12px 0}
+.task ul{margin:6px 0 0;padding-left:20px}
+table.data{border-collapse:collapse;margin:8px 0;min-width:240px;background:#fffaf0}
+table.data th,table.data td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+table.data th{background:#ead9b5}
+.tcap{font-weight:700;margin-top:8px;font-family:Georgia,serif}
+.tables{display:flex;gap:16px;flex-wrap:wrap}
+.chipline{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{display:inline-block;background:#ead9b5;color:#3b2e17;border-radius:999px;padding:3px 10px;font-size:.85rem;font-weight:700}
+/* fields */
+.fields{display:grid;gap:14px;margin-top:12px}
+.field label{display:block;font-weight:700;margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fffaf0;color:var(--ink);font-size:1.05rem}
+.field textarea{resize:vertical;min-height:56px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.pick{border:1px solid var(--gold2);background:#fbf3df;color:var(--ink);border-radius:999px;padding:5px 12px;min-height:36px;font-size:.9rem}
+.pick:hover{background:#f3e6c4}
+.fb{margin-top:6px;border-radius:10px;padding:8px 10px;font-size:.95rem}
+.fb.ok{background:#d8ece7;color:#1f4d49}
+.fb.re{background:#f3e6c4;color:#4b3a14}
+.fb.log{background:#e7e1f3;color:#352a52}
+/* punnett */
+.punnett table{border-collapse:separate;border-spacing:6px}
+.punnett th,.punnett td{width:78px;height:62px;text-align:center}
+.punnett input{width:72px;height:56px;text-align:center;font-size:1.35rem;font-weight:700;border-radius:10px;border:2px solid var(--gold2);background:#fffaf0;color:var(--ink)}
+.punnett th input{background:#ead9b5;border-style:dashed;font-size:1.2rem;height:48px}
+.punnett .corner{font-size:.8rem;color:var(--ink2)}
+.punnett input.hl{border-color:var(--teal);background:#e3f1ee}
+/* guide + hints */
+.guide{background:#fffaf0;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:12px 0;color:var(--ink)}
+.guide summary{cursor:pointer;min-height:32px}
+.guide ol{margin:8px 0 0 20px;padding:0}.guide li{margin:6px 0}
+.hints{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.hintbtn{align-self:flex-start;border:2px solid var(--gold2);background:#fbf3df;color:var(--ink);border-radius:12px;padding:8px 14px;min-height:42px;font-weight:700}
+.hintbtn.nudge{animation:pulse 1.6s ease-in-out 3}
+.hint{background:#fbf3df;border:1px solid var(--gold2);border-radius:12px;padding:8px 12px;color:var(--ink)}
+.winbox{margin-top:14px;border-radius:12px;padding:12px 14px;background:#d8ece7;color:#1f4d49;border:1px solid var(--teal)}
+/* side */
+.side .card{position:sticky;top:12px}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #39454a}
+.chk input{flex:0 0 22px;width:22px;height:22px;margin-top:3px;accent-color:var(--teal)}
+.loot{display:flex;flex-wrap:wrap;gap:8px}
+.lootitem{background:#2f3a3e;border:1px solid var(--gold2);border-radius:10px;padding:6px 10px;font-size:.88rem;color:var(--text)}
+button.lootitem{cursor:pointer}
+.toggle{display:flex;align-items:center;gap:8px}
+#askT{width:100%;border-radius:10px;padding:8px;font:inherit;color:var(--ink);background:#fffaf0;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--parch);color:var(--ink);border:1px solid var(--gold2);padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none;z-index:9;max-width:90vw}
+.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(10,14,16,.6);display:flex;align-items:center;justify-content:center;z-index:8;padding:16px}
+.modal .card{max-width:520px;width:100%}
+.pop{animation:pop .6s ease-out}
+@keyframes pop{0%{transform:scale(.97);opacity:.3}100%{transform:scale(1);opacity:1}}
+.navrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+:root{--acc:#3f6b3a;--accsoft:#d9ead2}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><h1>🟫 Unit 4: Inherited Marks</h1><div class="sub">The Science Path · Farm visits · GED Science</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn alt" onclick="showMap()">🗺️ Map</button>
+    <button class="btn gold" onclick="saveLeave()">💾 Save &amp; leave</button>
+  </div>
+</header>
+<div id="pvbar" class="pvbar hidden" role="status">👀 <b>Preview mode.</b> Every session is open so you can look around. Answers are checked so you can see what the page does (Matches / Not yet), but nothing is saved as quest work.</div>
+<div class="app">
+  <main id="main"></main>
+  <aside class="side">
+    <div class="card">
+      <h3>📜 Today's plan</h3>
+      <div class="note" id="planFor"></div>
+      <div id="checklist"></div>
+      <p class="note">Checking steps off is optional. One step at a time. You can stop anytime; your place is saved.</p>
+      <h3 style="margin-top:14px">🙋 Ask a question</h3>
+      <p class="note">Any question is a good question. It is saved with your answers so someone can help later.</p>
+      <textarea id="askT" rows="2" aria-label="Your question"></textarea>
+      <button class="btn alt" style="margin-top:6px" onclick="askQ()">Save my question</button>
+      <h3 style="margin-top:14px">🎒 Loot</h3>
+      <div class="loot" id="loot"></div>
+      <h3 style="margin-top:14px">⚙️ Settings</h3>
+      <label class="toggle"><input type="checkbox" id="soundT" onchange="S.sound=this.checked;save()"> Sound (off by default)</label>
+      <p class="note" id="saveNote"></p>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal hidden" id="modal" onclick="if(event.target===this)closeModal()"></div>
+<script>
+var U={"id":"SCI-U4-inherited-marks","title":"Unit 4: Inherited Marks","icon":"🟫","sub":"The Science Path · Farm visits · GED Science","mapTitle":"The Farms Beyond the River","encWord":"Encounter","mapLine":"Four farm visits. Sessions open in order. In Session 2, the three moonmelon steps go in order. Start with the 📖 spot in each session.","checkLabel":"🖋️ Chalk it on the farm page","winLine":"The farm page is filled in.","accent":"#3f6b3a","accsoft":"#d9ead2","mapEdge":"#c9d3a0","mapDeco":[["🐐",80,380],["🍈",320,390],["🌳",560,380],["❄️",620,360],["🐑",850,380],["🌊",470,410,30]],"hookScene":{"bg":"indoor","props":[["✉️",140,150,40],["🟫",260,150,50]],"cap":"A letter from the farms"},"doneScene":{"bg":"indoor","props":[["🎒",210,150,60],["🟫",130,155,36]],"cap":"One at a time from the square. Two in a row, multiply."},"hook":["A letter arrives at the Archive of Hollowmere from the farms beyond the river. It is signed by three farmers at once.",{"o":"Orrin","t":"\"We keep goats, melons, and berry bushes,\" Orrin reads aloud. \"Some young ones look like their parents, and some do not. We would like to know what to expect before the next season.\""},"Orrin pulls a small square frame from a drawer. It has four empty boxes inside, two across and two down.",{"o":"Orrin","t":"\"This is a Punnett square. Each parent passes on one of two marks. The square shows every way those marks can combine. Count the boxes, and you know what to expect.\""},{"o":"Calciber","t":"Calciber packs the square frame next to the Trial Log. \"Then we visit the farms.\""}],"how":["There are 4 sessions. Each one is short, about 15 to 25 minutes.","The sessions open in order. Inside most sessions, after you read the intro, you can do the encounters in any order. In Session 2, the three moonmelon steps go in order.","You can do one session a day, or stop partway through a session. Your answers save.","A calculator is welcome whenever you multiply.","The square guide, the trait key, and hints are printed right where you need them."],"complete":["Orrin reads Calciber's pages one by one: the Hornby goats, the moonmelons, the frostberry bushes, the Highcombe herd. Each page has a filled square, and every answer is written two ways, as a percent and as a decimal.",{"o":"Orrin","t":"He sets the little square frame back in its drawer. \"Four boxes, and every farm can plan its season. That is how inherited marks are read.\""},"Calciber writes one last line at the bottom of the page: \"One at a time comes from the square. Two in a row, multiply.\" Then the page goes into the ranger's pack."],"ribsBye":"Snack break! I saved you a (pretend) cracker with very hot sauce.","sessions":[{"id":"S1","title":"Session 1: The Hornby Goats","short":"1 · Hornby Goats","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 1 intro.","Pick either Session 1 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"field","props":[["🐐",120,165,44],["🐐",200,170,38],["🧑‍🌾",320,160,48]],"cap":"The Hornby pasture"},"intro":["At the Hornby pasture, a goat farmer named Edric leans on the fence. Some of his goats have long, floppy ears. Some have short, neat ears.",{"o":"Edric","t":"\"Ear length is passed down. E stands for long ears. It is dominant. Small e stands for short ears. It is recessive.\""},"Calciber writes the trait key at the top of a fresh page."],"encounters":[{"id":"E1","n":"1","title":"Reading the Marks","scene":{"bg":"field","props":[["🐐",110,165,40],["🐐",210,165,40],["🐐",310,165,40]],"mover":["🏷️",60,80,30,150,30],"cap":"EE, Ee, ee"},"story":["Edric points to three of his goats. Each goat has two letters for ear length.",{"list":["Goat 1: **EE**","Goat 2: **Ee**","Goat 3: **ee**"]}],"task":"For each goat, type the ear length it has: long or short.","boxes":[{"t":"🔑 Trait key","l":["**Capital letter** = dominant. If there is at least one capital letter, the dominant trait shows.","**Small letter** = recessive. The recessive trait only shows when there are two small letters.","**E** = long ears (dominant). **e** = short ears (recessive)."]}],"steps":["Look at Goat 1, EE. Does it have at least one capital E?","Look at Goat 2, Ee. Does it have at least one capital E?","Look at Goat 3, ee. Are both letters small?","Type long or short for each goat."],"fields":[{"id":"G1","l":"Goat 1 (EE)","k":"short","chips":["long","short"]},{"id":"G2","l":"Goat 2 (Ee)","k":"short","chips":["long","short"]},{"id":"G3","l":"Goat 3 (ee)","k":"short","chips":["long","short"]}],"hints":["**One capital is enough.** Any goat with a capital E has long ears.","Only one of the three goats has two small letters. That is the one with short ears."],"loot":{"name":"📘 Codex: dominant and recessive","text":"Capital letter = dominant: one capital is enough for it to show. Small letter = recessive: it shows only with two small letters."}},{"id":"E2","n":"2","title":"The First Square","scene":{"bg":"field","props":[["🐐",110,165,44],["❤️",210,140,26],["🐐",310,165,44]],"mover":["🐐",210,175,26,0,0],"cap":"EE crossed with ee"},"story":[{"o":"Edric","t":"Edric wants to cross Goat 1 (EE) with Goat 3 (ee). \"What kind of ears should the kids have?\""}],"task":"Fill in the square, then find the long-ear kids.","boxes":[{"t":"🟫 The square guide","l":["**Step 1:** Write one parent's two letters across the top of the square.","**Step 2:** Write the other parent's two letters down the left side.","**Step 3:** Fill each box with one letter from the top and one letter from the side. Put the capital letter first.","**Step 4:** Count the boxes with the trait you want. Each box is 25%, or 0.25."]},{"t":"🔑 Trait key","l":["**E** = long ears (dominant). **e** = short ears (recessive)."]}],"steps":["Write E and E across the top for Goat 1.","Write e and e down the side for Goat 3.","Fill each box with one E from the top and one e from the side.","Count how many boxes have at least one capital E. Each box is 25%. Then write the same amount as a decimal."],"fields":[{"id":"SQ","l":"A. Fill in the 2x2 square. Type the four boxes.","k":"square"},{"id":"Bp","l":"B. Percent of kids expected to have long ears","k":"short","ph":"a percent"},{"id":"Bd","l":"B. The same amount as a decimal","k":"short","ph":"a decimal"}],"hints":["**Every box** gets one letter from the top and one from the side. Every top letter here is a capital E.","All four boxes are Ee. Four boxes is 100%. As a decimal, 100% is 1."],"loot":{"name":"🟫 Punnett frame"}}]},{"id":"S2","title":"Session 2: The Hollow Gardens","short":"2 · Moonmelons","order":true,"checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 2 intro.","Start with Encounter 3. In this session, the encounters go in order.","Save and leave whenever you want."],"scene":{"bg":"field","props":[["🍈",110,170,36],["🍈",170,172,30],["🥒",250,170,36],["👩‍🌾",340,160,48]],"cap":"Moonmelons on low stone walls"},"intro":["Calciber walks to the Hollow Gardens, where vines curl along low stone walls. The moonmelons grow pale and smooth. Some are round. Some are long.",{"o":"Ysolde","t":"A gardener named Ysolde shows Calciber two vines. \"R is round fruit. It is dominant. Small r is long fruit. It is recessive. This vine is Rr. That one is rr. I want to cross them.\""}],"encounters":[{"id":"E3","n":"3","title":"The Moonmelon Square","scene":{"bg":"field","props":[["🍈",120,170,40],["🥒",300,170,40]],"mover":["🌱",210,175,30,0,-20],"cap":"Rr crossed with rr"},"story":["Ysolde's two vines: one is **Rr**, the other is **rr**."],"task":"Fill in the 2x2 square for Rr crossed with rr. Type the four boxes.","boxes":[{"t":"🟫 The square guide","l":["**Step 1:** Write one parent's two letters across the top of the square.","**Step 2:** Write the other parent's two letters down the left side.","**Step 3:** Fill each box with one letter from the top and one letter from the side. Put the capital letter first.","**Step 4:** Count the boxes with the trait you want. Each box is 25%, or 0.25."]},{"t":"🔑 Trait key","l":["**R** = round fruit (dominant). **r** = long fruit (recessive)."]}],"steps":["Write R and r across the top for the Rr vine.","Write r and r down the side for the rr vine.","Fill the boxes. The two boxes under R each get R and r. The two boxes under r each get r and r."],"fields":[{"id":"SQ","l":"The square for Rr x rr","k":"square"}],"hints":["**Top letter plus side letter.** Under the R column, both boxes start with R.","You should have two boxes of Rr and two boxes of rr."],"loot":{"name":"🍈 Moonmelon seed"}},{"id":"E4","n":"4","title":"Long Fruit Expected","after":"E3","scene":{"bg":"field","props":[["🥒",140,170,40],["🥒",200,170,40],["🍈",260,170,40],["🍈",320,170,40]],"mover":["✨",170,120,26,0,20],"cap":"Rr, Rr, rr, rr"},"story":[{"o":"Ysolde","t":"Ysolde looks at the finished square: **Rr, Rr, rr, rr.** \"How many of my seeds should grow long fruit?\""}],"task":"Give the expected amount of long-fruit seeds two ways.","boxes":[{"t":"🔑 Trait key","l":["**R** = round fruit (dominant). **r** = long fruit (recessive).","Long fruit only shows when a box has two small letters: rr."]}],"steps":["Count the rr boxes in the square.","Each box is 25%. Multiply the number of rr boxes by 25 for A.","Each box is 0.25. Multiply the number of rr boxes by 0.25 for B."],"fields":[{"id":"A","l":"A. As a percent","k":"short","ph":"a percent"},{"id":"B","l":"B. As a decimal","k":"short","ph":"a decimal"}],"hints":["**Only rr** grows long fruit. Rr has a capital R, so it grows round fruit.","There are 2 rr boxes. 2 x 25% and 2 x 0.25."],"loot":{"name":"🥒 Long moonmelon"}},{"id":"E5","n":"5","title":"Two Seeds in a Row","calc":true,"after":"E4","scene":{"bg":"field","props":[["🕳️",150,175,30],["🕳️",260,175,30]],"mover":["🌱",150,172,28,110,0],"cap":"One seed, then another"},"story":[{"o":"Ysolde","t":"Ysolde plants one seed, then another. \"What is the chance that both of them grow long fruit?\""}],"task":"Find the chance that two seeds in a row both grow long fruit. Give it as a decimal and as a percent.","boxes":[{"t":"🔁 Two-in-a-row rule","l":["**Chance for two in a row** = chance for one x chance for one.","**Chance for one** = what you found in Encounter 4. One seed has a 0.5 chance of long fruit."]}],"steps":["Write the chance for one seed as a decimal: 0.5.","Multiply: 0.5 x 0.5.","Turn the decimal into a percent by multiplying by 100."],"fields":[{"id":"D","l":"As a decimal","k":"short","ph":"a decimal"},{"id":"P","l":"As a percent","k":"short","ph":"a percent"}],"hints":["**Two in a row** means multiply, not add.","0.5 x 0.5 = 0.25. Now 0.25 x 100 for the percent."],"loot":{"name":"📘 Codex: two in a row","text":"Chance for two in a row = chance for one x chance for one. Multiply, not add."}}]},{"id":"S3","title":"Session 3: The Frostberry Slopes","short":"3 · Frostberries","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 3 intro.","Pick any Session 3 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"snow","props":[["🌳",110,170,50],["🌿",200,175,30],["🧑‍🌾",320,165,46]],"cap":"The cool Frostline slopes"},"intro":["High on the cool Frostline slopes, a grower named Corwen tends rows of frostberry bushes. Some bushes are tall. Some are short and low to the ground.",{"o":"Corwen","t":"\"T is tall. It is dominant. Small t is short. It is recessive. I have two tall bushes, and both are Tt. I want to cross them.\""}],"encounters":[{"id":"E6","n":"6","title":"The Tt Square","scene":{"bg":"snow","props":[["🌳",120,170,50],["🌳",300,170,50]],"mover":["🫐",210,120,28,0,40],"cap":"Tt crossed with Tt"},"story":["Corwen's two tall bushes are both **Tt**."],"task":"Fill in the 2x2 square for Tt crossed with Tt. Type the four boxes.","boxes":[{"t":"🟫 The square guide","l":["**Step 1:** Write one parent's two letters across the top of the square.","**Step 2:** Write the other parent's two letters down the left side.","**Step 3:** Fill each box with one letter from the top and one letter from the side. Put the capital letter first.","**Step 4:** Count the boxes with the trait you want. Each box is 25%, or 0.25."]},{"t":"🔑 Trait key","l":["**T** = tall bush (dominant). **t** = short bush (recessive)."]}],"steps":["Write T and t across the top.","Write T and t down the side.","Fill each box with one letter from the top and one from the side, capital first."],"fields":[{"id":"SQ","l":"The square for Tt x Tt","k":"square"}],"hints":["**Each box is a pair.** The top-left box gets T from the top and T from the side.","You should have one TT box, two Tt boxes, and one tt box."],"loot":{"name":"🫐 Frostberry"}},{"id":"E7","n":"7","title":"Tall and Short","scene":{"bg":"snow","props":[["🌳",100,170,46],["🌳",170,170,46],["🌳",240,170,46],["🌿",310,178,28]],"mover":["🏷️",60,80,28,240,40],"cap":"TT, Tt, Tt, tt"},"story":["Corwen looks at the square: **TT, Tt, Tt, tt.**"],"task":"Give each expected amount as a percent and a decimal.","boxes":[{"t":"🔑 Trait key","l":["**T** = tall bush (dominant). **t** = short bush (recessive).","A bush is short only when its box is tt."]}],"steps":["For A, count the tt boxes. Each box is 25%, or 0.25.","For B, count the boxes with at least one capital T. Each box is 25%, or 0.25.","Check: A and B together should make 100%, or 1."],"fields":[{"id":"Ap","l":"A. Short bushes, as a percent","k":"short","ph":"a percent"},{"id":"Ad","l":"A. Short bushes, as a decimal","k":"short","ph":"a decimal"},{"id":"Bp","l":"B. Tall bushes, as a percent","k":"short","ph":"a percent"},{"id":"Bd","l":"B. Tall bushes, as a decimal","k":"short","ph":"a decimal"}],"hints":["**Tt is tall.** It has a capital T, so the tall trait shows.","One box is tt. Three boxes have a capital T."],"loot":{"name":"🌳 Tall frostberry cutting"}},{"id":"E8","n":"8","title":"The Herder's Guess","scene":{"bg":"snow","props":[["🌳",120,170,50],["🌳",200,170,50],["🧑",330,165,46]],"mover":["🔍",60,90,30,140,30],"cap":"Lisle's guess"},"story":[{"o":"Lisle","t":"A traveling herder named Lisle stops by the slopes and looks at the two Tt bushes. \"Both parents carry the short mark. So all of the young bushes will be short. That is 100%.\""},{"o":"Calciber","t":"Calciber smiles. \"The square can check that.\""}],"task":"Check Lisle's guess with the square.","boxes":[{"t":"🔑 Trait key","l":["**T** = tall bush (dominant). **t** = short bush (recessive).","A bush is short only when its box is tt."]}],"steps":["Look back at the square: TT, Tt, Tt, tt.","Ask: \"Do the Tt bushes carry the short mark? Do they look short?\"","For A, the pattern \"Carrying a small t is not the same as ...\" is enough.","For B, count the tt boxes. Each box is 25%."],"fields":[{"id":"A","l":"A. In one sentence, say what Lisle's guess leaves out.","k":"sentence","ph":"Carrying a small t is not the same as ..."},{"id":"B","l":"B. The expected percent of short bushes from the square","k":"short","ph":"a percent"}],"hints":["**Carrying is not showing.** A bush with Tt carries a small t, but the capital T shows.","Only one of the four boxes is tt."],"loot":{"name":"🔍 Square-checker lens"}}]},{"id":"S4","title":"Session 4: One or Two in a Row","short":"4 · Highcombe","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 4 intro.","Pick either Session 4 encounter to start. The side quest is optional.","Save and leave whenever you want."],"scene":{"bg":"snow","props":[["🐑",120,170,40],["🐐",200,170,40],["🚪",320,160,50]],"cap":"The Highcombe herd"},"intro":["Calciber's last stop is the Highcombe herd, up where the wind blows cold. Some goats have thick, woolly coats. Some have smooth coats.",{"o":"Marit","t":"A herder named Marit counts her goats at the gate. \"W is a woolly coat. It is dominant. Small w is a smooth coat. It is recessive. My two best goats are both Ww.\""},"Calciber fills in the square on the gatepost with chalk: **WW, Ww, Ww, ww.**"],"encounters":[{"id":"E9","n":"9","title":"One Smooth Kid","scene":{"bg":"snow","props":[["🐐",140,170,40],["🐐",280,170,40]],"mover":["🐐",210,178,24,0,0],"cap":"WW, Ww, Ww, ww"},"story":[{"o":"Marit","t":"Marit asks, \"When the next kid is born, what is the chance it has a smooth coat?\""},"**The square (from the gatepost):** WW, Ww, Ww, ww."],"task":"Give the chance two ways.","boxes":[{"t":"🔑 Trait key","l":["**W** = woolly coat (dominant). **w** = smooth coat (recessive).","A kid has a smooth coat only when its box is ww."]}],"steps":["Count the ww boxes.","Each box is 25%, or 0.25.","Type the percent for A and the decimal for B."],"fields":[{"id":"A","l":"A. As a percent","k":"short","ph":"a percent"},{"id":"B","l":"B. As a decimal","k":"short","ph":"a decimal"}],"hints":["**Only ww** is smooth. The other three boxes have a capital W.","There is 1 ww box out of 4."],"loot":{"name":"🧶 Smooth goat brush"}},{"id":"E10","n":"10","title":"Two Woolly Kids in a Row","calc":true,"scene":{"bg":"snow","props":[["🐑",140,172,40],["🐑",220,172,40]],"mover":["🌸",330,80,30,-100,40],"cap":"Two woolly kids this spring?"},"story":["Marit is hoping for two woolly kids this spring, one after the other.","**The square (from the gatepost):** WW, Ww, Ww, ww."],"task":"Write each step.","boxes":[{"t":"🔁 Two-in-a-row rule","l":["**Chance for two in a row** = chance for one x chance for one."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["For A, count the boxes with at least one capital W. Each box is 0.25.","For B, multiply your answer from A by itself. Round the decimal to 0.001. Then multiply by 100 and round to a whole number for the percent.","For C, compare your answers for A and B. Which number is bigger?"],"fields":[{"id":"A","l":"A. The chance for one woolly kid, as a decimal","k":"short","ph":"a decimal"},{"id":"Bd","l":"B. Two woolly kids in a row, as a decimal (rounded by Orrin's rule)","k":"short","ph":"three places after the point"},{"id":"Bp","l":"B. Two woolly kids in a row, as a percent (whole number)","k":"short","ph":"a whole number percent"},{"id":"C","l":"C. Is two in a row more likely or less likely than one? Type one word.","k":"short","chips":["more","less"]}],"hints":["**Three boxes** have a capital W, so one kid has a 0.75 chance.","0.75 x 0.75 = 0.5625. Keep three places after the decimal point, and look at the fourth to decide whether to round up."],"loot":{"name":"🐑 Woolly coat tuft"}},{"id":"SIDE","n":"✦","side":true,"title":"Side Quest: The Pepper Patch","scene":{"bg":"field","props":[["👨‍🍳",80,160,44],["🌶️",230,170,34],["🌶️",290,170,34]],"mover":["🌶️",340,120,30,0,50],"cap":"HH crossed with Hh"},"story":[{"o":"Ribs","t":"Baby Back Ribs waves Calciber over to a small garden behind the inn. \"Calciber! I am growing peppers for my famous rib sauce. H is a hot pepper. It is dominant. Small h is a mild pepper. It is recessive. I crossed an HH plant with an Hh plant. Will I get any mild ones?\""}],"task":"Fill in the square, then find the mild peppers.","boxes":[{"t":"🟫 The square guide","l":["**Step 1:** Write one parent's two letters across the top of the square.","**Step 2:** Write the other parent's two letters down the left side.","**Step 3:** Fill each box with one letter from the top and one letter from the side. Put the capital letter first.","**Step 4:** Count the boxes with the trait you want. Each box is 25%, or 0.25."]}],"steps":["Write H and H across the top for the HH plant.","Write H and h down the side for the Hh plant.","Fill each box, capital first.","Count the hh boxes. Each box is 25%, or 0.25."],"fields":[{"id":"SQ","l":"A. The square for HH x Hh","k":"square"},{"id":"Bp","l":"B. Mild peppers expected, as a percent","k":"short","ph":"a percent"},{"id":"Bd","l":"B. Mild peppers expected, as a decimal","k":"short","ph":"a decimal"}],"hints":["Every box gets at least one capital H from the HH plant. A mild pepper needs hh."],"after_win":[{"o":"Ribs","t":"Baby Back Ribs grins. \"Every pepper hot. My sauce will be famous. And spicy.\""}],"loot":{"name":"🌶️ Famous-sauce pepper"}}]}]};
+/* =====================================================================
+ * Science Path quest page, inside the Family Hub's Quests tab (built like Quest 1).
+ * Each typed answer goes to google.script.run.saveQuestAnswer(record). The SERVER checks it
+ * and saves {questId, problemId, field, answer, matched, date}. No answer key is in this page.
+ * If the Hub can't be reached, answers wait in localStorage (pending) and are sent when it is back.
+ * window.QUEST_HOST (set by the Hub) gives person() and leave(). window.QUEST_PREVIEW=true means a
+ * preview (not Gabe): everything is open, nothing is queued, and progress is kept under a separate key.
+ * ===================================================================== */
+var QUEST_ID=U.id;
+var QUEST_SAVE_FN='saveQuestAnswer';
+function detectPreview(){try{if(window.QUEST_PREVIEW===true||window.QUEST_PREVIEW==='1')return true;if(window.QUEST_HOST&&window.QUEST_HOST.preview===true)return true;}catch(e){}try{return /preview/.test(String(location.hash||''));}catch(e){return false;}}
+var PREVIEW=detectPreview();
+var STORE_KEY=(PREVIEW?'gabeQuestPreview:':'gabeQuest:')+QUEST_ID;
+var PREVIEW_NOTE='Preview mode: this answer is checked here so you can see the page, but nothing is saved.';
+var OFFLINE='Saved on this device. It will be checked when the Hub is connected.';
+var SAVE_NOTE='What is saved: your typed answers, whether each one matches, any questions you write, and the date. Nothing about time or screens is saved. Your checklist and your place on the map stay on this device.';
+
+var S={hook:false,intro:{},done:{},pinned:{},ans:{},fb:{},hints:{},checks:{},loot:[],sound:false,view:'map',pending:[]};
+function load(){try{var x=JSON.parse(localStorage.getItem(STORE_KEY)||'null');if(x&&typeof x==='object')for(var k in x)S[k]=x[k];}catch(e){}
+  ['intro','done','pinned','ans','fb','hints','checks'].forEach(function(k){if(!S[k]||typeof S[k]!=='object'||Array.isArray(S[k]))S[k]={};});
+  if(!Array.isArray(S.loot))S.loot=[];if(!Array.isArray(S.pending))S.pending=[];if(PREVIEW)S.pending=[];}
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hubPerson(){try{return window.QUEST_HOST&&QUEST_HOST.person?String(QUEST_HOST.person()||''):'';}catch(e){return '';}}
+function hubOk(){try{return !!(window.google&&google.script&&google.script.run);}catch(e){return false;}}
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2800);}
+var AC=null;function chime(){if(!S.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();[523,659,784].forEach(function(f,i){var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+i*.12;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.07,t+.04);g.gain.exponentialRampToValueAtTime(.0001,t+.5);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.55);});}catch(e){}}
+function showPv(){var b=$('pvbar');if(b)b.classList.remove('hidden');}
+
+/* ---- saving (same record shape as Quest 1) ---- */
+function hubSave(problemId,field,answer){
+  var rec={questId:QUEST_ID,problemId:problemId,field:field,answer:String(answer).slice(0,300),date:today(),person:hubPerson()};
+  return new Promise(function(res){
+    var keep=function(){if(PREVIEW){res({readonly:true,local:true});return;}S.pending=(S.pending||[]).concat([rec]).slice(-300);save();res(null);};
+    if(!hubOk())return keep();
+    try{google.script.run.withSuccessHandler(function(r){if(r&&r.preview){showPv();}if(!PREVIEW)flushPending();res(r||null);}).withFailureHandler(function(e){
+        var m=String(e&&e.message||e);if(/read-only|view-as/i.test(m)){res({readonly:true});}else if(/not available|only for gabe|pick who/i.test(m)){res({blocked:true,msg:m});}else keep();
+      })[QUEST_SAVE_FN](rec);}catch(e){keep();}
+  });
+}
+var flushing=false;
+/* Sends answers that were kept on this device. Only sends records made by the same person who is signed in now. */
+function flushPending(){if(PREVIEW||flushing||!hubOk()||!(S.pending&&S.pending.length))return;var me=hubPerson();
+  var p=S.pending.filter(function(r){return !r.person||!me||r.person===me;});var rest=S.pending.filter(function(r){return p.indexOf(r)<0;});
+  if(!p.length)return;flushing=true;S.pending=rest;save();var left=p.length;
+  p.forEach(function(rec){rec.person=rec.person||me;try{google.script.run.withSuccessHandler(function(){if(--left<=0)flushing=false;}).withFailureHandler(function(e){if(!/read-only|view-as|not available/i.test(String(e&&e.message||e))){S.pending=(S.pending||[]).concat([rec]);save();}if(--left<=0)flushing=false;})[QUEST_SAVE_FN](rec);}catch(e){flushing=false;}});}
+window.addEventListener('online',function(){flushPending();});
+
+/* ---- structure helpers ---- */
+var ENC={},SES={};
+U.sessions.forEach(function(s,si){s.idx=si;SES[s.id]=s;s.encounters.forEach(function(e){e.sid=s.id;ENC[e.id]=e;});});
+function cleared(id){return !!(S.done[id]||S.pinned[id]);}
+function sessionComplete(s){return s.encounters.filter(function(e){return !e.side;}).every(function(e){return cleared(e.id);});}
+function sessionOpen(s){if(PREVIEW)return true;if(s.idx===0)return true;return sessionComplete(U.sessions[s.idx-1]);}
+function encOpen(e){var s=SES[e.sid];if(PREVIEW)return true;if(!sessionOpen(s)||!S.intro[s.id])return false;if(e.after&&!cleared(e.after))return false;return true;}
+function allComplete(){return U.sessions.every(sessionComplete);}
+function currentSession(){for(var i=0;i<U.sessions.length;i++){var s=U.sessions[i];if(!sessionComplete(s))return s;}return U.sessions[U.sessions.length-1];}
+function chamberOf(cid){return (U.chambers||[]).filter(function(c){return c.id===cid;})[0];}
+function chamberComplete(c){return U.sessions.filter(function(s){return s.chamber===c.id;}).every(sessionComplete);}
+function chamberOpen(c){var first=U.sessions.filter(function(s){return s.chamber===c.id;})[0];return first?sessionOpen(first):false;}
+
+/* ---- art ---- */
+function calciberSVG(){return '<svg viewBox="0 0 100 100" aria-label="Calciber the skeleton ranger, smiling"><rect width="100" height="100" fill="#2f4a4a"/><path d="M14 100 Q16 58 50 52 Q84 58 86 100Z" fill="#3f6b55"/><path d="M20 46 Q50 -2 80 46 L74 60 Q50 44 26 60Z" fill="#355c4a"/><ellipse cx="50" cy="48" rx="21" ry="22" fill="#f2ead8"/><ellipse cx="41" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><ellipse cx="59" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><circle cx="42" cy="46" r="2.4" fill="#8fe0d6"/><circle cx="60" cy="46" r="2.4" fill="#8fe0d6"/><path d="M48 55 L50 52 L52 55Z" fill="#2b3a3a"/><path d="M40 61 Q50 68 60 61" stroke="#2b3a3a" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M44 63v2M50 64v2.5M56 63v2" stroke="#2b3a3a" stroke-width="1.4"/><path d="M84 20 Q96 50 84 84" stroke="#c9a24a" stroke-width="3" fill="none"/><line x1="84" y1="20" x2="84" y2="84" stroke="#efe3c8" stroke-width="1"/></svg>';}
+function orrinSVG(){return '<svg viewBox="0 0 100 100" aria-label="Orrin the calm dwarf archivist"><rect width="100" height="100" fill="#4a3c2c"/><path d="M12 100 Q14 66 50 62 Q86 66 88 100Z" fill="#2c6b67"/><ellipse cx="50" cy="42" rx="20" ry="20" fill="#e8bf98"/><path d="M28 30 Q50 10 72 30 Q66 22 50 22 Q34 22 28 30Z" fill="#b9b2a6"/><path d="M30 48 Q30 90 50 92 Q70 90 70 48 Q60 60 50 58 Q40 60 30 48Z" fill="#d9d3c7"/><circle cx="42" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><circle cx="58" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><line x1="48" y1="42" x2="52" y2="42" stroke="#9c7a2e" stroke-width="2"/><circle cx="42" cy="42" r="1.8" fill="#3b2e17"/><circle cx="58" cy="42" r="1.8" fill="#3b2e17"/><path d="M44 56 Q50 60 56 56" stroke="#7a5a3a" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="58" y="74" width="26" height="18" rx="2" fill="#7a2f2a"/><line x1="71" y1="74" x2="71" y2="92" stroke="#c9a24a"/></svg>';}
+function ribsSVG(){return '<svg viewBox="0 0 100 100" aria-label="Baby Back Ribs, a small smiling skeleton chef"><rect width="100" height="100" fill="#3a4a44"/><path d="M22 100 Q24 70 50 66 Q76 70 78 100Z" fill="#efe3c8"/><path d="M38 72 h24 v28 h-24z" fill="#3f8f8a"/><circle cx="50" cy="82" r="2" fill="#c9a24a"/><rect x="34" y="20" width="32" height="12" rx="3" fill="#fbf6ea" stroke="#c7b48a"/><circle cx="38" cy="18" r="8" fill="#fbf6ea"/><circle cx="50" cy="13" r="9" fill="#fbf6ea"/><circle cx="62" cy="18" r="8" fill="#fbf6ea"/><ellipse cx="50" cy="48" rx="18" ry="18" fill="#f2ead8"/><ellipse cx="43" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><ellipse cx="57" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><circle cx="44" cy="46" r="2" fill="#f3c98a"/><circle cx="58" cy="46" r="2" fill="#f3c98a"/><path d="M48.5 55 L50 53 L51.5 55Z" fill="#2b3a3a"/><path d="M42 59 Q50 66 58 59" stroke="#2b3a3a" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M80 60 v28 M76 60 v8 M84 60 v8 M76 68 h8" stroke="#c9a24a" stroke-width="2.5" stroke-linecap="round"/></svg>';}
+var FOLK_COL=['#7a5a3a','#3f6b55','#6b4d7a','#7a2f2a','#2c5a7a','#8a6a2a'];
+function folkSVG(name){var h=0;for(var i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;var c=FOLK_COL[h%FOLK_COL.length],skin=['#e8bf98','#c99a72','#a8754f','#f0d2b4'][h%4],hair=['#5a3a22','#2b2219','#b98a4a','#7a7a7a'][(h>>3)%4];
+  return '<svg viewBox="0 0 100 100" aria-label="'+esc(name)+'"><rect width="100" height="100" fill="#3a4448"/><path d="M14 100 Q16 64 50 60 Q84 64 86 100Z" fill="'+c+'"/><ellipse cx="50" cy="44" rx="19" ry="20" fill="'+skin+'"/><path d="M30 40 Q32 18 50 18 Q68 18 70 40 Q62 28 50 28 Q38 28 30 40Z" fill="'+hair+'"/><circle cx="43" cy="45" r="2.4" fill="#2b2219"/><circle cx="57" cy="45" r="2.4" fill="#2b2219"/><path d="M43 54 Q50 59 57 54" stroke="#5a3a22" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';}
+var WHO={Orrin:['Orrin, the archivist',orrinSVG],Ribs:['Baby Back Ribs, Calciber\'s little brother (future famous chef)',ribsSVG],Calciber:['Calciber, the ranger',calciberSVG]};
+function say(who,txt){var w=WHO[who],pic=w?w[1]():folkSVG(who),nm=w?w[0]:who;return '<div class="dlg"><div class="portrait">'+pic+'</div><div class="bubble"><b class="who">'+esc(nm)+'</b>'+md(txt)+'</div></div>';}
+
+/* Scenes: a painted backdrop plus props. On a match, the "mover" travels and the scene lights up. */
+var BG={
+  indoor:'<rect width="420" height="200" fill="#4a3c2c"/><rect y="150" width="420" height="50" fill="#5f4a33"/><path d="M300 150 V60 Q340 20 380 60 V150Z" fill="#2f4a5a" stroke="#c9a24a" stroke-width="3"/><rect x="30" y="40" width="150" height="8" fill="#7a5a3a"/><rect x="30" y="95" width="150" height="8" fill="#7a5a3a"/>'+[0,1,2,3,4,5].map(function(i){return '<rect x="'+(36+i*24)+'" y="'+(14+i%2*6)+'" width="16" height="'+(26-i%2*6)+'" fill="'+['#2c6b67','#9c7a2e','#7a2f2a','#3f8f8a','#5a4a33','#6b4d7a'][i]+'"/>';}).join(''),
+  field:'<rect width="420" height="200" fill="#bfdbe8"/><circle cx="360" cy="40" r="22" fill="#f3d27a"/><path d="M0 120 Q100 80 210 110 T420 100 V200 H0Z" fill="#8fb07a"/><path d="M0 150 Q120 130 260 150 T420 145 V200 H0Z" fill="#6f9a5a"/>',
+  night:'<rect width="420" height="200" fill="#1f2b44"/>'+[[40,30],[90,60],[150,20],[230,45],[300,25],[380,70],[340,110],[60,100]].map(function(p){return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.8" fill="#efe3c8"/>';}).join('')+'<path d="M0 170 Q140 140 280 165 T420 160 V200 H0Z" fill="#2f3f3a"/>',
+  snow:'<rect width="420" height="200" fill="#dfe9f0"/><path d="M0 120 L80 50 L150 110 L230 40 L320 115 L420 60 V200 H0Z" fill="#b9c8d4"/><path d="M60 68 L80 50 L98 66Z M210 58 L230 40 L250 58Z" fill="#fff"/><path d="M0 150 Q140 130 280 150 T420 140 V200 H0Z" fill="#f7fbff"/>',
+  water:'<rect width="420" height="200" fill="#c6e0ea"/><path d="M0 100 Q90 70 200 95 T420 85 V200 H0Z" fill="#8fb07a"/><path d="M0 130 Q100 120 210 132 T420 126 V200 H0Z" fill="#5f9fb5"/><path d="M20 150 q20 -6 40 0 M120 165 q20 -6 40 0 M260 150 q20 -6 40 0" stroke="#d9eef5" stroke-width="2" fill="none"/>',
+  desert:'<rect width="420" height="200" fill="#f3d9a6"/><circle cx="330" cy="45" r="28" fill="#f5b041"/><path d="M0 130 Q90 90 200 125 T420 110 V200 H0Z" fill="#e0b46a"/><path d="M0 160 Q130 135 260 160 T420 150 V200 H0Z" fill="#cf9a4e"/>',
+  vault:'<rect width="420" height="200" fill="#3a3a40"/>'+[0,1,2,3,4,5,6].map(function(i){return '<rect x="'+(12+i*58)+'" y="8" width="54" height="26" fill="#45454c" stroke="#2c2c31"/>';}).join('')+'<rect y="160" width="420" height="40" fill="#2c2c31"/>'+[0,1,2,3,4].map(function(i){return '<g><circle cx="'+(40+i*80)+'" cy="52" r="4" fill="#9c7a2e"/><rect x="'+(28+i*80)+'" y="56" width="24" height="70" fill="#efe3c8" stroke="#c7b48a"/></g>';}).join(''),
+  chamber:'<rect width="420" height="200" fill="#3d3a36"/><path d="M140 200 V70 Q210 10 280 70 V200Z" fill="#2a2724" stroke="#c9a24a" stroke-width="4"/><rect y="180" width="420" height="20" fill="#2a2724"/>',
+  fair:'<rect width="420" height="200" fill="#cfe3ee"/><path d="M0 140 Q120 120 240 140 T420 135 V200 H0Z" fill="#8fb07a"/><path d="M40 60 L70 30 L100 60Z M300 60 L330 30 L360 60Z" fill="#c0504d"/><rect x="45" y="60" width="50" height="40" fill="#efe3c8"/><rect x="305" y="60" width="50" height="40" fill="#efe3c8"/>',
+  map:'<rect width="420" height="200" fill="#efe3c8"/><path d="M20 30 Q120 10 200 40 T400 30 V180 Q300 190 200 170 T20 180Z" fill="#e4d4b0" stroke="#9c7a2e" stroke-width="2"/><path d="M60 140 Q110 120 160 140" stroke="#7fb3ad" stroke-width="6" fill="none"/>'
+};
+function scene(e){var sc=e.scene||{bg:'indoor'};var h='<svg viewBox="0 0 420 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+(BG[sc.bg]||BG.indoor);
+  h+='<circle class="glow" cx="'+((sc.glow||[210,100])[0])+'" cy="'+((sc.glow||[210,100])[1])+'" r="60" fill="#f6e3a1"/>';
+  (sc.props||[]).forEach(function(p){h+='<text x="'+p[1]+'" y="'+p[2]+'" font-size="'+(p[3]||34)+'" text-anchor="middle"'+(p[4]?' class="bob"':'')+'>'+p[0]+'</text>';});
+  if(sc.mover){var m=sc.mover;h+='<g class="mover" style="--dx:'+(m[4]||0)+'px;--dy:'+(m[5]||0)+'px"><text x="'+m[1]+'" y="'+m[2]+'" font-size="'+(m[3]||36)+'" text-anchor="middle">'+m[0]+'</text></g>';}
+  h+='<g class="spark">'+[[60,40],[370,50],[200,30],[120,150],[320,160]].map(function(p){return '<text x="'+p[0]+'" y="'+p[1]+'" font-size="20" text-anchor="middle">✨</text>';}).join('')+'</g>';
+  if(sc.cap)h+='<text x="210" y="194" text-anchor="middle" fill="#fff" stroke="#2e2619" stroke-width="3" paint-order="stroke" font-family="Georgia" font-size="13">'+esc(sc.cap)+'</text>';
+  return h+'</svg>';}
+
+/* ---- story renderer ---- */
+function storyHTML(items){return (items||[]).map(function(it){
+  if(typeof it==='string')return '<p>'+md(it)+'</p>';
+  if(it.o)return say(it.o,it.t);
+  if(it.list)return '<ul>'+it.list.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>';
+  if(it.tables)return '<div class="tables">'+it.tables.map(tableHTML).join('')+'</div>';
+  if(it.table)return tableHTML(it);
+  return '';}).join('');}
+function tableHTML(t){var r=t.table;return '<div>'+(t.cap?'<div class="tcap">'+esc(t.cap)+'</div>':'')+'<table class="data"><thead><tr>'+r[0].map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'+r.slice(1).map(function(row){return '<tr>'+row.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';}
+function boxesHTML(bx){if(!bx||!bx.length)return '';return '<div class="boxes">'+bx.map(function(b){return '<div class="kbox'+(b.strip?' strip':'')+'"><h4>'+esc(b.t)+'</h4><ul>'+b.l.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul></div>';}).join('')+'</div>';}
+
+/* ---- side panel ---- */
+function drawSide(){var s=currentSession(),ck=S.checks[s.id]||[];
+  $('planFor').textContent=s.title;
+  $('checklist').innerHTML=(s.checklist||[]).map(function(t,i){return '<label class="chk"><input type="checkbox"'+(ck[i]?' checked':'')+' onchange="setCheck(\''+s.id+'\','+i+',this.checked)"><span>'+(i===0?'<b>Do this first:</b> ':'')+esc(t)+'</span></label>';}).join('');
+  $('loot').innerHTML=S.loot.length?S.loot.map(function(n,i){var L=lootOf(n);return L&&L.text?'<button class="lootitem" onclick="codex('+i+')">'+esc(n)+'</button>':'<span class="lootitem">'+esc(n)+'</span>';}).join(''):'<span class="note">Pages and keys from each encounter land here.</span>';
+  $('soundT').checked=!!S.sound;$('saveNote').textContent=SAVE_NOTE;}
+function setCheck(sid,i,v){var c=S.checks[sid]||[];c[i]=v;S.checks[sid]=c;save();}
+function lootOf(name){for(var k in ENC){var L=ENC[k].loot;if(L&&L.name===name)return L;}return null;}
+function giveLoot(e){var L=e.loot||{name:'📄 Page: '+e.title};if(S.loot.indexOf(L.name)<0){S.loot.push(L.name);save();drawSide();toast('Loot: '+L.name);}}
+function codex(i){var n=S.loot[i],L=lootOf(n);if(!L)return;var m=$('modal');m.innerHTML='<div class="card parch pop" role="dialog" aria-label="'+esc(n)+'"><h3>'+esc(n)+'</h3><p>'+md(L.text)+'</p><button class="btn" onclick="closeModal()">Close</button></div>';m.classList.remove('hidden');}
+function closeModal(){$('modal').classList.add('hidden');$('modal').innerHTML='';}
+
+/* ---- map ---- */
+function nodeList(){var out=[];U.sessions.forEach(function(s){out.push({type:'intro',s:s});s.encounters.forEach(function(e){out.push({type:'enc',s:s,e:e});});});return out;}
+function showMap(){S.view='map';save();
+  if(!S.hook&&!PREVIEW){showHook();return;}
+  var n=U.sessions.length,W=960,colW=W/n,maxN=0;U.sessions.forEach(function(s){maxN=Math.max(maxN,s.encounters.length+1);});
+  var H=Math.max(380,130+maxN*78+30),pts=[],nodes='',bands='',pathPts=[],cur=currentSession();
+  if(U.chambers){U.chambers.forEach(function(c){var ss=U.sessions.filter(function(s){return s.chamber===c.id;});if(!ss.length)return;var x0=ss[0].idx*colW+6,x1=(ss[ss.length-1].idx+1)*colW-6,open=chamberOpen(c),dn=chamberComplete(c);
+    bands+='<g opacity="'+(open?1:.55)+'"><rect x="'+x0+'" y="54" width="'+(x1-x0)+'" height="'+(H-70)+'" rx="22" fill="'+c.color+'" opacity=".22" stroke="'+c.color+'" stroke-width="3"/><text x="'+((x0+x1)/2)+'" y="'+(H-22)+'" text-anchor="middle" font-family="Georgia" font-size="15" fill="#3b2e17">'+(dn?'✓ ':open?'🔑 ':'🔒 ')+esc(c.plate)+'</text></g>';});}
+  U.sessions.forEach(function(s,si){var cx=si*colW+colW/2,open=sessionOpen(s),dn=sessionComplete(s);
+    bands+='<rect x="'+(cx-colW/2+6)+'" y="54" width="'+(colW-12)+'" height="'+(H-64)+'" rx="18" fill="'+(open?'#fffaf0':'#cbbf9f')+'" opacity="'+(open?.35:.35)+'"/>';
+    bands+='<g><rect x="'+(cx-colW/2+10)+'" y="12" width="'+(colW-20)+'" height="36" rx="10" fill="'+(dn?'#cfe6e2':open?'#f6ecd6':'#d9cdb2')+'" stroke="#9c7a2e"/><text x="'+cx+'" y="35" text-anchor="middle" font-family="Georgia" font-size="'+(n>4?12:14)+'" fill="#3b2e17">'+(dn?'✓ ':open?'':'🔒 ')+esc(s.short||s.title)+'</text></g>';
+    var items=[{type:'intro',s:s}].concat(s.encounters.map(function(e){return {type:'enc',s:s,e:e};}));
+    items.forEach(function(it,k){var x=cx+(k%2?1:-1)*Math.min(30,colW/5),y=92+k*78;if(k===0)x=cx;
+      var id,label,title,cls='node',isOpen,isDone;
+      if(it.type==='intro'){id='I_'+s.id;label='📖';title='Intro';isOpen=sessionOpen(s);isDone=!!S.intro[s.id];}
+      else{var e=it.e;id=e.id;label=e.side?'✦':e.n;title=e.title+(e.side?' (optional)':'');isOpen=encOpen(e);isDone=!!S.done[e.id];if(S.pinned[e.id]&&!isDone)cls+=' pinned';}
+      if(isDone)cls+=' done';if(!isOpen)cls+=' locked';
+      if(isOpen&&!isDone&&s===cur&&!(it.type==='enc'&&(it.e.side||S.pinned[it.e.id])))cls+=' next';
+      if(!(it.type==='enc'&&it.e.side))pathPts.push([x,y]);
+      var act=isOpen?(it.type==='intro'?'openIntro(\''+s.id+'\')':'openEnc(\''+id+'\')'):'lockedMsg(\''+s.id+'\')';
+      nodes+='<g class="'+cls+'" tabindex="0" role="button" aria-label="'+esc(title)+(isDone?' (done)':'')+(isOpen?'':' (locked for now)')+'" onclick="'+act+'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();'+act+'}" transform="translate('+x.toFixed(1)+' '+y+')"><circle class="ring" r="25"/><text text-anchor="middle" y="6">'+(isDone?'✓':isOpen?label:'🔒')+'</text><text class="lbl" text-anchor="middle" y="42">'+esc(short(title,n>4?18:24))+'</text></g>';});});
+  var path=pathPts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1];}).join(' ');
+  var deco=(U.mapDeco||[]).map(function(d){return '<text x="'+d[1]+'" y="'+d[2]+'" font-size="'+(d[3]||26)+'" opacity=".55" text-anchor="middle">'+d[0]+'</text>';}).join('');
+  var h='<div class="card parch pop"><h2>🗺️ '+esc(U.mapTitle)+'</h2>'+say('Orrin',U.mapLine)+'<div class="chipline">'+(PREVIEW?'<span class="chip">👀 Preview: every session is open</span>':'')+(U.calc?'<span class="chip">🧮 A calculator is welcome</span>':'')+'<span class="chip">No timer. Stop anytime.</span></div></div>';
+  h+='<div class="mapwrap"><svg viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Quest map. Choose a spot.">'+
+   '<defs><radialGradient id="pg" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#f3e8cf"/><stop offset="1" stop-color="'+(U.mapEdge||'#d9c59a')+'"/></radialGradient></defs>'+
+   '<rect width="'+W+'" height="'+H+'" fill="url(#pg)"/>'+deco+bands+'<path d="'+path+'" stroke="#9c7a2e" stroke-width="3" stroke-dasharray="8 8" fill="none"/>'+nodes+
+   '<g transform="translate('+(W-40)+' '+(H-40)+')"><circle r="20" fill="none" stroke="#5a4a33"/><path d="M0 -18 L5 0 L0 18 L-5 0Z" fill="#7a2f2a"/></g></svg></div>';
+  h+=questLog();
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function short(t,n){return t.length>n?t.slice(0,n-1)+'…':t;}
+function lockedMsg(sid){var s=SES[sid];if(!sessionOpen(s)){toast(s.chamber&&U.chambers?'This door opens after the chamber before it is done.':'This session opens after the one before it.');return;}if(!S.intro[sid]){toast('Read the session intro first. It is the 📖 spot.');return;}toast('This one opens after the encounter before it.');}
+function questLog(){var h='<div class="card"><h3>📜 Quest log</h3><div class="qlog">';
+  h+='<div class="qsess"><div class="qbtns"><button class="qb" onclick="showHook()">★ The story hook</button>'+(allComplete()||PREVIEW?'<button class="qb" onclick="showComplete()">🏁 Quest complete</button>':'')+'</div></div>';
+  var lastCh='';
+  U.sessions.forEach(function(s){
+    if(s.chamber&&U.chambers&&s.chamber!==lastCh){lastCh=s.chamber;var c=chamberOf(s.chamber);h+='<div class="note" style="margin-top:4px"><b>'+(chamberComplete(c)?'✓ ':chamberOpen(c)?'🔑 ':'🔒 ')+esc(c.title)+'</b>'+(chamberComplete(c)&&c.complete?' <button class="qb" onclick="showChamberDone(\''+c.id+'\')">🚪 Chamber done</button>':'')+'</div>';}
+    var open=sessionOpen(s),dn=sessionComplete(s);
+    h+='<div class="qsess'+(open?'':' locked')+'"><h4>'+(dn?'✓ ':open?'':'🔒 ')+esc(s.title)+'</h4><div class="qbtns"><button class="qb'+(S.intro[s.id]?' done':'')+'"'+(open?'':' disabled')+' onclick="openIntro(\''+s.id+'\')">📖 Intro</button>'+
+      s.encounters.map(function(e){var o=encOpen(e);return '<button class="qb'+(S.done[e.id]?' done':'')+'"'+(o?'':' disabled')+' onclick="openEnc(\''+e.id+'\')">'+(S.done[e.id]?'✓ ':S.pinned[e.id]?'📌 ':o?'':'🔒 ')+(e.side?'✦ ':e.n+'. ')+esc(e.title)+'</button>';}).join('')+'</div></div>';});
+  return h+'</div></div>';}
+
+/* ---- hook / intro / complete ---- */
+function showHook(){S.view='hook';save();
+  $('main').innerHTML='<div class="card parch pop"><div class="sub">'+esc(U.sub)+'</div><h2>'+esc(U.title)+'</h2><div class="scene">'+scene({scene:U.hookScene})+'</div>'+storyHTML(U.hook)+
+   '<h3>How this quest works</h3><ul>'+U.how.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>'+
+   '<div class="navrow"><button class="btn big" onclick="S.hook=true;save();showMap()">🗺️ Open the quest map</button></div></div>';drawSide();window.scrollTo(0,0);}
+function openIntro(sid){var s=SES[sid];if(!sessionOpen(s)){lockedMsg(sid);return;}S.view='I_'+sid;save();var ck=S.checks[sid]||[];
+  var h='<div class="card parch pop"><div class="sub">'+(s.chamber&&U.chambers?esc(chamberOf(s.chamber).title)+' · ':'')+'Session intro</div><h2>'+esc(s.title)+'</h2>';
+  if(s.chamberIntro)h+=storyHTML(s.chamberIntro);
+  h+='<div class="task"><b>📋 Setup checklist</b><div class="note">Setup and flow only. The steps for each problem are inside each encounter, under How to solve.</div>'+(s.checklist||[]).map(function(t,i){return '<label class="chk" style="border-color:#e4d4b0"><input type="checkbox"'+(ck[i]?' checked':'')+' onchange="setCheck(\''+sid+'\','+i+',this.checked);drawSide()"><span>'+esc(t)+'</span></label>';}).join('')+'</div>';
+  h+='<div class="scene">'+scene({scene:s.scene})+'</div>'+storyHTML(s.intro);
+  h+='<div class="navrow"><button class="btn big" onclick="startSession(\''+sid+'\')">'+(S.intro[sid]?'Back to the map':'✔ I read the intro. Open the encounters')+'</button></div></div>';
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function startSession(sid){if(!S.intro[sid]){S.intro[sid]=true;save();toast(SES[sid].order?'Encounters are open. In this session they go in order.':'Encounters are open. Any order is fine.');}showMap();}
+function showComplete(){S.view='complete';save();$('main').innerHTML='<div class="card parch pop"><h2>🏁 Quest Complete</h2><div class="scene won">'+scene({scene:U.doneScene})+'</div>'+storyHTML(U.complete)+'<div class="navrow"><button class="btn" onclick="showMap()">Back to the map</button></div></div>';window.scrollTo(0,0);}
+function showChamberDone(cid){var c=chamberOf(cid);$('main').innerHTML='<div class="card parch pop"><h2>🚪 '+esc(c.title)+' complete</h2><div class="scene won">'+scene({scene:c.scene})+'</div>'+storyHTML(c.complete)+'<div class="navrow"><button class="btn" onclick="showMap()">Back to the map</button></div></div>';window.scrollTo(0,0);}
+
+/* ---- encounters ---- */
+function fieldHTML(e,f){var a=S.ans[e.id]||{},v=a[f.id],base='in_'+e.id+'_'+f.id,h='<div class="field">';
+  if(f.k==='square'){var q=v&&typeof v==='object'?v:{t:['',''],s:['',''],b:['','','','']};
+    h+='<label>'+md(f.l)+'</label><div class="punnett"><table role="grid" aria-label="Punnett square"><tr><th class="corner">top →<br>side ↓</th>'+[0,1].map(function(i){return '<th><input id="'+base+'_t'+i+'" maxlength="2" aria-label="Top letter '+(i+1)+'" value="'+esc(q.t[i]||'')+'"></th>';}).join('')+'</tr>'+
+      [0,1].map(function(r){return '<tr><th><input id="'+base+'_s'+r+'" maxlength="2" aria-label="Side letter '+(r+1)+'" value="'+esc(q.s[r]||'')+'"></th>'+[0,1].map(function(c){var i=r*2+c;return '<td><input id="'+base+'_b'+i+'" maxlength="3" aria-label="Box row '+(r+1)+' column '+(c+1)+'" data-r="'+r+'" data-c="'+c+'" onfocus="hlSq(\''+base+'\','+r+','+c+',true)" onblur="hlSq(\''+base+'\','+r+','+c+',false)" value="'+esc(q.b[i]||'')+'"></td>';}).join('')+'</tr>';}).join('')+'</table></div><div class="note">Each box: one letter from the top and one from the side. Capital first.</div>';}
+  else if(f.k==='two'){var p=Array.isArray(v)?v:['',''];h+='<label>'+md(f.l)+'</label><div class="two"><input id="'+base+'_0" autocomplete="off" placeholder="first one" value="'+esc(p[0]||'')+'"><input id="'+base+'_1" autocomplete="off" placeholder="second one" value="'+esc(p[1]||'')+'"></div>';}
+  else if(f.k==='sentence'){h+='<label for="'+base+'">'+md(f.l)+'</label><textarea id="'+base+'" rows="2" placeholder="'+esc(f.ph||'One sentence is enough.')+'">'+esc(v||'')+'</textarea>';}
+  else{h+='<label for="'+base+'">'+md(f.l)+'</label><input id="'+base+'" autocomplete="off" placeholder="'+esc(f.ph||'')+'" value="'+esc(v||'')+'" onkeydown="if(event.key===\'Enter\')checkEnc(\''+e.id+'\')">';}
+  if(f.chips)h+='<div class="chipline">'+f.chips.map(function(c){return '<button type="button" class="pick" onclick="pickChip(\''+base+'\',this.textContent)">'+esc(c)+'</button>';}).join('')+'</div>';
+  var fbv=(S.fb[e.id]||{})[f.id];
+  return h+'<div id="fb_'+base+'" aria-live="polite">'+(fbv?fbHTML(fbv):'')+'</div></div>';}
+function pickChip(base,t){var el=$(base);if(el){el.value=t;el.focus();}}
+function hlSq(base,r,c,on){var a=$(base+'_t'+c),b=$(base+'_s'+r);[a,b].forEach(function(x){if(x)x.classList.toggle('hl',on);});}
+function readField(e,f){var base='in_'+e.id+'_'+f.id;
+  if(f.k==='square'){var q={t:[0,1].map(function(i){return $(base+'_t'+i).value.trim();}),s:[0,1].map(function(i){return $(base+'_s'+i).value.trim();}),b:[0,1,2,3].map(function(i){return $(base+'_b'+i).value.trim();})};return {store:q,send:q.b.every(Boolean)?q.b.join(', '):'',partial:q.b.some(Boolean)};}
+  if(f.k==='two'){var p=[$(base+'_0').value.trim(),$(base+'_1').value.trim()];return {store:p,send:p.filter(Boolean).join(' | ')};}
+  var v=$(base).value;return {store:v,send:String(v).trim()};}
+function openEnc(id){var e=ENC[id];if(!encOpen(e)){lockedMsg(e.sid);return;}S.view=id;save();var s=SES[e.sid];
+  var h='<div class="card parch pop"><div class="sub">'+esc(s.title)+' · '+(e.side?'Side quest (optional)':(U.encWord||'Encounter')+' '+esc(e.n))+'</div><h2>'+esc(e.title)+'</h2>';
+  h+='<div class="scene'+(S.done[id]?' won':'')+'" id="scene">'+scene(e)+'</div>';
+  h+=storyHTML(e.story);
+  h+='<div class="task"><b>📜 Your task:</b> '+md(e.task)+(e.taskList?'<ul>'+e.taskList.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>':'')+(e.calc?'<div class="chipline"><span class="chip">🧮 A calculator is welcome</span></div>':'')+'</div>';
+  h+=boxesHTML(e.boxes);
+  h+='<details class="guide" id="g_'+id+'"><summary><b>🧭 How to solve</b> <span class="note">(open any time)</span></summary><ol>'+e.steps.map(function(t){return '<li>'+md(t.replace(/^Step \d+:\s*/,''))+'</li>';}).join('')+'</ol></details>';
+  h+='<div class="fields">'+e.fields.map(function(f){return fieldHTML(e,f);}).join('')+'</div>';
+  h+='<div class="navrow"><button class="btn big" onclick="checkEnc(\''+id+'\')">'+esc(e.checkLabel||U.checkLabel||'🖋️ Write it in the journal')+'</button></div>';
+  h+='<div class="hints" id="hints_'+id+'">'+hintsHTML(e)+'</div><div id="pin_'+id+'"></div><div id="win_'+id+'">'+(S.done[id]?winHTML(e):'')+'</div>';
+  h+='<div class="navrow"><button class="btn alt" onclick="showMap()">← Back to the map</button>'+nextBtn(e)+'</div></div>';
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function hintsHTML(e){var n=S.hints[e.id]||0,h='';for(var i=0;i<n&&i<e.hints.length;i++)h+='<div class="hint">🎲 <b>Re-roll hint '+(i+1)+':</b> '+md(e.hints[i])+'</div>';
+  if(n<e.hints.length)h+='<button class="hintbtn" id="hb_'+e.id+'" onclick="moreHint(\''+e.id+'\')">🎲 '+'Re-roll hint '+(n+1)+(e.hints.length>1?' of '+e.hints.length:'')+'</button>';
+  return h;}
+function moreHint(id){var e=ENC[id];S.hints[id]=Math.min((S.hints[id]||0)+1,e.hints.length);save();$('hints_'+id).innerHTML=hintsHTML(e);}
+function nextBtn(e){var s=SES[e.sid],list=s.encounters,i=list.indexOf(e),nx=list[i+1];if(nx&&encOpen(nx))return '<button class="btn alt" onclick="openEnc(\''+nx.id+'\')">Next: '+esc(nx.title)+' →</button>';return '';}
+function fbHTML(r){
+  if(r.off)return '<div class="fb re">💾 '+esc(OFFLINE)+'</div>';
+  if(r.ro)return '<div class="fb re">👀 '+esc(PREVIEW_NOTE)+'</div>';
+  if(r.blocked)return '<div class="fb re">This page is resting right now. Your answer is kept here.</div>';
+  if(r.m)return '<div class="fb ok">✔ Matches.'+(r.msg?' '+esc(r.msg):'')+'</div>';
+  if(r.lg)return '<div class="fb log">📝 Logged in the journal.'+(r.msg?' '+esc(r.msg):' If you want, roll a hint and compare.')+'</div>';
+  return '<div class="fb re">🎲 Not yet. Re-roll: look at step '+(r.st||1)+' of How to solve.'+(r.msg?' '+esc(r.msg):'')+'</div>';}
+function toFb(r){if(r===null)return {off:1};if(r.readonly)return {ro:1};if(r.blocked)return {blocked:1};if(r.matched)return {m:1,msg:r.msg||''};if(r.logged||r.checked===false)return {lg:1,msg:r.msg||''};return {st:r.step,msg:r.msg||''};}
+function checkEnc(id){var e=ENC[id],a=S.ans[id]||{},sends=[],missing=0;
+  e.fields.forEach(function(f){var r=readField(e,f);a[f.id]=r.store;if(r.send)sends.push([f,r.send]);else missing++;});
+  S.ans[id]=a;save();
+  if(!sends.length){toast('Type an answer first, whenever you are ready.');return;}
+  if(missing)toast('Saved what you wrote. Fill the empty boxes whenever you are ready.');
+  S.fb[id]=S.fb[id]||{};
+  Promise.all(sends.map(function(x){var f=x[0];return hubSave(id,f.id,x[1]).then(function(r){var v=toFb(r);S.fb[id][f.id]=v;var el=$('fb_in_'+id+'_'+f.id);if(el)el.innerHTML=fbHTML(v);return v;});})).then(function(vs){
+    save();var anyRe=vs.some(function(v){return !(v.m||v.lg||v.off||v.ro||v.blocked);});
+    if(!missing&&!anyRe&&!vs.some(function(v){return v.blocked;})){win(e);return;}
+    if(anyRe){var g=$('g_'+id);if(g)g.open=true;var hb=$('hb_'+id);if(hb){hb.classList.remove('nudge');void hb.offsetWidth;hb.classList.add('nudge');}
+      if((S.hints[id]||0)>=e.hints.length&&!S.done[id]&&!S.pinned[id]&&!e.side)$('pin_'+id).innerHTML='<div class="note" style="margin-top:10px">Want a break from this one? You can set it aside and keep going. It stays on the map.</div><button class="btn alt" onclick="pinEnc(\''+id+'\')">📌 Set this page aside for now</button>';}});}
+function win(e){var sc=$('scene');if(sc)sc.classList.add('won');chime();
+  var first=!S.done[e.id];S.done[e.id]=true;delete S.pinned[e.id];save();
+  var w=$('win_'+e.id);if(w)w.innerHTML=winHTML(e);if(first)setTimeout(function(){giveLoot(e);checkMilestones(e);},900);drawSide();
+  var nb=$('main').querySelector('.navrow:last-child');if(nb&&first)nb.innerHTML='<button class="btn alt" onclick="showMap()">← Back to the map</button>'+nextBtn(e);}
+function winHTML(e){return '<div class="winbox pop">🌟 '+esc(e.winLine||U.winLine||'The page is written in the journal.')+' You found '+esc((e.loot||{name:'📄 Page: '+e.title}).name)+'.</div>'+(e.after_win?storyHTML(e.after_win):'');}
+function pinEnc(id){S.pinned[id]=true;save();hubSave(id,'pinned','set aside for now');toast('Set aside. It stays on the map for later.');showMap();}
+function checkMilestones(e){var s=SES[e.sid];if(sessionComplete(s)){var nm='🧩 Map piece: '+s.title;if(S.loot.indexOf(nm)<0){S.loot.push(nm);save();drawSide();toast(nm);}}
+  if(U.chambers&&s.chamber){var c=chamberOf(s.chamber);if(c.complete&&chamberComplete(c)&&!S['ch_'+c.id]){S['ch_'+c.id]=true;save();setTimeout(function(){showChamberDone(c.id);},600);return;}}
+  if(allComplete()&&!S.finished){S.finished=true;save();setTimeout(showComplete,600);}}
+
+/* ---- ask a question (saved with the answers; nobody is notified) ---- */
+function askQ(){var t=$('askT');if(!t)return;var v=String(t.value||'').trim();if(!v){toast('Type your question first, whenever you are ready.');return;}
+  hubSave(S.view&&ENC[S.view]?S.view:'MAP','question',v).then(function(r){t.value='';toast(r?(r.readonly||r.preview?'Preview mode: questions are not saved here.':'Question saved with your answers.'):'Saved on this device for now.');});}
+function saveLeave(){save();toast('Saved. Come back anytime.');
+  try{if(window.QUEST_HOST&&typeof QUEST_HOST.leave==='function')setTimeout(QUEST_HOST.leave,800);}catch(e){}
+  setTimeout(function(){$('main').innerHTML='<div class="card parch pop"><h2>Saved</h2>'+say('Calciber','Good place to rest. The map will be right here when you come back.')+say('Ribs',U.ribsBye||'Snack break! I saved you a (pretend) cookie.')+'<button class="btn" onclick="showMap()">Back to the map</button></div>';},300);}
+
+/* ---- start ---- */
+load();if(PREVIEW)showPv();drawSide();flushPending();
+(function(){var v=S.view;if(v&&ENC[v]&&encOpen(ENC[v]))openEnc(v);else if(v&&v.indexOf('I_')===0&&SES[v.slice(2)])openIntro(v.slice(2));else if(v==='hook')showHook();else showMap();})();
+
+</script>
+</body>
+</html>

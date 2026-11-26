@@ -77,6 +77,7 @@ export function FamilyHomeTab({
   const [showRoutineChores, setShowRoutineChores] = useState(false);
   const [filterPerson, setFilterPerson] = useState<string>('');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventItem | null>(null);
+  const [editingSelectedEvent, setEditingSelectedEvent] = useState<CalendarEventItem | null>(null);
   const [addingEvent, setAddingEvent] = useState(false);
   const [newEvTitle, setNewEvTitle] = useState('');
   const [newEvDate, setNewEvDate] = useState(todayKey);
@@ -440,10 +441,11 @@ export function FamilyHomeTab({
               </p>
             </details>
             <details className="p-2 rounded-lg bg-white/80 border border-[#fdba74]">
-              <summary className="font-bold cursor-pointer">💎 Just for me</summary>
+              <summary className="font-bold cursor-pointer">💎 Just for me &amp; Quick Fuel</summary>
               <p className="mt-1 text-[11px] leading-relaxed">
-                Rockhounding, cutting rocks, tending the chickens. A midday 15 minutes counts. Health &amp;
-                Oura tools now live privately inside School of Health on Campus.
+                Rockhounding, cutting rocks, tending the chickens — even 15 minutes counts. Your{' '}
+                <strong>Zero-Energy Safe Foods</strong> &amp; <strong>Ring-Matched Move</strong> are
+                ready inside <strong>School of Health</strong> on Campus whenever you want them.
               </p>
             </details>
           </div>
@@ -802,31 +804,135 @@ export function FamilyHomeTab({
         })()}
 
         {selectedEvent && (
-          <div className="p-3 rounded-xl bg-[#eef7f1] border border-[#52b788] text-xs space-y-1.5">
+          <div className="p-3 rounded-xl bg-[#eef7f1] border border-[#52b788] text-xs space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div className="font-bold text-[#1b4332] text-sm">{selectedEvent.title}</div>
-              <button onClick={() => setSelectedEvent(null)} className="underline cursor-pointer">
+              <button
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setEditingSelectedEvent(null);
+                }}
+                className="underline cursor-pointer"
+              >
                 Close
               </button>
             </div>
-            <div>
-              <strong>When:</strong> {eventDateKey(selectedEvent)} · {formatEventTime(selectedEvent)}
-            </div>
-            {selectedEvent.location && (
-              <div>
-                <strong>Where:</strong> {selectedEvent.location}
+            {editingSelectedEvent ? (
+              <div className="p-2.5 rounded-lg bg-white border border-[#95d5b2] space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <input
+                    type="text"
+                    value={editingSelectedEvent.title}
+                    onChange={(e) => setEditingSelectedEvent({ ...editingSelectedEvent, title: e.target.value })}
+                    placeholder="Title"
+                    className="px-2 py-1 rounded border border-[#95d5b2]"
+                  />
+                  <input
+                    type="date"
+                    value={editingSelectedEvent.start.slice(0, 10)}
+                    onChange={(e) => {
+                      const d = e.target.value;
+                      const tPart = editingSelectedEvent.allDay ? '' : editingSelectedEvent.start.slice(11, 16);
+                      const nextStart = !d ? editingSelectedEvent.start : tPart ? `${d}T${tPart}:00` : d;
+                      setEditingSelectedEvent({ ...editingSelectedEvent, start: nextStart, end: nextStart });
+                    }}
+                    className="px-2 py-1 rounded border border-[#95d5b2]"
+                  />
+                  <input
+                    type="time"
+                    value={editingSelectedEvent.allDay ? '' : editingSelectedEvent.start.slice(11, 16)}
+                    onChange={(e) => {
+                      const d = editingSelectedEvent.start.slice(0, 10);
+                      const tm = e.target.value;
+                      const nextStart = tm ? `${d}T${tm}:00` : d;
+                      setEditingSelectedEvent({
+                        ...editingSelectedEvent,
+                        allDay: !tm,
+                        start: nextStart,
+                        end: nextStart,
+                      });
+                    }}
+                    className="px-2 py-1 rounded border border-[#95d5b2]"
+                  />
+                  <select
+                    value={editingSelectedEvent.person}
+                    onChange={(e) => setEditingSelectedEvent({ ...editingSelectedEvent, person: e.target.value })}
+                    className="px-2 py-1 rounded border border-[#95d5b2]"
+                  >
+                    <option value="">🏡 Whole Family</option>
+                    {FAMILY_PEOPLE.map((p) => (
+                      <option key={p.name} value={p.name}>
+                        {p.emoji} {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={editingSelectedEvent.location}
+                    onChange={(e) => setEditingSelectedEvent({ ...editingSelectedEvent, location: e.target.value })}
+                    placeholder="Location"
+                    className="px-2 py-1 rounded border border-[#95d5b2] sm:col-span-2"
+                  />
+                  <input
+                    type="text"
+                    value={editingSelectedEvent.notes}
+                    onChange={(e) => setEditingSelectedEvent({ ...editingSelectedEvent, notes: e.target.value })}
+                    placeholder="Notes"
+                    className="px-2 py-1 rounded border border-[#95d5b2] sm:col-span-2"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      const next = (calendarData.events || []).map((ev) =>
+                        ev.id === editingSelectedEvent.id ? editingSelectedEvent : ev
+                      );
+                      await onSaveCalendarEvents(next);
+                      setSelectedEvent(editingSelectedEvent);
+                      setEditingSelectedEvent(null);
+                    }}
+                    className="px-2.5 py-1 rounded bg-[#2d6a4f] text-white font-bold cursor-pointer"
+                  >
+                    Save Event
+                  </button>
+                  <button
+                    onClick={() => setEditingSelectedEvent(null)}
+                    className="px-2.5 py-1 rounded bg-[#edf6f0] font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            )}
-            {selectedEvent.notes && (
-              <div className="text-[#355e47] whitespace-pre-line">{selectedEvent.notes}</div>
-            )}
-            {canEdit && isParentView && (
-              <button
-                onClick={() => void handleDeleteCalendarEvent(selectedEvent.id)}
-                className="px-2.5 py-1 rounded bg-red-600 text-white text-[11px] font-bold cursor-pointer"
-              >
-                🗑️ Remove Event
-              </button>
+            ) : (
+              <>
+                <div>
+                  <strong>When:</strong> {eventDateKey(selectedEvent)} · {formatEventTime(selectedEvent)}
+                </div>
+                {selectedEvent.location && (
+                  <div>
+                    <strong>Where:</strong> {selectedEvent.location}
+                  </div>
+                )}
+                {selectedEvent.notes && (
+                  <div className="text-[#355e47] whitespace-pre-line">{selectedEvent.notes}</div>
+                )}
+                {canEdit && isParentView && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => setEditingSelectedEvent({ ...selectedEvent })}
+                      className="px-2.5 py-1 rounded bg-white border border-[#95d5b2] text-[11px] font-bold cursor-pointer"
+                    >
+                      ✏️ Edit Event
+                    </button>
+                    <button
+                      onClick={() => void handleDeleteCalendarEvent(selectedEvent.id)}
+                      className="px-2.5 py-1 rounded bg-red-600 text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      🗑️ Remove Event
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

@@ -7,6 +7,7 @@ import {
   type GoalItem,
   type HouseholdAnnouncementsDoc,
   type LinkGroup,
+  type PublicGiftClaim,
 } from '../../services/familyHubService';
 import { PersonChip } from './PersonBadge';
 
@@ -29,6 +30,8 @@ export function FamilyGoalsTab({
   const isParent = activePerson.mode === 'parent';
   const [newGoal, setNewGoal] = useState('');
   const [newStep, setNewStep] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftGoal, setDraftGoal] = useState<GoalItem | null>(null);
 
   return (
     <div className="space-y-4">
@@ -69,8 +72,11 @@ export function FamilyGoalsTab({
         {goals.map((g) => {
           const pObj = FAMILY_PEOPLE.find((p) => p.name === g.person);
           const canModify = canEdit && (isParent || g.person === activePerson.name);
+          const pctNum = parseInt(String(g.progress || '0').replace(/[^0-9]/g, ''), 10) || 0;
+          const isEditing = editingId === g.id && draftGoal;
+
           return (
-            <div key={g.id} className="p-3 rounded-2xl bg-white border border-[#95d5b2] space-y-1.5 text-xs">
+            <div key={g.id} className="p-3.5 rounded-2xl bg-white border border-[#95d5b2] space-y-2 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   {pObj ? <PersonChip person={pObj} /> : <strong>{g.person}</strong>}
@@ -88,6 +94,20 @@ export function FamilyGoalsTab({
                       <option>Done</option>
                     </select>
                     <button
+                      onClick={() => {
+                        if (isEditing) {
+                          setEditingId(null);
+                          setDraftGoal(null);
+                        } else {
+                          setEditingId(g.id);
+                          setDraftGoal({ ...g });
+                        }
+                      }}
+                      className="px-2 py-0.5 rounded border border-[#95d5b2] cursor-pointer"
+                    >
+                      ✏️
+                    </button>
+                    <button
                       onClick={() => void onDeleteGoal(g.id)}
                       className="px-2 py-0.5 rounded border border-red-200 text-red-700 cursor-pointer"
                     >
@@ -96,8 +116,80 @@ export function FamilyGoalsTab({
                   </div>
                 )}
               </div>
-              {g.step && <div className="text-[#355e47]">Next step: {g.step}</div>}
-              {g.notes && <div className="text-[#52796f]">{g.notes}</div>}
+
+              <div className="w-full h-2 rounded-full bg-[#e5f3ea] overflow-hidden">
+                <div
+                  className="h-full bg-[#2d6a4f] transition-all"
+                  style={{ width: `${Math.min(100, Math.max(0, pctNum))}%` }}
+                />
+              </div>
+
+              {isEditing ? (
+                <div className="p-2.5 rounded-xl bg-[#f4fbf6] border border-[#74c69d] space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={draftGoal.goal}
+                      onChange={(e) => setDraftGoal({ ...draftGoal, goal: e.target.value })}
+                      placeholder="Goal"
+                      className="px-2 py-1 rounded border border-[#95d5b2] bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={draftGoal.step}
+                      onChange={(e) => setDraftGoal({ ...draftGoal, step: e.target.value })}
+                      placeholder="Next step"
+                      className="px-2 py-1 rounded border border-[#95d5b2] bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={draftGoal.why}
+                      onChange={(e) => setDraftGoal({ ...draftGoal, why: e.target.value })}
+                      placeholder="Why this matters"
+                      className="px-2 py-1 rounded border border-[#95d5b2] bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={draftGoal.celebrate}
+                      onChange={(e) => setDraftGoal({ ...draftGoal, celebrate: e.target.value })}
+                      placeholder="How we celebrate"
+                      className="px-2 py-1 rounded border border-[#95d5b2] bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>Progress:</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={parseInt(String(draftGoal.progress).replace(/[^0-9]/g, ''), 10) || 0}
+                      onChange={(e) =>
+                        setDraftGoal({ ...draftGoal, progress: `${e.target.value}%` })
+                      }
+                      className="flex-1 accent-[#2d6a4f]"
+                    />
+                    <span className="font-bold">{draftGoal.progress}</span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await onUpdateGoal(draftGoal);
+                      setEditingId(null);
+                      setDraftGoal(null);
+                    }}
+                    className="px-3 py-1 rounded bg-[#2d6a4f] text-white font-bold cursor-pointer"
+                  >
+                    💾 Save Changes
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {g.why && <div className="text-[#40916c]">Why: {g.why}</div>}
+                  {g.step && <div className="text-[#355e47]">Next step: {g.step}</div>}
+                  {g.celebrate && <div className="text-[#b45309]">🎉 Celebrate: {g.celebrate}</div>}
+                  {g.notes && <div className="text-[#52796f]">{g.notes}</div>}
+                </>
+              )}
             </div>
           );
         })}
@@ -106,7 +198,7 @@ export function FamilyGoalsTab({
   );
 }
 
-// 2. GIFT LISTS TAB (parents-only bought status kept strictly isolated in parentBoughtMap!)
+// 2. GIFT LISTS TAB (parents-only bought status + shareable /gifts link)
 export function FamilyGiftsTab({
   activePerson,
   isParentActor,
@@ -115,9 +207,14 @@ export function FamilyGiftsTab({
   viewAs,
   sections,
   parentBoughtMap,
+  publicPublished,
+  publicClaims,
   onAddGift,
+  onUpdateGift,
   onDeleteGift,
   onToggleBought,
+  onPublishPublic,
+  onUnpublishPublic,
 }: {
   activePerson: FamilyPersonProfile;
   isParentActor: boolean;
@@ -126,15 +223,27 @@ export function FamilyGiftsTab({
   viewAs: string;
   sections: GiftSection[];
   parentBoughtMap: Record<string, string>;
+  publicPublished: boolean;
+  publicClaims: Record<string, PublicGiftClaim>;
   onAddGift: (forPerson: string, item: Omit<GiftItem, 'id'>) => Promise<void>;
+  onUpdateGift: (forPerson: string, item: GiftItem) => Promise<void>;
   onDeleteGift: (forPerson: string, giftId: string) => Promise<void>;
   onToggleBought: (giftId: string, bought: boolean) => Promise<void>;
+  onPublishPublic: () => Promise<void>;
+  onUnpublishPublic: () => Promise<void>;
 }) {
   const showParentBought = isParentActor && !viewAs && !readOnly;
   const [forWho, setForWho] = useState(activePerson.name);
   const [idea, setIdea] = useState('');
   const [link, setLink] = useState('');
   const [price, setPrice] = useState('');
+  const [priority, setPriority] = useState('');
+  const [editingGift, setEditingGift] = useState<{ person: string; item: GiftItem } | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const shareUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/gifts` : 'https://cairnspire-university.web.app/gifts';
 
   return (
     <div className="space-y-4">
@@ -142,11 +251,88 @@ export function FamilyGiftsTab({
         <h2 className="font-atlas text-lg font-bold text-[#1b4332]">🎁 Family Gift Lists</h2>
         {showParentBought && (
           <p className="text-[11px] text-[#40916c]">
-            Parents-only Bought status is hidden on kids’ own lists andView-As so surprises stay secret!
+            Parents-only Bought &amp; Public Reserve status stays completely hidden on kids’ own lists and
+            View-As so surprises stay secret!
           </p>
         )}
+
+        {/* Shareable Extended-Family Link Panel (Parents Only) */}
+        {showParentBought && (
+          <div className="p-3 rounded-xl bg-[#eef6ff] border border-[#93c5fd] space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-bold text-[#1e3a8a]">
+                🔗 Shareable Wish List Link for Extended Family
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  publicPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {publicPublished ? 'Live & Shareable' : 'Currently Paused'}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#1e40af]">
+              Anyone with this link can view gift ideas (no login needed) and tap “I’ve got this!” to prevent
+              duplicate gifts. Kids cannot see reserved/bought items.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="px-2 py-1 rounded bg-white border border-[#bfdbfe] text-[11px] select-all">
+                {shareUrl}
+              </code>
+              <button
+                onClick={() => {
+                  void navigator.clipboard?.writeText(shareUrl);
+                  setCopiedLink(true);
+                  setTimeout(() => setCopiedLink(false), 1800);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] font-bold text-[#1e3a8a] cursor-pointer"
+              >
+                {copiedLink ? 'Copied ✔' : '📋 Copy Link'}
+              </button>
+              <a
+                href="/gifts"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] font-bold text-[#1e3a8a] underline"
+              >
+                Preview ↗
+              </a>
+              <button
+                disabled={shareBusy}
+                onClick={async () => {
+                  setShareBusy(true);
+                  try {
+                    await onPublishPublic();
+                  } finally {
+                    setShareBusy(false);
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-[#2563eb] text-white font-bold cursor-pointer disabled:opacity-50"
+              >
+                {publicPublished ? '🔄 Sync Updates to Public Link' : '🚀 Turn On Public Link'}
+              </button>
+              {publicPublished && (
+                <button
+                  disabled={shareBusy}
+                  onClick={async () => {
+                    setShareBusy(true);
+                    try {
+                      await onUnpublishPublic();
+                    } finally {
+                      setShareBusy(false);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-red-100 text-red-800 font-bold cursor-pointer"
+                >
+                  Pause Link
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {canEdit && (
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 text-xs p-3 rounded-xl bg-[#f4fbf6] border border-[#dcefe2]">
             <select
               value={forWho}
               onChange={(e) => setForWho(e.target.value)}
@@ -163,15 +349,25 @@ export function FamilyGiftsTab({
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
               placeholder="Gift idea"
-              className="sm:col-span-2 px-2.5 py-1.5 rounded-lg border border-[#95d5b2]"
+              className="sm:col-span-2 px-2.5 py-1.5 rounded-lg border border-[#95d5b2] bg-white"
             />
             <input
               type="text"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="Price"
-              className="px-2.5 py-1.5 rounded-lg border border-[#95d5b2]"
+              className="px-2.5 py-1.5 rounded-lg border border-[#95d5b2] bg-white"
             />
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="px-2 py-1.5 rounded-lg border border-[#95d5b2] bg-white"
+            >
+              <option value="">Priority</option>
+              <option value="1">1 (Top!)</option>
+              <option value="2">2 (Really want)</option>
+              <option value="3">3 (Nice idea)</option>
+            </select>
             <button
               onClick={async () => {
                 if (!idea.trim()) return;
@@ -179,12 +375,13 @@ export function FamilyGiftsTab({
                   idea: idea.trim(),
                   link: link.trim(),
                   price: price.trim(),
-                  priority: '',
+                  priority,
                   occasion: forWho === activePerson.name ? '' : `(idea from ${activePerson.name})`,
                 });
                 setIdea('');
                 setLink('');
                 setPrice('');
+                setPriority('');
               }}
               className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer"
             >
@@ -194,8 +391,8 @@ export function FamilyGiftsTab({
               type="url"
               value={link}
               onChange={(e) => setLink(e.target.value)}
-              placeholder="Link (optional)"
-              className="sm:col-span-5 px-2.5 py-1.5 rounded-lg border border-[#95d5b2]"
+              placeholder="Store link (optional)"
+              className="sm:col-span-6 px-2.5 py-1.5 rounded-lg border border-[#95d5b2] bg-white"
             />
           </div>
         )}
@@ -214,14 +411,102 @@ export function FamilyGiftsTab({
               <div className="space-y-1.5 text-xs">
                 {sec.items.map((it) => {
                   const isBought = Boolean(parentBoughtMap[it.id]);
-                  const canSeeBoughtHere = showParentBought && !isOwnList;
+                  const pubClaim = publicClaims[it.id.toLowerCase()];
+                  const isPublicClaimed = Boolean(pubClaim?.claimed);
+                  const canSeeStatus = showParentBought && !isOwnList;
+                  const isEditingThis =
+                    editingGift?.person === sec.person && editingGift.item.id === it.id;
+
+                  if (isEditingThis && editingGift) {
+                    return (
+                      <div
+                        key={it.id}
+                        className="p-2.5 rounded-xl bg-[#f4fbf6] border border-[#74c69d] space-y-2"
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={editingGift.item.idea}
+                            onChange={(e) =>
+                              setEditingGift({
+                                ...editingGift,
+                                item: { ...editingGift.item, idea: e.target.value },
+                              })
+                            }
+                            placeholder="Idea"
+                            className="px-2 py-1 rounded border border-[#95d5b2] bg-white sm:col-span-2"
+                          />
+                          <input
+                            type="text"
+                            value={editingGift.item.price}
+                            onChange={(e) =>
+                              setEditingGift({
+                                ...editingGift,
+                                item: { ...editingGift.item, price: e.target.value },
+                              })
+                            }
+                            placeholder="Price"
+                            className="px-2 py-1 rounded border border-[#95d5b2] bg-white"
+                          />
+                          <input
+                            type="url"
+                            value={editingGift.item.link}
+                            onChange={(e) =>
+                              setEditingGift({
+                                ...editingGift,
+                                item: { ...editingGift.item, link: e.target.value },
+                              })
+                            }
+                            placeholder="Link"
+                            className="px-2 py-1 rounded border border-[#95d5b2] bg-white sm:col-span-2"
+                          />
+                          <input
+                            type="text"
+                            value={editingGift.item.priority}
+                            onChange={(e) =>
+                              setEditingGift({
+                                ...editingGift,
+                                item: { ...editingGift.item, priority: e.target.value },
+                              })
+                            }
+                            placeholder="Priority (1-3)"
+                            className="px-2 py-1 rounded border border-[#95d5b2] bg-white"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              await onUpdateGift(editingGift.person, editingGift.item);
+                              setEditingGift(null);
+                            }}
+                            className="px-3 py-1 rounded bg-[#2d6a4f] text-white font-bold cursor-pointer"
+                          >
+                            💾 Save
+                          </button>
+                          <button
+                            onClick={() => setEditingGift(null)}
+                            className="px-2.5 py-1 rounded bg-white border border-[#95d5b2] cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={it.id}
                       className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#f4fbf6] border border-[#dcefe2]"
                     >
                       <div className="min-w-0">
-                        <div className={`font-semibold ${canSeeBoughtHere && isBought ? 'line-through text-[#52796f]' : 'text-[#1b4332]'}`}>
+                        <div
+                          className={`font-semibold ${
+                            canSeeStatus && (isBought || isPublicClaimed)
+                              ? 'line-through text-[#52796f]'
+                              : 'text-[#1b4332]'
+                          }`}
+                        >
                           {it.link ? (
                             <a href={it.link} target="_blank" rel="noopener noreferrer" className="underline">
                               {it.idea} ↗
@@ -230,11 +515,18 @@ export function FamilyGiftsTab({
                             it.idea
                           )}
                           {it.price ? ` · ${it.price}` : ''}
+                          {it.priority ? ` · ⭐P${it.priority}` : ''}
                         </div>
                         {it.occasion && <div className="text-[10px] text-[#52796f]">{it.occasion}</div>}
+                        {canSeeStatus && isPublicClaimed && (
+                          <div className="text-[10px] font-bold text-[#1d4ed8]">
+                            🌐 Reserved via Public Link
+                            {pubClaim.claimedBy ? ` by ${pubClaim.claimedBy}` : ''}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {canSeeBoughtHere && (
+                        {canSeeStatus && (
                           <button
                             onClick={() => void onToggleBought(it.id, !isBought)}
                             className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
@@ -245,12 +537,20 @@ export function FamilyGiftsTab({
                           </button>
                         )}
                         {canEdit && (isParentActor || isOwnList) && (
-                          <button
-                            onClick={() => void onDeleteGift(sec.person, it.id)}
-                            className="px-1.5 py-0.5 rounded border border-red-200 text-red-700 cursor-pointer"
-                          >
-                            🗑️
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setEditingGift({ person: sec.person, item: { ...it } })}
+                              className="px-1.5 py-0.5 rounded border border-[#95d5b2] cursor-pointer"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => void onDeleteGift(sec.person, it.id)}
+                              className="px-1.5 py-0.5 rounded border border-red-200 text-red-700 cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

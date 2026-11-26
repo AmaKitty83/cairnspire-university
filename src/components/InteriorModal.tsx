@@ -19,6 +19,7 @@ import { CourthouseInterior } from './interiors/CourthouseInterior';
 import { CommonsSquareInterior } from './interiors/CommonsSquareInterior';
 import { AirInterior } from './interiors/AirInterior';
 import { HealthInterior } from './interiors/HealthInterior';
+import { ChildrensBooksInterior } from './interiors/ChildrensBooksInterior';
 
 interface InteriorModalProps {
   building: BuildingDef | null;
@@ -36,7 +37,7 @@ interface InteriorModalProps {
   onOpenFamilyPreview: () => void;
 }
 
-const DEEP_V2_IDS = new Set(['town-hall', 'executive', 'courthouse', 'commons', 'air', 'health']);
+const DEEP_V2_IDS = new Set(['town-hall', 'executive', 'courthouse', 'commons', 'air', 'health', 'childrens-books']);
 
 export function InteriorModal({
   building,
@@ -260,6 +261,10 @@ export function InteriorModal({
 
           {building.special === 'health' && (
             <HealthInterior role={role} userEmail={userEmail} />
+          )}
+
+          {building.special === 'childrens-books' && (
+            <ChildrensBooksInterior role={role} userEmail={userEmail} />
           )}
 
           {building.special === 'stocks' && (

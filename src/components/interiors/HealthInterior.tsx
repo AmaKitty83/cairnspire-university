@@ -1,16 +1,26 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import type { CampusRole } from '../../firebase';
-import { FAMILY_PEOPLE, importFamilyHubBundle, type FamilyHubBundle } from '../../services/familyHubService';
+import {
+  importFamilyHubBundle,
+  isoDateLocal,
+  saveGroceryList,
+  subscribeGrocery,
+  type FamilyHubBundle,
+  type GroceryItem,
+} from '../../services/familyHubService';
+import { FAMILY_PEOPLE } from '../../services/familyHubService';
 import {
   EMPTY_FAMILY_CARD,
   getFamilyMedCardImage,
   saveAmaretteMedicalList,
   saveFamilyMedCardImage,
   saveFamilyMedicalCard,
+  saveShowedUpDate,
   subscribeAmaretteMedical,
   subscribeFamilyMedical,
   subscribeHealthFitnessContent,
   subscribeHealthFitnessDays,
+  subscribeShowedUpLog,
   type AmaretteMedicalItem,
   type AmaretteMedicalType,
   type CardSide,
@@ -29,8 +39,27 @@ interface HealthInteriorProps {
 
 type MainTab = 'fitness' | 'medical' | 'cards';
 type FitnessSubTab = 'dash' | 'trainer' | 'nutritionist' | 'meno';
+type MoodCheck = 'good' | 'low' | 'hip';
 
 const MED_TYPES: AmaretteMedicalType[] = ['Provider', 'Condition', 'Medication', 'Note'];
+
+const WEEKDAY_MOVES: Record<number, { label: string; move: string; justStart: string }> = {
+  1: { label: 'Mon (Strength A)', move: '15 min: Glute bridges, wall push-ups, seated band rows, bird dog + 5 min downshift', justStart: '5 min: 1 set of glute bridges + slow breathing' },
+  2: { label: 'Tue (Zone 2)', move: '20 min relaxed walk (can talk, cannot sing)', justStart: '5 min fresh-air walk out by the chickens' },
+  3: { label: 'Wed (Mobility)', move: '15 min gentle hip circles lying down, cat-cow + 5 min downshift', justStart: '3 min: 4–6 breathing or physiological sigh' },
+  4: { label: 'Thu (Strength A)', move: '15 min gentle strength + 5 min vagus downshift', justStart: '5 min: 1 set of wall push-ups + seated rows' },
+  5: { label: 'Fri (Zone 2)', move: '20 min Zone 2 walk (rockhounding counts!)', justStart: '5 min: quick stroll around the yard' },
+  6: { label: 'Sat (Play / Yard)', move: 'Easy fun movement: yard, chickens, walk with the boys', justStart: '5 min outside in the sun' },
+  0: { label: 'Sun (Rest)', move: 'Rest + 5 min downshift + gentle pelvic floor relaxation', justStart: '3 min belly breathing lying down' },
+};
+
+const ZERO_ENERGY_STASH = [
+  { item: 'Sugar-free meat sticks (Chomps / beef or turkey)', protein: '~9g', cat: 'Snacks' },
+  { item: 'Dairy-free protein powder + Unsweetened almond milk', protein: '~25g', cat: 'Pantry' },
+  { item: 'Rotisserie chicken', protein: '~35g/bowl', cat: 'Meat & Seafood' },
+  { item: 'Hard-boiled eggs + Cherry tomatoes', protein: '~12g', cat: 'Dairy & Eggs' },
+  { item: 'Frozen shrimp + Bagged coleslaw mix + Coconut aminos', protein: '~30g', cat: 'Meat & Seafood' },
+];
 
 function hfAvg(arr: OuraDayRecord[], key: keyof OuraDayRecord): number | null {
   const vals = arr
@@ -50,6 +79,26 @@ function hfTone(v: number | null | undefined): { word: string; ring: string; bg:
   if (v >= 85) return { word: 'Thriving', ring: '#16a34a', bg: '#dcfce7', text: '#166534' };
   if (v >= 70) return { word: 'Steady', ring: '#2563eb', bg: '#dbeafe', text: '#1e40af' };
   return { word: 'Gentle day', ring: '#d97706', bg: '#fef3c7', text: '#92400e' };
+}
+
+function hfWeeks(days: OuraDayRecord[]): Array<{ wk: string; arr: OuraDayRecord[] }> {
+  const by: Record<string, OuraDayRecord[]> = {};
+  const order: string[] = [];
+  days.forEach((x) => {
+    const dt = new Date(`${x.date}T12:00:00`);
+    const m = new Date(dt);
+    m.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+    const k = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-${String(m.getDate()).padStart(2, '0')}`;
+    if (!by[k]) {
+      by[k] = [];
+      order.push(k);
+    }
+    by[k].push(x);
+  });
+  return order
+    .slice(-5)
+    .reverse()
+    .map((wk) => ({ wk, arr: by[wk] }));
 }
 
 function ScoreRing({ label, val, sub }: { label: string; val: number | null; sub: string }) {
@@ -131,7 +180,7 @@ function MiniChart({
   const Y = (v: number) => pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn));
 
   return (
-    <div className="p-3 rounded-xl bg-white/90 border border-[#b7d8c2]">
+    <div className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2]">
       <div className="text-xs font-bold text-[#1b4332] mb-1">{title}</div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28" role="img" aria-label={title}>
         <line x1={pl} y1={H - pb} x2={W} y2={H - pb} stroke="#cbd5e1" strokeWidth="1" />
@@ -230,6 +279,32 @@ async function compressImageToDataUrl(file: File): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.82);
 }
 
+function verdictPill(cell: string) {
+  const v = cell.trim();
+  if (/^legit/i.test(v)) {
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[10px]">
+        {v}
+      </span>
+    );
+  }
+  if (/^(partly|probably)/i.test(v)) {
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 font-bold text-[10px]">
+        {v}
+      </span>
+    );
+  }
+  if (/^(mostly )?(gimmick|not legit|myth)/i.test(v)) {
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px]">
+        {v}
+      </span>
+    );
+  }
+  return v;
+}
+
 function ContentSectionView({ section }: { section: HealthContentSection }) {
   return (
     <div className="space-y-3">
@@ -239,7 +314,7 @@ function ContentSectionView({ section }: { section: HealthContentSection }) {
       </div>
       <div className="space-y-3">
         {(section.cards || []).map((card: HealthContentCard) => (
-          <div key={card.id} className="p-3 rounded-xl bg-white/90 border border-[#b7d8c2] space-y-2">
+          <div key={card.id} className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2] space-y-2">
             <div className="font-bold text-xs text-[#1b4332]">{card.title}</div>
             {(card.blocks || []).map((b, bIdx) => {
               if (b.type === 'text' && b.text) {
@@ -267,7 +342,7 @@ function ContentSectionView({ section }: { section: HealthContentSection }) {
                           <tr key={rIdx} className="odd:bg-white even:bg-[#f8fcf9]">
                             {r.map((cell, cIdx) => (
                               <td key={cIdx} className="p-1.5 border border-[#e0ede5] align-top text-[#26382c]">
-                                {cell}
+                                {verdictPill(cell)}
                               </td>
                             ))}
                           </tr>
@@ -320,12 +395,24 @@ export function HealthInterior({ role, userEmail }: HealthInteriorProps) {
   const [tab, setTab] = useState<MainTab>(isChancellor ? 'fitness' : 'cards');
   const [fitSubTab, setFitSubTab] = useState<FitnessSubTab>('dash');
   const [trendSpan, setTrendSpan] = useState<7 | 30>(7);
+  const [fullScreen, setFullScreen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('cs_health_dark') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [mood, setMood] = useState<MoodCheck>('good');
+  const [stashNotice, setStashNotice] = useState<string | null>(null);
 
   // Live Firestore states
   const [days, setDays] = useState<OuraDayRecord[]>([]);
   const [contentDoc, setContentDoc] = useState<HealthFitnessContentDoc | null>(null);
   const [amaretteMed, setAmaretteMed] = useState<AmaretteMedicalItem[]>([]);
   const [familyCards, setFamilyCards] = useState<Record<string, FamilyMedicalEntry>>({});
+  const [showedUpDates, setShowedUpDates] = useState<string[]>([]);
+  const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
   // Import state (Chancellor only)
@@ -357,7 +444,9 @@ export function HealthInterior({ role, userEmail }: HealthInteriorProps) {
       unsubs.push(
         subscribeHealthFitnessDays(setDays, onErr),
         subscribeHealthFitnessContent(setContentDoc, onErr),
-        subscribeAmaretteMedical(setAmaretteMed, onErr)
+        subscribeAmaretteMedical(setAmaretteMed, onErr),
+        subscribeShowedUpLog(setShowedUpDates, onErr),
+        subscribeGrocery(setGroceryItems, onErr)
       );
     }
     if (canSeeFamilyCards) {
@@ -409,6 +498,33 @@ export function HealthInterior({ role, userEmail }: HealthInteriorProps) {
       setImporting(false);
       e.target.value = '';
     }
+  }
+
+  async function handleRestockZeroEnergy() {
+    if (!isChancellor) return;
+    const haveSet = new Set(groceryItems.filter((g) => !g.got).map((g) => g.item.toLowerCase()));
+    const toAdd: GroceryItem[] = [];
+    ZERO_ENERGY_STASH.forEach((s, i) => {
+      if (haveSet.has(s.item.toLowerCase())) return;
+      toAdd.push({
+        id: `gr_${Date.now().toString(36)}_${i}`,
+        item: s.item,
+        category: s.cat,
+        qty: '',
+        store: 'Walmart',
+        by: 'Amarette',
+        meal: 'Zero-Energy Stash',
+        got: false,
+        notes: `${s.protein} protein · Grab & heat`,
+      });
+    });
+    if (toAdd.length) {
+      await saveGroceryList([...groceryItems, ...toAdd], userEmail);
+      setStashNotice(`Added ${toAdd.length} safe grab-and-heat items to Walmart Grocery List 🛒`);
+    } else {
+      setStashNotice('Your Zero-Energy Stash items are already on the Grocery List ✔');
+    }
+    setTimeout(() => setStashNotice(null), 3000);
   }
 
   function startEditMed(item: AmaretteMedicalItem) {
@@ -518,705 +634,942 @@ export function HealthInterior({ role, userEmail }: HealthInteriorProps) {
 
   const latestDay = days[days.length - 1];
   const spanDays = days.slice(-trendSpan);
+  const weekAverages = hfWeeks(days.slice(-35));
   const activeEntry = familyCards[selectedPerson];
   const activeCard = activeEntry?.card || EMPTY_FAMILY_CARD;
 
+  const todayKey = isoDateLocal();
+  const showedUpToday = showedUpDates.includes(todayKey);
+  const todayPlan = WEEKDAY_MOVES[new Date().getDay()];
+  const readiness = latestDay?.ready ?? null;
+
+  const tailoredMoveText =
+    mood === 'hip'
+      ? 'Hip feels tender today → Skip squats/lunges/hills. Try lying-down hip circles, seated band rows, or a flat 10-min easy stroll. Sharp/pinching pain = stop sign.'
+      : mood === 'low' || (readiness != null && readiness < 70)
+        ? `Gentle-day readiness${readiness != null ? ` (${Math.round(readiness)})` : ''} → Skip high intensity. Pick a slow 10–15 min walk + 5 min downshift, or just the 5-min option below.`
+        : todayPlan.move;
+
+  const containerCls = fullScreen
+    ? `fixed inset-0 z-[55] overflow-y-auto p-4 sm:p-6 ${
+        darkMode ? 'bg-[#0f1c16] text-[#e2f2e8]' : 'bg-gradient-to-b from-[#eff9f2] to-[#fbfdf9] text-[#1b4332]'
+      }`
+    : `space-y-3 ${darkMode ? 'bg-[#102018] text-[#e2f2e8] p-3 rounded-2xl' : ''}`;
+
   return (
-    <div className="space-y-3">
-      {/* Header & Owner Import */}
-      <div className="p-3 rounded-xl bg-[#e9f5ec] border border-[#52b788] flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="font-atlas font-bold text-sm text-[#1b4332]">
-            🌿 School of Health · Confidential Vault
+    <div className={containerCls}>
+      <div className={fullScreen ? 'max-w-4xl mx-auto space-y-4' : 'space-y-3'}>
+        {/* Header & Controls */}
+        <div className="p-3 rounded-xl bg-[#e9f5ec] border border-[#52b788] flex flex-wrap items-center justify-between gap-2 text-[#1b4332]">
+          <div>
+            <div className="font-atlas font-bold text-sm">
+              🌿 School of Health · Confidential Vault
+            </div>
+            <div className="text-[11px] text-[#2d6a4f]">
+              {isChancellor
+                ? 'Chancellor-Only: Health & Fitness + Amarette Medical · Parents: Family Health Cards'
+                : 'Parent View (Ray): Family Health & Insurance Cards'}
+            </div>
           </div>
-          <div className="text-[11px] text-[#2d6a4f]">
-            {isChancellor
-              ? 'Chancellor-Only: Health & Fitness + Amarette Medical · Parents: Family Health Cards'
-              : 'Parent View (Ray): Family Health & Insurance Cards'}
-          </div>
-        </div>
-        {isChancellor && (
-          <label className="px-2.5 py-1.5 rounded-lg bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs font-semibold cursor-pointer">
-            {importing ? 'Importing…' : '📥 Import Health/Hub JSON'}
-            <input
-              type="file"
-              accept=".json,application/json"
-              onChange={(e) => void handleBundleImport(e)}
-              className="hidden"
-              disabled={importing}
-            />
-          </label>
-        )}
-      </div>
-
-      {importMsg && (
-        <div className="px-3 py-2 rounded-lg bg-emerald-100 border border-emerald-400 text-xs text-emerald-900 font-semibold">
-          ✅ {importMsg}
-        </div>
-      )}
-      {errMsg && (
-        <div className="px-3 py-2 rounded-lg bg-red-100 border border-red-400 text-xs text-red-900 font-semibold flex items-start justify-between gap-2 select-text">
-          <span className="break-words select-all">⚠️ {errMsg}</span>
-          <button
-            type="button"
-            onClick={() => void navigator.clipboard?.writeText(errMsg)}
-            className="px-2 py-0.5 rounded bg-white border border-red-300 text-[10px] font-bold shrink-0 cursor-pointer"
-          >
-            Copy
-          </button>
-        </div>
-      )}
-
-      {/* Primary Section Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {isChancellor && (
-          <>
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
-              onClick={() => setTab('fitness')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
-                tab === 'fitness'
-                  ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
-                  : 'bg-white/80 text-[#1b4332] border-[#95d5b2]'
-              }`}
+              onClick={() => {
+                const next = !darkMode;
+                setDarkMode(next);
+                try {
+                  localStorage.setItem('cs_health_dark', next ? '1' : '0');
+                } catch {
+                  // ignore
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs font-bold cursor-pointer"
+              title="Toggle light or dark palette"
             >
-              💪 Health &amp; Fitness ({days.length}d)
+              {darkMode ? '☀️' : '🌙'}
             </button>
             <button
-              onClick={() => setTab('medical')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
-                tab === 'medical'
-                  ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
-                  : 'bg-white/80 text-[#1b4332] border-[#95d5b2]'
-              }`}
+              onClick={() => setFullScreen((v) => !v)}
+              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs font-bold cursor-pointer"
             >
-              🩺 Amarette Medical ({amaretteMed.length})
+              {fullScreen ? '✕ Compact' : '⤢ Full Screen'}
             </button>
-          </>
-        )}
-        <button
-          onClick={() => setTab('cards')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
-            tab === 'cards'
-              ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
-              : 'bg-white/80 text-[#1b4332] border-[#95d5b2]'
-          }`}
-        >
-          🪪 Family Health Cards
-        </button>
-      </div>
+            {isChancellor && (
+              <label className="px-2.5 py-1.5 rounded-lg bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs font-semibold cursor-pointer">
+                {importing ? 'Importing…' : '📥 Import JSON'}
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(e) => void handleBundleImport(e)}
+                  className="hidden"
+                  disabled={importing}
+                />
+              </label>
+            )}
+          </div>
+        </div>
 
-      {/* TAB 1: HEALTH & FITNESS (CHANCELLOR ONLY) */}
-      {tab === 'fitness' && isChancellor && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {(
-              [
-                ['dash', '📊 Oura Dashboard'],
-                ['trainer', '🏋️ Personal Trainer'],
-                ['nutritionist', '🥗 Nutritionist'],
-                ['meno', '🌸 Menopause Impact'],
-              ] as Array<[FitnessSubTab, string]>
-            ).map(([k, label]) => (
+        {importMsg && (
+          <div className="px-3 py-2 rounded-lg bg-emerald-100 border border-emerald-400 text-xs text-emerald-900 font-semibold">
+            ✅ {importMsg}
+          </div>
+        )}
+        {stashNotice && (
+          <div className="px-3 py-2 rounded-lg bg-emerald-100 border border-emerald-400 text-xs text-emerald-900 font-semibold">
+            ✅ {stashNotice}
+          </div>
+        )}
+        {errMsg && (
+          <div className="px-3 py-2 rounded-lg bg-red-100 border border-red-400 text-xs text-red-900 font-semibold flex items-start justify-between gap-2 select-text">
+            <span className="break-words select-all">⚠️ {errMsg}</span>
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard?.writeText(errMsg)}
+              className="px-2 py-0.5 rounded bg-white border border-red-300 text-[10px] font-bold shrink-0 cursor-pointer"
+            >
+              Copy
+            </button>
+          </div>
+        )}
+
+        {/* Primary Section Tabs */}
+        <div className="flex flex-wrap gap-2">
+          {isChancellor && (
+            <>
               <button
-                key={k}
-                onClick={() => setFitSubTab(k)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer border ${
-                  fitSubTab === k
-                    ? 'bg-[#1b4332] text-[#d8f3dc] border-[#1b4332]'
-                    : 'bg-[#f4fbf6] text-[#2d6a4f] border-[#b7d8c2]'
+                onClick={() => setTab('fitness')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
+                  tab === 'fitness'
+                    ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
+                    : 'bg-white text-[#1b4332] border-[#95d5b2]'
                 }`}
               >
-                {label}
+                💪 Health &amp; Fitness ({days.length}d)
               </button>
-            ))}
-          </div>
-
-          {fitSubTab === 'dash' && (
-            <div className="space-y-3">
-              {!days.length ? (
-                <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
-                  🌙 No Oura Ring metrics loaded yet. Use <strong>📥 Import Health/Hub JSON</strong> above
-                  with your <code>cairnspire_v3a_import.json</code> file to import your 35 days of synced
-                  Oura data, Personal Trainer, Nutritionist, and Menopause Impact plans.
-                </div>
-              ) : (
-                <>
-                  <div className="p-3 rounded-xl bg-white/90 border border-[#b7d8c2] space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-[#1b4332]">
-                        ☀️ Latest Oura Sync ({latestDay.date})
-                      </span>
-                      {latestDay.workouts && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#d8f3dc] text-[#1b4332]">
-                          🏃 {latestDay.workouts}
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <ScoreRing
-                        label="Sleep"
-                        val={latestDay.sleep}
-                        sub={latestDay.sleepH != null ? `${hfFmt(latestDay.sleepH, 1)} h asleep` : ''}
-                      />
-                      <ScoreRing
-                        label="Readiness"
-                        val={latestDay.ready}
-                        sub={latestDay.rhr != null ? `Resting HR ${hfFmt(latestDay.rhr)} bpm` : ''}
-                      />
-                      <ScoreRing
-                        label="Activity"
-                        val={latestDay.act}
-                        sub={
-                          latestDay.steps != null
-                            ? `${Math.round(latestDay.steps).toLocaleString()} steps`
-                            : ''
-                        }
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-[11px]">
-                      <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
-                        <div className="text-[#52796f]">Deep / REM</div>
-                        <div className="font-bold text-[#1b4332]">
-                          {hfFmt(latestDay.deepH, 1)} / {hfFmt(latestDay.remH, 1)}h
-                        </div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
-                        <div className="text-[#52796f]">Efficiency</div>
-                        <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.eff)}%</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
-                        <div className="text-[#52796f]">HRV</div>
-                        <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.hrv)} ms</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
-                        <div className="text-[#52796f]">Temp</div>
-                        <div className="font-bold text-[#1b4332]">
-                          {latestDay.temp == null
-                            ? '—'
-                            : `${latestDay.temp > 0 ? '+' : ''}${hfFmt(latestDay.temp, 2)}°`}
-                        </div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
-                        <div className="text-[#52796f]">SpO2</div>
-                        <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.spo2, 1)}%</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
-                        <div className="text-[#52796f]">Active Cal</div>
-                        <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.cal)}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Trends */}
-                  <div className="p-3 rounded-xl bg-[#f4fbf6] border border-[#b7d8c2] space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-[#1b4332]">📈 Trends</span>
-                      <div className="flex gap-1">
-                        {([7, 30] as const).map((n) => (
-                          <button
-                            key={n}
-                            onClick={() => setTrendSpan(n)}
-                            className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
-                              trendSpan === n
-                                ? 'bg-[#2d6a4f] text-white'
-                                : 'bg-white text-[#2d6a4f] border border-[#b7d8c2]'
-                            }`}
-                          >
-                            {n}d
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <MiniChart
-                        title="😴 Sleep Hours"
-                        days={spanDays}
-                        series={[{ k: 'sleepH', label: 'Sleep h', color: '#3b82f6', type: 'bar' }]}
-                      />
-                      <MiniChart
-                        title="🔋 Readiness"
-                        days={spanDays}
-                        series={[{ k: 'ready', label: 'Readiness', color: '#16a34a', type: 'line' }]}
-                      />
-                      <MiniChart
-                        title="👟 Steps"
-                        days={spanDays}
-                        series={[{ k: 'steps', label: 'Steps', color: '#8b5cf6', type: 'bar' }]}
-                      />
-                      <MiniChart
-                        title="💓 Resting HR & HRV"
-                        days={spanDays}
-                        series={[
-                          { k: 'rhr', label: 'Resting HR', color: '#ef4444', type: 'line' },
-                          { k: 'hrv', label: 'HRV', color: '#0ea5e9', type: 'line' },
-                        ]}
-                      />
-                    </div>
-                    <div className="text-[11px] text-[#355e47] pt-1">
-                      <strong>{trendSpan}-Day Avg:</strong> Sleep {hfFmt(hfAvg(spanDays, 'sleepH'), 1)}h ·
-                      Readiness {hfFmt(hfAvg(spanDays, 'ready'))} · Steps{' '}
-                      {hfAvg(spanDays, 'steps') != null
-                        ? Math.round(hfAvg(spanDays, 'steps')!).toLocaleString()
-                        : '—'}{' '}
-                      · HRV {hfFmt(hfAvg(spanDays, 'hrv'))} ms
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+              <button
+                onClick={() => setTab('medical')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
+                  tab === 'medical'
+                    ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
+                    : 'bg-white text-[#1b4332] border-[#95d5b2]'
+                }`}
+              >
+                🩺 Amarette Medical ({amaretteMed.length})
+              </button>
+            </>
           )}
-
-          {fitSubTab === 'trainer' && (
-            <div className="space-y-2">
-              {contentDoc?.content?.sections?.find((s) => s.id === 'trainer') ? (
-                <ContentSectionView
-                  section={contentDoc.content.sections.find((s) => s.id === 'trainer')!}
-                />
-              ) : (
-                <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
-                  Import your <code>cairnspire_v3a_import.json</code> bundle to view your Personal Trainer guidance.
-                </div>
-              )}
-            </div>
-          )}
-
-          {fitSubTab === 'nutritionist' && (
-            <div className="space-y-2">
-              {contentDoc?.content?.sections?.find((s) => s.id === 'nutritionist') ? (
-                <ContentSectionView
-                  section={contentDoc.content.sections.find((s) => s.id === 'nutritionist')!}
-                />
-              ) : (
-                <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
-                  Import your <code>cairnspire_v3a_import.json</code> bundle to view your Nutritionist plan.
-                </div>
-              )}
-            </div>
-          )}
-
-          {fitSubTab === 'meno' && (
-            <div className="space-y-2">
-              {contentDoc?.meno ? (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-[#f3e8ff] border border-[#c084fc] space-y-2">
-                    <div className="font-bold text-xs text-[#581c87]">🌸 {contentDoc.meno.title}</div>
-                    <div className="inline-block px-2 py-0.5 rounded-full bg-white text-[11px] font-bold text-[#6b21a8]">
-                      Overall: {contentDoc.meno.overall}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {contentDoc.meno.categories.map(([cat, lvl]) => (
-                        <span
-                          key={cat}
-                          className="px-2 py-1 rounded-lg bg-white/90 border border-[#d8b4fe] text-[11px]"
-                        >
-                          <strong>{cat}:</strong> {lvl}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/90 border border-[#d8b4fe] space-y-1.5">
-                    <div className="font-bold text-xs text-[#581c87]">💍 Oura 30-Day Snapshot</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                      {contentDoc.meno.oura30.map(([k, v]) => (
-                        <div key={k} className="p-2 rounded bg-[#faf5ff] border border-[#e9d5ff]">
-                          <div className="text-[#6b21a8]">{k}</div>
-                          <div className="font-bold">{v}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/90 border border-[#b7d8c2] space-y-1.5">
-                    <div className="font-bold text-xs text-[#1b4332]">🧭 Focus Plan</div>
-                    <ul className="list-disc pl-4 text-xs text-[#26382c] space-y-1">
-                      {contentDoc.meno.plan.map((p) => (
-                        <li key={p}>{p}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
-                  Import your <code>cairnspire_v3a_import.json</code> bundle to view Menopause Impact notes.
-                </div>
-              )}
-            </div>
-          )}
+          <button
+            onClick={() => setTab('cards')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
+              tab === 'cards'
+                ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
+                : 'bg-white text-[#1b4332] border-[#95d5b2]'
+            }`}
+          >
+            🪪 Family Health Cards
+          </button>
         </div>
-      )}
 
-      {/* TAB 2: AMARETTE MEDICAL (CHANCELLOR ONLY) */}
-      {tab === 'medical' && isChancellor && (
-        <div className="space-y-3">
-          {MED_TYPES.map((type) => {
-            const list = amaretteMed.filter((m) => m.type === type);
-            const icon = type === 'Provider' ? '👩‍⚕️' : type === 'Condition' ? '📋' : type === 'Medication' ? '💊' : '📝';
-            return (
-              <div key={type} className="p-3 rounded-xl bg-white/90 border border-[#b7d8c2] space-y-2">
-                <div className="font-bold text-xs text-[#1b4332]">
-                  {icon} {type}s ({list.length})
+        {/* TAB 1: HEALTH & FITNESS (CHANCELLOR ONLY) */}
+        {tab === 'fitness' && isChancellor && (
+          <div className="space-y-3 text-[#1b4332]">
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ['dash', '📊 Dashboard & Today’s Move'],
+                  ['nutritionist', '🥣 Nutrition & Zero-Energy Food'],
+                  ['trainer', '🏋️ Personal Trainer'],
+                  ['meno', '🌸 Menopause Impact'],
+                ] as Array<[FitnessSubTab, string]>
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setFitSubTab(k)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer border ${
+                    fitSubTab === k
+                      ? 'bg-[#1b4332] text-[#d8f3dc] border-[#1b4332]'
+                      : 'bg-[#f4fbf6] text-[#2d6a4f] border-[#b7d8c2]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {fitSubTab === 'dash' && (
+              <div className="space-y-3">
+                {/* RING-MATCHED "JUST START" HERO CARD */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#eefbf3] to-[#f0f9ff] border-2 border-[#74c69d] space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="font-atlas font-bold text-sm text-[#1b4332]">
+                        🌱 Today’s Ring-Matched Move · {todayPlan.label}
+                      </div>
+                      <div className="text-[11px] text-[#355e47]">
+                        How does your body feel right now?
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {(
+                        [
+                          ['good', '💪 Feeling Good'],
+                          ['low', '🪫 Low Energy'],
+                          ['hip', '🦵 Hip Sore'],
+                        ] as Array<[MoodCheck, string]>
+                      ).map(([m, label]) => (
+                        <button
+                          key={m}
+                          onClick={() => setMood(m)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer border ${
+                            mood === m
+                              ? 'bg-[#2d6a4f] text-white border-[#1b4332]'
+                              : 'bg-white text-[#1b4332] border-[#95d5b2]'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white/95 border border-[#b7e4c7] space-y-1.5 text-xs">
+                    <div>
+                      <strong>Recommended today:</strong> {tailoredMoveText}
+                    </div>
+                    <div className="text-[#15803d]">
+                      <strong>⏱️ Zero-guilt 5-minute “Just Start”:</strong> {todayPlan.justStart}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <button
+                      onClick={() => void saveShowedUpDate(todayKey, showedUpDates, userEmail)}
+                      className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer border ${
+                        showedUpToday
+                          ? 'bg-[#16a34a] text-white border-[#15803d]'
+                          : 'bg-white text-[#1b4332] border-[#74c69d] hover:bg-[#d8f3dc]'
+                      }`}
+                    >
+                      {showedUpToday ? '✔ I showed up today! 🌟' : '🌱 Tap when you do any 5+ min move'}
+                    </button>
+                    <span className="text-[11px] text-[#355e47]">
+                      Gentle check-ins logged: <strong>{showedUpDates.length}</strong> (zero streaks, zero guilt!)
+                    </span>
+                  </div>
                 </div>
-                {!list.length ? (
-                  <div className="text-[11px] text-[#52796f]">No {type.toLowerCase()}s added yet.</div>
+
+                {/* ZERO-ENERGY QUICK FOOD STRIP */}
+                <div className="p-3.5 rounded-2xl bg-[#fff7ed] border border-[#fdba74] space-y-2 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-bold text-[#7c2d12]">
+                      🥣 Low-Energy Safe Eating Shortcuts (Zero Dairy · Zero Added Sugar · Corn-Only)
+                    </div>
+                    <button
+                      onClick={() => void handleRestockZeroEnergy()}
+                      className="px-2.5 py-1 rounded-lg bg-[#2d6a4f] text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      🛒 Restock Safe Stash → Walmart
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-[#7c2d12]">
+                    <div className="p-2 rounded-lg bg-white/90 border border-[#fed7aa]">
+                      <strong>Want Wow Bao?</strong> → Heated coconut-aminos <em>Egg Roll in a Bowl</em>{' '}
+                      (coleslaw mix + pre-cooked meat) or frozen shrimp (~30g protein).
+                    </div>
+                    <div className="p-2 rounded-lg bg-white/90 border border-[#fed7aa]">
+                      <strong>Want Chips / Caramel Corn?</strong> → Salted olive-oil popcorn (corn!) +
+                      sugar-free meat stick + sliced avocado (~12g+ protein).
+                    </div>
+                  </div>
+                </div>
+
+                {!days.length ? (
+                  <div className="p-4 rounded-xl bg-white/90 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
+                    🌙 No Oura Ring metrics loaded yet. Use <strong>📥 Import JSON</strong> above with
+                    your <code>cairnspire_v3a_import.json</code> file.
+                  </div>
                 ) : (
-                  <div className="space-y-1.5">
-                    {list.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-start justify-between gap-2 p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]"
-                      >
-                        <div className="min-w-0 text-xs">
-                          <div className="font-bold text-[#1b4332]">{item.name}</div>
-                          {(item.detail || item.location || item.phone) && (
-                            <div className="text-[11px] text-[#355e47]">
-                              {[item.detail, item.location, item.phone].filter(Boolean).join(' · ')}
-                            </div>
-                          )}
-                          {item.notes && <div className="text-[11px] text-[#475569] mt-0.5">{item.notes}</div>}
+                  <>
+                    <div className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2] space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-[#1b4332]">
+                          ☀️ Latest Oura Sync ({latestDay.date})
+                        </span>
+                        {latestDay.workouts && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#d8f3dc] text-[#1b4332]">
+                            🏃 {latestDay.workouts}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <ScoreRing
+                          label="Sleep"
+                          val={latestDay.sleep}
+                          sub={latestDay.sleepH != null ? `${hfFmt(latestDay.sleepH, 1)} h asleep` : ''}
+                        />
+                        <ScoreRing
+                          label="Readiness"
+                          val={latestDay.ready}
+                          sub={latestDay.rhr != null ? `Resting HR ${hfFmt(latestDay.rhr)} bpm` : ''}
+                        />
+                        <ScoreRing
+                          label="Activity"
+                          val={latestDay.act}
+                          sub={
+                            latestDay.steps != null
+                              ? `${Math.round(latestDay.steps).toLocaleString()} steps`
+                              : ''
+                          }
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-[11px]">
+                        <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
+                          <div className="text-[#52796f]">Deep / REM</div>
+                          <div className="font-bold text-[#1b4332]">
+                            {hfFmt(latestDay.deepH, 1)} / {hfFmt(latestDay.remH, 1)}h
+                          </div>
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <button
-                            onClick={() => startEditMed(item)}
-                            className="px-2 py-1 rounded bg-white border border-[#b7d8c2] text-[11px] cursor-pointer"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => void handleDeleteMed(item.id)}
-                            className="px-2 py-1 rounded bg-white border border-red-200 text-[11px] cursor-pointer"
-                          >
-                            🗑️
-                          </button>
+                        <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
+                          <div className="text-[#52796f]">Efficiency</div>
+                          <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.eff)}%</div>
                         </div>
+                        <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
+                          <div className="text-[#52796f]">HRV</div>
+                          <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.hrv)} ms</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
+                          <div className="text-[#52796f]">Temp</div>
+                          <div className="font-bold text-[#1b4332]">
+                            {latestDay.temp == null
+                              ? '—'
+                              : `${latestDay.temp > 0 ? '+' : ''}${hfFmt(latestDay.temp, 2)}°`}
+                          </div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
+                          <div className="text-[#52796f]">SpO2</div>
+                          <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.spo2, 1)}%</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]">
+                          <div className="text-[#52796f]">Active Cal</div>
+                          <div className="font-bold text-[#1b4332]">{hfFmt(latestDay.cal)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trends */}
+                    <div className="p-3 rounded-xl bg-[#f4fbf6] border border-[#b7d8c2] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-[#1b4332]">📈 Trends</span>
+                        <div className="flex gap-1">
+                          {([7, 30] as const).map((n) => (
+                            <button
+                              key={n}
+                              onClick={() => setTrendSpan(n)}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
+                                trendSpan === n
+                                  ? 'bg-[#2d6a4f] text-white'
+                                  : 'bg-white text-[#2d6a4f] border border-[#b7d8c2]'
+                              }`}
+                            >
+                              {n}d
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <MiniChart
+                          title="😴 Sleep Hours"
+                          days={spanDays}
+                          series={[{ k: 'sleepH', label: 'Sleep h', color: '#3b82f6', type: 'bar' }]}
+                        />
+                        <MiniChart
+                          title="🔋 Readiness"
+                          days={spanDays}
+                          series={[{ k: 'ready', label: 'Readiness', color: '#16a34a', type: 'line' }]}
+                        />
+                        <MiniChart
+                          title="👟 Steps"
+                          days={spanDays}
+                          series={[{ k: 'steps', label: 'Steps', color: '#8b5cf6', type: 'bar' }]}
+                        />
+                        <MiniChart
+                          title="💓 Resting HR & HRV"
+                          days={spanDays}
+                          series={[
+                            { k: 'rhr', label: 'Resting HR', color: '#ef4444', type: 'line' },
+                            { k: 'hrv', label: 'HRV', color: '#0ea5e9', type: 'line' },
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Weekly Averages Table */}
+                    {weekAverages.length > 0 && (
+                      <div className="p-3 rounded-xl bg-white/95 border border-[#c084fc] space-y-2">
+                        <div className="font-bold text-xs text-[#581c87]">🗓️ Weekly Averages (Last 5 Weeks)</div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-[11px]">
+                            <thead>
+                              <tr className="bg-[#faf5ff] text-[#581c87]">
+                                <th className="p-1.5 border border-[#e9d5ff]">Week of</th>
+                                <th className="p-1.5 border border-[#e9d5ff]">Sleep h</th>
+                                <th className="p-1.5 border border-[#e9d5ff]">Readiness</th>
+                                <th className="p-1.5 border border-[#e9d5ff]">Steps</th>
+                                <th className="p-1.5 border border-[#e9d5ff]">Resting HR</th>
+                                <th className="p-1.5 border border-[#e9d5ff]">HRV</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {weekAverages.map((w) => {
+                                const st = hfAvg(w.arr, 'steps');
+                                return (
+                                  <tr key={w.wk} className="odd:bg-white even:bg-[#fdfaff]">
+                                    <td className="p-1.5 border border-[#f3e8ff] font-semibold">
+                                      {w.wk.slice(5)}
+                                    </td>
+                                    <td className="p-1.5 border border-[#f3e8ff]">
+                                      {hfFmt(hfAvg(w.arr, 'sleepH'), 1)}
+                                    </td>
+                                    <td className="p-1.5 border border-[#f3e8ff]">
+                                      {hfFmt(hfAvg(w.arr, 'ready'))}
+                                    </td>
+                                    <td className="p-1.5 border border-[#f3e8ff]">
+                                      {st == null ? '—' : Math.round(st).toLocaleString()}
+                                    </td>
+                                    <td className="p-1.5 border border-[#f3e8ff]">
+                                      {hfFmt(hfAvg(w.arr, 'rhr'))}
+                                    </td>
+                                    <td className="p-1.5 border border-[#f3e8ff]">
+                                      {hfFmt(hfAvg(w.arr, 'hrv'))}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Wellness Goals Card (Original Parity) */}
+                    <div className="p-3 rounded-xl bg-[#fff7ed] border border-[#fdba74] space-y-2 text-xs">
+                      <div className="font-bold text-[#7c2d12]">🎯 My Wellness Goals</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        <div className="p-2 rounded-lg bg-white/90">
+                          <strong>⚡ Energy:</strong> Steady energy most afternoons; watch Oura readiness &amp;
+                          sleep continuity.
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/90">
+                          <strong>🍳 Protein:</strong> ~30 g each meal, 100–120 g/day (zero-energy shakes &amp;
+                          ready protein count!).
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/90">
+                          <strong>🦵 Hip-friendly movement:</strong> Strength 2–3x/wk + Zone 2 walks; swap anything
+                          the hip dislikes.
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/90">
+                          <strong>🌸 Pelvic floor:</strong> 5–8 gentle minutes daily, relaxation first. ~0.5–1 lb/wk
+                          kind pace.
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {fitSubTab === 'trainer' && (
+              <div className="space-y-2">
+                {contentDoc?.content?.sections?.find((s) => s.id === 'trainer') ? (
+                  <ContentSectionView
+                    section={contentDoc.content.sections.find((s) => s.id === 'trainer')!}
+                  />
+                ) : (
+                  <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
+                    Import your <code>cairnspire_v3a_import.json</code> bundle to view your Personal Trainer
+                    guidance.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {fitSubTab === 'nutritionist' && (
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-[#fff7ed] border border-[#fdba74] space-y-2 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-[#7c2d12]">🥣 Zero-Energy Grab &amp; Heat Menu</strong>
+                    <button
+                      onClick={() => void handleRestockZeroEnergy()}
+                      className="px-2.5 py-1 rounded-lg bg-[#2d6a4f] text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      🛒 Add All Missing to Walmart List
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                    {ZERO_ENERGY_STASH.map((z) => (
+                      <div key={z.item} className="p-2 rounded bg-white/90 border border-[#fed7aa]">
+                        <strong>{z.item}</strong> · {z.protein}
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            );
-          })}
-
-          <div className="p-3 rounded-xl bg-[#f4fbf6] border border-[#74c69d] space-y-2">
-            <div className="font-bold text-xs text-[#1b4332]">
-              {editingMed ? '✏️ Edit Medical Entry' : '➕ Add Medical Entry'}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <select
-                value={medType}
-                onChange={(e) => setMedType(e.target.value as AmaretteMedicalType)}
-                className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
-              >
-                {MED_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={medName}
-                onChange={(e) => setMedName(e.target.value)}
-                placeholder="Name / Title"
-                className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
-              />
-              <input
-                type="text"
-                value={medDetail}
-                onChange={(e) => setMedDetail(e.target.value)}
-                placeholder={medType === 'Medication' ? 'Dose / schedule' : 'Specialty / detail'}
-                className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
-              />
-              <input
-                type="text"
-                value={medLocation}
-                onChange={(e) => setMedLocation(e.target.value)}
-                placeholder="Location / clinic"
-                className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
-              />
-              <input
-                type="text"
-                value={medPhone}
-                onChange={(e) => setMedPhone(e.target.value)}
-                placeholder="Phone"
-                className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
-              />
-              <input
-                type="text"
-                value={medNotes}
-                onChange={(e) => setMedNotes(e.target.value)}
-                placeholder="Notes"
-                className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                disabled={savingMed || !medName.trim()}
-                onClick={() => void handleSaveMed()}
-                className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                {savingMed ? 'Saving…' : 'Save Entry'}
-              </button>
-              {editingMed && (
-                <button
-                  onClick={clearMedForm}
-                  className="px-3 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: FAMILY HEALTH CARDS (CHANCELLOR + RAY) */}
-      {tab === 'cards' && canSeeFamilyCards && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {FAMILY_PEOPLE.map((p) => (
-              <button
-                key={p.name}
-                onClick={() => setSelectedPerson(p.name)}
-                className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer border transition ${
-                  selectedPerson === p.name ? 'ring-2 ring-[#1b4332]' : 'opacity-80 hover:opacity-100'
-                }`}
-                style={{ backgroundColor: p.color, color: p.ink, borderColor: '#6b7280' }}
-              >
-                {p.emoji} {p.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2] space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h4 className="font-bold text-sm text-[#1b4332]">{selectedPerson}’s Health Card</h4>
-                {activeEntry?.updated && (
-                  <div className="text-[10px] text-[#52796f]">Updated: {activeEntry.updated}</div>
-                )}
-              </div>
-              <button
-                onClick={() => setEditingCard((v) => !v)}
-                className="px-2.5 py-1 rounded-lg bg-[#edf6f0] hover:bg-[#d8f3dc] text-[#1b4332] text-xs font-bold cursor-pointer"
-              >
-                {editingCard ? 'Close Editor' : '✏️ Edit Card'}
-              </button>
-            </div>
-
-            {!editingCard ? (
-              <div className="space-y-2.5 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="p-2.5 rounded-lg bg-[#f4fbf6] border border-[#dcefe2] space-y-1">
-                    <div className="font-bold text-[#1b4332]">🪪 Insurance</div>
-                    <div>
-                      <strong>Carrier:</strong> {activeCard.carrier || '—'}
-                    </div>
-                    <div>
-                      <strong>Member ID:</strong> {activeCard.memberId || '—'}
-                    </div>
-                    <div>
-                      <strong>Group #:</strong> {activeCard.group || '—'}
-                    </div>
-                    <div>
-                      <strong>Plan:</strong> {activeCard.plan || '—'}
-                    </div>
-                    {(activeCard.rxBin || activeCard.rxPcn) && (
-                      <div>
-                        <strong>Rx BIN / PCN:</strong> {activeCard.rxBin || '—'} / {activeCard.rxPcn || '—'}
-                      </div>
-                    )}
-                    {activeCard.memberPhone && (
-                      <div>
-                        <strong>Member Services:</strong>{' '}
-                        <a href={`tel:${activeCard.memberPhone}`} className="underline text-[#1d4ed8]">
-                          {activeCard.memberPhone}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-[#f4fbf6] border border-[#dcefe2] space-y-1">
-                    <div className="font-bold text-[#1b4332]">👩‍⚕️ Doctors &amp; Health</div>
-                    <div>
-                      <strong>Primary Doctor:</strong> {activeCard.doctor || '—'}{' '}
-                      {activeCard.doctorPhone && (
-                        <a href={`tel:${activeCard.doctorPhone}`} className="underline text-[#1d4ed8]">
-                          ({activeCard.doctorPhone})
-                        </a>
-                      )}
-                    </div>
-                    <div>
-                      <strong>Dentist:</strong> {activeCard.dentist || '—'}{' '}
-                      {activeCard.dentistPhone && (
-                        <a href={`tel:${activeCard.dentistPhone}`} className="underline text-[#1d4ed8]">
-                          ({activeCard.dentistPhone})
-                        </a>
-                      )}
-                    </div>
-                    <div>
-                      <strong>Allergies:</strong> {activeCard.allergies || 'None listed'}
-                    </div>
-                    <div>
-                      <strong>Medications:</strong> {activeCard.meds || 'None listed'}
-                    </div>
-                    {activeCard.notes && (
-                      <div>
-                        <strong>Notes:</strong> {activeCard.notes}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                {/* Card Images */}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="text-[11px] font-bold text-[#355e47]">Card Photos:</span>
-                  {(['front', 'back', 'combined'] as CardSide[]).map((side) => {
-                    const hasSide =
-                      side === 'front'
-                        ? activeEntry?.hasFront
-                        : side === 'back'
-                          ? activeEntry?.hasBack
-                          : activeEntry?.hasCombined;
-                    return (
-                      <div key={side} className="inline-flex items-center gap-1">
-                        {hasSide && (
-                          <button
-                            onClick={() => void handleViewCardImage(side)}
-                            className="px-2 py-1 rounded bg-[#d8f3dc] text-[#1b4332] text-[11px] font-semibold cursor-pointer"
-                          >
-                            👁 View {side}
-                          </button>
-                        )}
-                        <label className="px-2 py-1 rounded bg-[#edf6f0] hover:bg-[#d8f3dc] text-[11px] cursor-pointer border border-[#b7d8c2]">
-                          📷 Upload {side}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => void handleCardImageUpload(side, e)}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {cardImgPreview && (
-                  <div className="p-2 rounded-lg bg-slate-900 text-white space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span>
-                        {selectedPerson} · Card {cardImgPreview.side}
-                      </span>
-                      <button
-                        onClick={() => setCardImgPreview(null)}
-                        className="underline cursor-pointer"
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <img
-                      src={cardImgPreview.url}
-                      alt={`${selectedPerson} card ${cardImgPreview.side}`}
-                      className="max-h-72 rounded mx-auto object-contain"
-                    />
-                  </div>
-                )}
-
-                <details className="text-[11px] text-[#355e47]">
-                  <summary className="cursor-pointer font-semibold">More card details</summary>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-2">
-                    <div>
-                      <strong>Name on card:</strong> {activeCard.nameOnCard || '—'}
-                    </div>
-                    <div>
-                      <strong>Plan code:</strong> {activeCard.planCode || '—'}
-                    </div>
-                    <div>
-                      <strong>Deductible:</strong> {activeCard.deductible || '—'}
-                    </div>
-                    <div>
-                      <strong>OOP Max:</strong> {activeCard.oopMax || '—'}
-                    </div>
-                    <div>
-                      <strong>Website:</strong> {activeCard.website || '—'}
-                    </div>
-                    <div>
-                      <strong>Issued:</strong> {activeCard.issued || '—'}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <strong>Other phones:</strong> {activeCard.phones || '—'}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <strong>Claims address:</strong> {activeCard.claims || '—'}
-                    </div>
-                  </div>
-                </details>
-              </div>
-            ) : (
-              <div className="space-y-2 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {(
-                    [
-                      ['carrier', 'Carrier'],
-                      ['memberId', 'Member ID'],
-                      ['group', 'Group #'],
-                      ['plan', 'Plan'],
-                      ['rxBin', 'Rx BIN'],
-                      ['rxPcn', 'Rx PCN'],
-                      ['memberPhone', 'Member Services Phone'],
-                      ['doctor', 'Primary Doctor'],
-                      ['doctorPhone', 'Doctor Phone'],
-                      ['dentist', 'Dentist'],
-                      ['dentistPhone', 'Dentist Phone'],
-                      ['allergies', 'Allergies'],
-                      ['meds', 'Medications'],
-                      ['nameOnCard', 'Name on Card'],
-                      ['planCode', 'Plan Code'],
-                      ['deductible', 'Deductible'],
-                      ['oopMax', 'Out-of-Pocket Max'],
-                      ['website', 'Website'],
-                      ['issued', 'Card Issued'],
-                    ] as Array<[keyof FamilyMedicalCardFields, string]>
-                  ).map(([field, label]) => (
-                    <label key={field} className="block">
-                      <span className="text-[10px] font-bold text-[#355e47]">{label}</span>
-                      <input
-                        type="text"
-                        value={cardDraft[field]}
-                        onChange={(e) => setCardDraft((c) => ({ ...c, [field]: e.target.value }))}
-                        className="mt-0.5 w-full px-2 py-1 rounded border border-[#95d5b2] bg-white text-xs"
-                      />
-                    </label>
-                  ))}
-                </div>
-                <label className="block">
-                  <span className="text-[10px] font-bold text-[#355e47]">Notes</span>
-                  <textarea
-                    rows={2}
-                    value={cardDraft.notes}
-                    onChange={(e) => setCardDraft((c) => ({ ...c, notes: e.target.value }))}
-                    className="mt-0.5 w-full px-2 py-1 rounded border border-[#95d5b2] bg-white text-xs"
+                {contentDoc?.content?.sections?.find((s) => s.id === 'nutritionist') ? (
+                  <ContentSectionView
+                    section={contentDoc.content.sections.find((s) => s.id === 'nutritionist')!}
                   />
-                </label>
-                <div className="flex gap-2">
+                ) : (
+                  <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
+                    Import your <code>cairnspire_v3a_import.json</code> bundle to view your Nutritionist
+                    plan.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {fitSubTab === 'meno' && (
+              <div className="space-y-2">
+                {contentDoc?.meno ? (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-xl bg-[#f3e8ff] border border-[#c084fc] space-y-2">
+                      <div className="font-bold text-xs text-[#581c87]">🌸 {contentDoc.meno.title}</div>
+                      <div className="inline-block px-2 py-0.5 rounded-full bg-white text-[11px] font-bold text-[#6b21a8]">
+                        Overall: {contentDoc.meno.overall}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {contentDoc.meno.categories.map(([cat, lvl]) => (
+                          <span
+                            key={cat}
+                            className="px-2 py-1 rounded-lg bg-white/90 border border-[#d8b4fe] text-[11px]"
+                          >
+                            <strong>{cat}:</strong> {lvl}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {contentDoc.meno.levels?.length > 0 && (
+                      <div className="p-3 rounded-xl bg-white/95 border border-[#fbcfe8] space-y-1.5">
+                        <div className="font-bold text-xs text-[#831843]">What It Showed</div>
+                        <table className="w-full text-left border-collapse text-[11px]">
+                          <tbody>
+                            {contentDoc.meno.levels.map(([lvl, desc]) => (
+                              <tr key={lvl} className="border-b border-[#fce7f3]">
+                                <td className="py-1.5 pr-2 font-bold text-[#9d174d] whitespace-nowrap align-top">
+                                  {lvl}
+                                </td>
+                                <td className="py-1.5 text-[#374151]">{desc}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    <div className="p-3 rounded-xl bg-white/95 border border-[#d8b4fe] space-y-1.5">
+                      <div className="font-bold text-xs text-[#581c87]">💍 Oura 30-Day Snapshot</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                        {contentDoc.meno.oura30.map(([k, v]) => (
+                          <div key={k} className="p-2 rounded bg-[#faf5ff] border border-[#e9d5ff]">
+                            <div className="text-[#6b21a8]">{k}</div>
+                            <div className="font-bold">{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2] space-y-1.5">
+                      <div className="font-bold text-xs text-[#1b4332]">🧭 Focus Plan</div>
+                      <ul className="list-disc pl-4 text-xs text-[#26382c] space-y-1">
+                        {contentDoc.meno.plan.map((p) => (
+                          <li key={p}>{p}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-white/85 border border-[#b7d8c2] text-xs text-[#2d6a4f]">
+                    Import your <code>cairnspire_v3a_import.json</code> bundle to view Menopause Impact notes.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: AMARETTE MEDICAL (CHANCELLOR ONLY) */}
+        {tab === 'medical' && isChancellor && (
+          <div className="space-y-3 text-[#1b4332]">
+            {MED_TYPES.map((type) => {
+              const list = amaretteMed.filter((m) => m.type === type);
+              const icon =
+                type === 'Provider' ? '👩‍⚕️' : type === 'Condition' ? '📋' : type === 'Medication' ? '💊' : '📝';
+              return (
+                <div key={type} className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2] space-y-2">
+                  <div className="font-bold text-xs text-[#1b4332]">
+                    {icon} {type}s ({list.length})
+                  </div>
+                  {!list.length ? (
+                    <div className="text-[11px] text-[#52796f]">No {type.toLowerCase()}s added yet.</div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {list.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-start justify-between gap-2 p-2 rounded-lg bg-[#f4fbf6] border border-[#dcefe2]"
+                        >
+                          <div className="min-w-0 text-xs">
+                            <div className="font-bold text-[#1b4332]">{item.name}</div>
+                            {(item.detail || item.location || item.phone) && (
+                              <div className="text-[11px] text-[#355e47]">
+                                {[item.detail, item.location, item.phone].filter(Boolean).join(' · ')}
+                              </div>
+                            )}
+                            {item.notes && <div className="text-[11px] text-[#475569] mt-0.5">{item.notes}</div>}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => startEditMed(item)}
+                              className="px-2 py-1 rounded bg-white border border-[#b7d8c2] text-[11px] cursor-pointer"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => void handleDeleteMed(item.id)}
+                              className="px-2 py-1 rounded bg-white border border-red-200 text-[11px] cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="p-3 rounded-xl bg-[#f4fbf6] border border-[#74c69d] space-y-2">
+              <div className="font-bold text-xs text-[#1b4332]">
+                {editingMed ? '✏️ Edit Medical Entry' : '➕ Add Medical Entry'}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <select
+                  value={medType}
+                  onChange={(e) => setMedType(e.target.value as AmaretteMedicalType)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
+                >
+                  {MED_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={medName}
+                  onChange={(e) => setMedName(e.target.value)}
+                  placeholder="Name / Title"
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
+                />
+                <input
+                  type="text"
+                  value={medDetail}
+                  onChange={(e) => setMedDetail(e.target.value)}
+                  placeholder={medType === 'Medication' ? 'Dose / schedule' : 'Specialty / detail'}
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
+                />
+                <input
+                  type="text"
+                  value={medLocation}
+                  onChange={(e) => setMedLocation(e.target.value)}
+                  placeholder="Location / clinic"
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
+                />
+                <input
+                  type="text"
+                  value={medPhone}
+                  onChange={(e) => setMedPhone(e.target.value)}
+                  placeholder="Phone"
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
+                />
+                <input
+                  type="text"
+                  value={medNotes}
+                  onChange={(e) => setMedNotes(e.target.value)}
+                  placeholder="Notes"
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  disabled={savingMed || !medName.trim()}
+                  onClick={() => void handleSaveMed()}
+                  className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {savingMed ? 'Saving…' : 'Save Entry'}
+                </button>
+                {editingMed && (
                   <button
-                    disabled={savingCard}
-                    onClick={() => void handleSaveFamilyCard()}
-                    className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
-                  >
-                    {savingCard ? 'Saving…' : 'Save Card'}
-                  </button>
-                  <button
-                    onClick={() => setEditingCard(false)}
+                    onClick={clearMedForm}
                     className="px-3 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs cursor-pointer"
                   >
                     Cancel
                   </button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* TAB 3: FAMILY HEALTH CARDS (CHANCELLOR + RAY) */}
+        {tab === 'cards' && canSeeFamilyCards && (
+          <div className="space-y-3 text-[#1b4332]">
+            <div className="flex flex-wrap gap-1.5">
+              {FAMILY_PEOPLE.map((p) => (
+                <button
+                  key={p.name}
+                  onClick={() => setSelectedPerson(p.name)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer border transition ${
+                    selectedPerson === p.name ? 'ring-2 ring-[#1b4332]' : 'opacity-80 hover:opacity-100'
+                  }`}
+                  style={{ backgroundColor: p.color, color: p.ink, borderColor: '#6b7280' }}
+                >
+                  {p.emoji} {p.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/95 border border-[#b7d8c2] space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-sm text-[#1b4332]">{selectedPerson}’s Health Card</h4>
+                  {activeEntry?.updated && (
+                    <div className="text-[10px] text-[#52796f]">Updated: {activeEntry.updated}</div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setEditingCard((v) => !v)}
+                  className="px-2.5 py-1 rounded-lg bg-[#edf6f0] hover:bg-[#d8f3dc] text-[#1b4332] text-xs font-bold cursor-pointer"
+                >
+                  {editingCard ? 'Close Editor' : '✏️ Edit Card'}
+                </button>
+              </div>
+
+              {!editingCard ? (
+                <div className="space-y-2.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-lg bg-[#f4fbf6] border border-[#dcefe2] space-y-1">
+                      <div className="font-bold text-[#1b4332]">🪪 Insurance</div>
+                      <div>
+                        <strong>Carrier:</strong> {activeCard.carrier || '—'}
+                      </div>
+                      <div>
+                        <strong>Member ID:</strong> {activeCard.memberId || '—'}
+                      </div>
+                      <div>
+                        <strong>Group #:</strong> {activeCard.group || '—'}
+                      </div>
+                      <div>
+                        <strong>Plan:</strong> {activeCard.plan || '—'}
+                      </div>
+                      {(activeCard.rxBin || activeCard.rxPcn) && (
+                        <div>
+                          <strong>Rx BIN / PCN:</strong> {activeCard.rxBin || '—'} / {activeCard.rxPcn || '—'}
+                        </div>
+                      )}
+                      {activeCard.memberPhone && (
+                        <div>
+                          <strong>Member Services:</strong>{' '}
+                          <a href={`tel:${activeCard.memberPhone}`} className="underline text-[#1d4ed8]">
+                            {activeCard.memberPhone}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-[#f4fbf6] border border-[#dcefe2] space-y-1">
+                      <div className="font-bold text-[#1b4332]">👩‍⚕️ Doctors &amp; Health</div>
+                      <div>
+                        <strong>Primary Doctor:</strong> {activeCard.doctor || '—'}{' '}
+                        {activeCard.doctorPhone && (
+                          <a href={`tel:${activeCard.doctorPhone}`} className="underline text-[#1d4ed8]">
+                            ({activeCard.doctorPhone})
+                          </a>
+                        )}
+                      </div>
+                      <div>
+                        <strong>Dentist:</strong> {activeCard.dentist || '—'}{' '}
+                        {activeCard.dentistPhone && (
+                          <a href={`tel:${activeCard.dentistPhone}`} className="underline text-[#1d4ed8]">
+                            ({activeCard.dentistPhone})
+                          </a>
+                        )}
+                      </div>
+                      <div>
+                        <strong>Allergies:</strong> {activeCard.allergies || 'None listed'}
+                      </div>
+                      <div>
+                        <strong>Medications:</strong> {activeCard.meds || 'None listed'}
+                      </div>
+                      {activeCard.notes && (
+                        <div>
+                          <strong>Notes:</strong> {activeCard.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Images */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-[11px] font-bold text-[#355e47]">Card Photos:</span>
+                    {(['front', 'back', 'combined'] as CardSide[]).map((side) => {
+                      const hasSide =
+                        side === 'front'
+                          ? activeEntry?.hasFront
+                          : side === 'back'
+                            ? activeEntry?.hasBack
+                            : activeEntry?.hasCombined;
+                      return (
+                        <div key={side} className="inline-flex items-center gap-1">
+                          {hasSide && (
+                            <button
+                              onClick={() => void handleViewCardImage(side)}
+                              className="px-2 py-1 rounded bg-[#d8f3dc] text-[#1b4332] text-[11px] font-semibold cursor-pointer"
+                            >
+                              👁 View {side}
+                            </button>
+                          )}
+                          <label className="px-2 py-1 rounded bg-[#edf6f0] hover:bg-[#d8f3dc] text-[11px] cursor-pointer border border-[#b7d8c2]">
+                            📷 Upload {side}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => void handleCardImageUpload(side, e)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {cardImgPreview && (
+                    <div className="p-2 rounded-lg bg-slate-900 text-white space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span>
+                          {selectedPerson} · Card {cardImgPreview.side}
+                        </span>
+                        <button
+                          onClick={() => setCardImgPreview(null)}
+                          className="underline cursor-pointer"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <img
+                        src={cardImgPreview.url}
+                        alt={`${selectedPerson} card ${cardImgPreview.side}`}
+                        className="max-h-72 rounded mx-auto object-contain"
+                      />
+                    </div>
+                  )}
+
+                  <details className="text-[11px] text-[#355e47]">
+                    <summary className="cursor-pointer font-semibold">More card details</summary>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-2">
+                      <div>
+                        <strong>Name on card:</strong> {activeCard.nameOnCard || '—'}
+                      </div>
+                      <div>
+                        <strong>Plan code:</strong> {activeCard.planCode || '—'}
+                      </div>
+                      <div>
+                        <strong>Deductible:</strong> {activeCard.deductible || '—'}
+                      </div>
+                      <div>
+                        <strong>OOP Max:</strong> {activeCard.oopMax || '—'}
+                      </div>
+                      <div>
+                        <strong>Website:</strong> {activeCard.website || '—'}
+                      </div>
+                      <div>
+                        <strong>Issued:</strong> {activeCard.issued || '—'}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <strong>Other phones:</strong> {activeCard.phones || '—'}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <strong>Claims address:</strong> {activeCard.claims || '—'}
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              ) : (
+                <div className="space-y-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(
+                      [
+                        ['carrier', 'Carrier'],
+                        ['memberId', 'Member ID'],
+                        ['group', 'Group #'],
+                        ['plan', 'Plan'],
+                        ['rxBin', 'Rx BIN'],
+                        ['rxPcn', 'Rx PCN'],
+                        ['memberPhone', 'Member Services Phone'],
+                        ['doctor', 'Primary Doctor'],
+                        ['doctorPhone', 'Doctor Phone'],
+                        ['dentist', 'Dentist'],
+                        ['dentistPhone', 'Dentist Phone'],
+                        ['allergies', 'Allergies'],
+                        ['meds', 'Medications'],
+                        ['nameOnCard', 'Name on Card'],
+                        ['planCode', 'Plan Code'],
+                        ['deductible', 'Deductible'],
+                        ['oopMax', 'Out-of-Pocket Max'],
+                        ['website', 'Website'],
+                        ['issued', 'Card Issued'],
+                      ] as Array<[keyof FamilyMedicalCardFields, string]>
+                    ).map(([field, label]) => (
+                      <label key={field} className="block">
+                        <span className="text-[10px] font-bold text-[#355e47]">{label}</span>
+                        <input
+                          type="text"
+                          value={cardDraft[field]}
+                          onChange={(e) => setCardDraft((c) => ({ ...c, [field]: e.target.value }))}
+                          className="mt-0.5 w-full px-2 py-1 rounded border border-[#95d5b2] bg-white text-xs"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <label className="block">
+                    <span className="text-[10px] font-bold text-[#355e47]">Notes</span>
+                    <textarea
+                      rows={2}
+                      value={cardDraft.notes}
+                      onChange={(e) => setCardDraft((c) => ({ ...c, notes: e.target.value }))}
+                      className="mt-0.5 w-full px-2 py-1 rounded border border-[#95d5b2] bg-white text-xs"
+                    />
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={savingCard}
+                      onClick={() => void handleSaveFamilyCard()}
+                      className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {savingCard ? 'Saving…' : 'Save Card'}
+                    </button>
+                    <button
+                      onClick={() => setEditingCard(false)}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-[#95d5b2] text-xs cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

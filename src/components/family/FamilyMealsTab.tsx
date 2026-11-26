@@ -26,7 +26,69 @@ interface FamilyMealsTabProps {
   onAddBundleToGrocery: (recipe: RecipeItem) => Promise<number>;
   onSetPantryStatus: (pantryId: string, out: boolean) => Promise<void>;
   onPantryToGrocery: (item: PantryItem) => Promise<void>;
+  onAddPantryItem: (item: { item: string; category: string; alsoMatches: string }) => Promise<void>;
   onSaveMealPick: (pick: MealPickRow) => Promise<void>;
+}
+
+const SWAP_RULES: Array<[RegExp, string]> = [
+  [/butter/i, 'butter → olive oil or avocado oil'],
+  [/milk|heavy cream|half and half/i, 'milk/cream → coconut milk or almond milk'],
+  [/cheese|cheddar|mozzarella|parmesan/i, 'cheese → skip on Amarette’s portion or dairy-free'],
+  [/sour cream|yogurt/i, 'sour cream/yogurt → avocado or dairy-free alternative'],
+  [/flour tortilla|flour|bread|bun|pasta|noodle/i, 'wheat/flour → corn tortilla, rice, or lettuce wrap'],
+  [/sugar|brown sugar|honey|syrup|caramel/i, 'sugar → omit or swap monkfruit'],
+];
+
+function checkRecipeForDiners(
+  recipe: RecipeItem,
+  selectedDiners: string[],
+  profiles: DietaryProfile[]
+): { flags: string[]; swaps: string[] } {
+  const ingText = recipe.ingredients.join(' \n ').toLowerCase();
+  const flags: string[] = [];
+  const swaps = new Set<string>();
+  const selSet = new Set(selectedDiners);
+
+  for (const dp of profiles) {
+    if (!selSet.has(dp.person)) continue;
+    const allowSet = new Set(
+      (dp.allow || '')
+        .toLowerCase()
+        .split(/[,;/]+/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+    );
+    const terms = `${dp.avoid || ''},${dp.allergies || ''}`
+      .toLowerCase()
+      .split(/[,;/]+/)
+      .map((x) => x.trim())
+      .filter((x) => x.length >= 3 && !allowSet.has(x));
+
+    const matched: string[] = [];
+    for (const t of terms) {
+      if (ingText.includes(t)) matched.push(t);
+    }
+    if (matched.some((t) => /dairy/.test(t)) || /dairy/i.test(dp.avoid || '')) {
+      ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'sour cream'].forEach((w) => {
+        if (ingText.includes(w) && !allowSet.has(w) && !matched.includes(w)) matched.push(w);
+      });
+    }
+    if (matched.some((t) => /grain|gluten|wheat/.test(t)) || /grain|wheat|gluten/i.test(dp.avoid || '')) {
+      ['flour', 'wheat', 'bread', 'tortilla', 'pasta', 'noodle'].forEach((w) => {
+        if (ingText.includes(w) && !allowSet.has(w) && !matched.includes(w)) matched.push(w);
+      });
+    }
+    if (matched.length) {
+      flags.push(`${dp.person}: ${matched.slice(0, 4).join(', ')}`);
+    }
+  }
+
+  if (flags.length) {
+    for (const [re, tip] of SWAP_RULES) {
+      if (re.test(ingText)) swaps.add(tip);
+    }
+  }
+  return { flags, swaps: Array.from(swaps) };
 }
 
 type MealSubTab = 'plan' | 'tonight' | 'recipes' | 'picks' | 'pantry' | 'diets';
@@ -82,6 +144,7 @@ export function FamilyMealsTab({
   onAddBundleToGrocery,
   onSetPantryStatus,
   onPantryToGrocery,
+  onAddPantryItem,
   onSaveMealPick,
 }: FamilyMealsTabProps) {
   const isParent = activePerson.mode === 'parent';
@@ -90,6 +153,13 @@ export function FamilyMealsTab({
   const [searchQ, setSearchQ] = useState('');
   const [onlyFavs, setOnlyFavs] = useState(false);
   const [onlySafe, setOnlySafe] = useState(false);
+  const [selectedDiners, setSelectedDiners] = useState<string[]>(() => FAMILY_PEOPLE.map((p) => p.name));
+  const [decidedRecipe, setDecidedRecipe] = useState<RecipeItem | null>(null);
+  const [pantrySearch, setPantrySearch] = useState('');
+  const [showAddPantry, setShowAddPantry] = useState(false);
+  const [newPantryItem, setNewPantryItem] = useState('');
+  const [newPantryCat, setNewPantryCat] = useState('Pantry');
+  const [newPantryMatches, setNewPantryMatches] = useState('');
   const [openRecipe, setOpenRecipe] = useState<RecipeItem | null>(null);
   const [showAddRec, setShowAddRec] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -313,33 +383,105 @@ export function FamilyMealsTab({
         </div>
       )}
 
-      {/* 2. MAKE TONIGHT */}
+      {/* 2. MAKE TONIGHT + WHO'S EATING TONIGHT + HELP ME DECIDE */}
       {subTab === 'tonight' && (
         <div className="p-4 rounded-2xl bg-white border border-[#95d5b2] space-y-3">
-          <div className="font-bold text-sm text-[#1b4332]">
-            🥫 Easiest to Make Tonight (Matched Against {inStockPantry.length} In-Stock Pantry Items)
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-bold text-sm text-[#1b4332]">
+              🥫 Make Tonight (Matched to {inStockPantry.length} In-Stock Pantry Items)
+            </div>
+            <button
+              onClick={() => {
+                const candidates = tonightRecipes
+                  .map((tr) => ({
+                    ...tr,
+                    diet: checkRecipeForDiners(tr.recipe, selectedDiners, dietaryProfiles),
+                  }))
+                  .filter((x) => x.diet.flags.length === 0);
+                const pool = candidates.length ? candidates.slice(0, 6) : tonightRecipes.slice(0, 6);
+                if (pool.length) {
+                  setDecidedRecipe(pool[Math.floor(Math.random() * pool.length)].recipe);
+                }
+              }}
+              className="px-3 py-1 rounded-xl bg-[#fbbf24] text-[#451a03] text-xs font-bold cursor-pointer"
+            >
+              🎲 Help Me Decide
+            </button>
           </div>
-          <div className="space-y-2">
-            {tonightRecipes.slice(0, 10).map(({ recipe, haveCount, totalCount, needLines }) => (
-              <div
-                key={recipe.id}
-                className="p-3 rounded-xl bg-[#f4fbf6] border border-[#dcefe2] flex flex-wrap items-center justify-between gap-2"
-              >
-                <div className="min-w-0">
-                  <div className="font-bold text-xs text-[#1b4332]">{recipe.name}</div>
-                  <div className="text-[11px] text-[#40916c]">
-                    Have {haveCount}/{totalCount} ingredients · Need {needLines.length}
-                    {recipe.time ? ` · ${recipe.time} min` : ''}
-                  </div>
+
+          <div className="p-2.5 rounded-xl bg-[#f4fbf6] border border-[#dcefe2] space-y-1.5 text-xs">
+            <div className="font-bold text-[#1b4332]">🍽️ Who’s Eating Tonight? (Live Diet Check)</div>
+            <div className="flex flex-wrap gap-1.5">
+              {FAMILY_PEOPLE.map((p) => {
+                const on = selectedDiners.includes(p.name);
+                return (
+                  <button
+                    key={p.name}
+                    onClick={() =>
+                      setSelectedDiners((prev) =>
+                        on ? prev.filter((x) => x !== p.name) : [...prev, p.name]
+                      )
+                    }
+                    className={`px-2 py-1 rounded-full text-[11px] font-bold border cursor-pointer ${
+                      on ? 'bg-[#2d6a4f] text-white border-[#1b4332]' : 'bg-white text-[#52796f] border-[#b7d8c2]'
+                    }`}
+                  >
+                    {p.emoji} {p.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {decidedRecipe && (
+            <div className="p-3 rounded-xl bg-[#fef9c3] border border-[#f59e0b] flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div>
+                <div className="font-bold text-[#78350f]">✨ Tonight’s Pick: {decidedRecipe.name}</div>
+                <div className="text-[#92400e]">
+                  {decidedRecipe.time ? `${decidedRecipe.time} min` : 'Ready to cook'} · Matched your pantry &amp; diners!
                 </div>
-                <button
-                  onClick={() => setOpenRecipe(recipe)}
-                  className="px-2.5 py-1 rounded bg-white border border-[#95d5b2] text-xs font-bold cursor-pointer"
-                >
-                  Open
-                </button>
               </div>
-            ))}
+              <button
+                onClick={() => setOpenRecipe(decidedRecipe)}
+                className="px-3 py-1 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer"
+              >
+                📖 Open Recipe
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {tonightRecipes.slice(0, 12).map(({ recipe, haveCount, totalCount, needLines }) => {
+              const diet = checkRecipeForDiners(recipe, selectedDiners, dietaryProfiles);
+              return (
+                <div
+                  key={recipe.id}
+                  className="p-3 rounded-xl bg-[#f4fbf6] border border-[#dcefe2] flex flex-wrap items-center justify-between gap-2"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="font-bold text-xs text-[#1b4332]">{recipe.name}</div>
+                    <div className="text-[11px] text-[#40916c]">
+                      Have {haveCount}/{totalCount} ingredients · Need {needLines.length}
+                      {recipe.time ? ` · ${recipe.time} min` : ''}
+                    </div>
+                    {diet.flags.length === 0 ? (
+                      <div className="text-[10px] font-bold text-emerald-700">✔ Fits everyone selected</div>
+                    ) : (
+                      <div className="text-[10px] text-amber-800">
+                        ⚠️ Flagged: {diet.flags.join(' · ')}
+                        {diet.swaps.length ? ` | Swaps: ${diet.swaps.join('; ')}` : ''}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setOpenRecipe(recipe)}
+                    className="px-2.5 py-1 rounded bg-white border border-[#95d5b2] text-xs font-bold cursor-pointer"
+                  >
+                    Open
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -598,10 +740,74 @@ export function FamilyMealsTab({
 
       {/* 5. PANTRY */}
       {subTab === 'pantry' && (
-        <div className="p-4 rounded-2xl bg-white border border-[#95d5b2] space-y-2 text-xs">
-          <div className="font-bold text-sm text-[#1b4332]">🧺 Pantry Inventory (“We’re out of this”)</div>
+        <div className="p-4 rounded-2xl bg-white border border-[#95d5b2] space-y-2.5 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-bold text-sm text-[#1b4332]">🧺 Pantry Inventory (“We’re out of this”)</div>
+            {canEdit && (
+              <button
+                onClick={() => setShowAddPantry((v) => !v)}
+                className="px-2.5 py-1 rounded-lg bg-[#2d6a4f] text-white font-bold cursor-pointer"
+              >
+                ＋ Add Pantry Item
+              </button>
+            )}
+          </div>
+          <input
+            type="search"
+            value={pantrySearch}
+            onChange={(e) => setPantrySearch(e.target.value)}
+            placeholder="🔎 Search pantry items..."
+            className="w-full px-3 py-1.5 rounded-xl border border-[#95d5b2]"
+          />
+          {showAddPantry && canEdit && (
+            <div className="p-3 rounded-xl bg-[#f4fbf6] border border-[#74c69d] grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input
+                type="text"
+                value={newPantryItem}
+                onChange={(e) => setNewPantryItem(e.target.value)}
+                placeholder="Item name (e.g., Almond Flour)"
+                className="px-2.5 py-1.5 rounded border border-[#95d5b2] bg-white"
+              />
+              <input
+                type="text"
+                value={newPantryCat}
+                onChange={(e) => setNewPantryCat(e.target.value)}
+                placeholder="Category (Pantry, Fridge, Freezer)"
+                className="px-2.5 py-1.5 rounded border border-[#95d5b2] bg-white"
+              />
+              <input
+                type="text"
+                value={newPantryMatches}
+                onChange={(e) => setNewPantryMatches(e.target.value)}
+                placeholder="Also matches (optional)"
+                className="px-2.5 py-1.5 rounded border border-[#95d5b2] bg-white"
+              />
+              <button
+                onClick={async () => {
+                  if (!newPantryItem.trim()) return;
+                  await onAddPantryItem({
+                    item: newPantryItem.trim(),
+                    category: newPantryCat.trim() || 'Pantry',
+                    alsoMatches: newPantryMatches.trim(),
+                  });
+                  setNewPantryItem('');
+                  setNewPantryMatches('');
+                  setShowAddPantry(false);
+                  flash('Pantry item added ✔');
+                }}
+                className="px-3 py-1.5 rounded bg-[#2d6a4f] text-white font-bold cursor-pointer sm:col-span-3 w-fit"
+              >
+                Save Pantry Item
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
-            {pantry.map((p) => (
+            {pantry
+              .filter((p) => {
+                const q = pantrySearch.trim().toLowerCase();
+                return !q || p.item.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+              })
+              .map((p) => (
               <div
                 key={p.id}
                 className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
@@ -710,6 +916,31 @@ export function FamilyMealsTab({
                 ✕
               </button>
             </div>
+            {(() => {
+              const diet = checkRecipeForDiners(openRecipe, selectedDiners, dietaryProfiles);
+              return (
+                <div
+                  className={`p-2.5 rounded-xl border text-xs ${
+                    diet.flags.length === 0
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-amber-50 border-amber-300 text-amber-950'
+                  }`}
+                >
+                  {diet.flags.length === 0 ? (
+                    <span className="font-bold">✔ Fits all selected diners ({selectedDiners.length})</span>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="font-bold">⚠️ Diet Flags: {diet.flags.join(' · ')}</div>
+                      {diet.swaps.length > 0 && (
+                        <div>
+                          <strong>Quick swaps:</strong> {diet.swaps.join('; ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div>
               <div className="font-bold text-xs text-[#1b4332] mb-1">Ingredients</div>
               <ul className="list-disc pl-5 text-xs space-y-0.5 text-[#26382c]">

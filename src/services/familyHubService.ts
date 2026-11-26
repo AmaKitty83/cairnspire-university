@@ -742,6 +742,90 @@ export async function sendFamilyChatMessage(
   });
 }
 
+export interface PublicGiftClaim {
+  giftId: string;
+  claimed: boolean;
+  claimedBy: string;
+}
+
+export function subscribePublicWishList(
+  cb: (sections: GiftSection[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'public_gifts', 'family_wishlist'),
+    (snap) => {
+      if (!snap.exists()) return cb([]);
+      const d = snap.data() as { sections?: GiftSection[] };
+      cb(Array.isArray(d.sections) ? d.sections : []);
+    },
+    (err) => onError?.(err)
+  );
+}
+
+export function subscribePublicGiftClaims(
+  cb: (claims: Record<string, PublicGiftClaim>) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  return onSnapshot(
+    collection(db, 'public_gifts_claims'),
+    (snap) => {
+      const map: Record<string, PublicGiftClaim> = {};
+      snap.forEach((d) => {
+        const data = d.data() as { claimed?: boolean; claimedBy?: string };
+        map[d.id] = {
+          giftId: d.id,
+          claimed: Boolean(data.claimed),
+          claimedBy: data.claimedBy || '',
+        };
+      });
+      cb(map);
+    },
+    (err) => onError?.(err)
+  );
+}
+
+export async function publishPublicWishList(
+  sections: GiftSection[],
+  actorEmail: string
+): Promise<void> {
+  const email = (actorEmail || auth.currentUser?.email || '').trim().toLowerCase();
+  const sanitized = sections.map((s) => ({
+    person: s.person,
+    title: s.title,
+    items: s.items.map((it) => ({
+      id: it.id.toLowerCase().replace(/[^a-z0-9_-]/g, '_'),
+      idea: it.idea,
+      link: it.link || '',
+      price: it.price || '',
+      priority: it.priority || '',
+      occasion: it.occasion || '',
+    })),
+  }));
+  await setDoc(doc(db, 'public_gifts', 'family_wishlist'), {
+    sections: sanitized,
+    updatedAt: serverTimestamp(),
+    updatedBy: email,
+  });
+}
+
+export async function unpublishPublicWishList(): Promise<void> {
+  await deleteDoc(doc(db, 'public_gifts', 'family_wishlist'));
+}
+
+export async function togglePublicGiftClaim(
+  giftId: string,
+  claimed: boolean,
+  claimedBy: string
+): Promise<void> {
+  const cleanId = giftId.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 64);
+  await setDoc(doc(db, 'public_gifts_claims', cleanId), {
+    claimed,
+    claimedBy: claimed ? claimedBy.trim().slice(0, 60) : '',
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function deleteChatMessage(messageId: string): Promise<void> {
   await deleteDoc(doc(db, 'home_and_garden', 'chats', 'messages', messageId));
 }

@@ -14,7 +14,7 @@ export interface BuildingDef {
   repSprite: string;
   motif: string;
   zones: string[];
-  special: 'commons' | 'town-hall' | 'executive' | 'courthouse' | 'stocks' | 'air' | 'health' | 'home-garden' | 'default';
+  special: 'commons' | 'town-hall' | 'executive' | 'courthouse' | 'stocks' | 'air' | 'health' | 'childrens-books' | 'home-garden' | 'default';
   greenBanner?: boolean;
 }
 
@@ -262,13 +262,13 @@ export const BUILDINGS: BuildingDef[] = [
     ry: 105,
     lx: 1225,
     ly: 632,
-    phase: 'v4 Department Interior',
+    phase: 'v3 Bramblewood & Printables Studio',
     headRole: 'Storybook Editor-in-Chief (Publishing Rep)',
     repSprite: 'sprite-catgirl',
     motif:
-      'Ivy-draped crimson-turret storybook library — paired directly with local ComfyUI illustration pipelines.',
-    zones: ['Manuscript & Story Workshop', 'ComfyUI Illustration Studio', 'Formatting & Publishing Prep'],
-    special: 'default',
+      'Ivy-draped crimson-turret storybook library — home to The Bramblewood Friends series, Sparrow & Sprocket Printables, and ComfyUI illustration pipelines.',
+    zones: ['Bramblewood Book Tracker (9 Books)', 'Sparrow & Sprocket Printables Kit', 'ComfyUI Illustration Pipeline'],
+    special: 'childrens-books',
   },
   {
     id: 'social-media',

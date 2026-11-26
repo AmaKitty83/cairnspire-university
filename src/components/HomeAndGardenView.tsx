@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { ASSETS } from '../data/assetMeta';
 import { signOutUser, type CampusRole } from '../firebase';
 import {
   FAMILY_PEOPLE,
   importFamilyHubBundle,
+  publishPublicWishList,
   saveAnnouncementsData,
   saveCalendarData,
   saveChatRooms,
@@ -30,8 +31,11 @@ import {
   subscribeMeals,
   subscribePantry,
   subscribeParentGiftBought,
+  subscribePublicGiftClaims,
+  subscribePublicWishList,
   subscribeRecipes,
   todayDayKey,
+  unpublishPublicWishList,
   type AnchorMealRow,
   type CalendarEventItem,
   type ChatMessage,
@@ -51,8 +55,26 @@ import {
   type MealPickRow,
   type MealWeekRow,
   type PantryItem,
+  type PublicGiftClaim,
   type RecipeItem,
 } from '../services/familyHubService';
+import {
+  appendGabeAssessment,
+  appendGabeResult,
+  saveGabeConfig,
+  saveParentGabeGrades,
+  saveSpellingWords,
+  subscribeGabeAssessment,
+  subscribeGabeConfig,
+  subscribeGabeResults,
+  subscribeParentGabeGrades,
+  subscribeSpellingWords,
+  type AssessmentResultEntry,
+  type GabeConfigDoc,
+  type ParentGradeEntry,
+  type QuestResultEntry,
+  type SpellingWordsDoc,
+} from '../services/questsService';
 import { FamilyChatTab } from './family/FamilyChatTab';
 import { FamilyChoresTab } from './family/FamilyChoresTab';
 import {
@@ -64,6 +86,8 @@ import {
 import { FamilyGroceryTab } from './family/FamilyGroceryTab';
 import { FamilyHomeTab } from './family/FamilyHomeTab';
 import { FamilyMealsTab } from './family/FamilyMealsTab';
+import { FamilyQuestsTab } from './family/FamilyQuestsTab';
+import { FamilySchoolTab } from './family/FamilySchoolTab';
 import { PersonIcon, speakText } from './family/PersonBadge';
 
 interface HomeAndGardenViewProps {
@@ -129,8 +153,8 @@ const NAV_PAGES: Record<FamilyMode, Array<{ id: NavPageId; icon: string; label: 
     { id: 'chat', icon: '💬', label: 'Chat' },
     { id: 'links', icon: '🔗', label: 'Links' },
     { id: 'info', icon: '📌', label: 'Info' },
-    { id: 'school', icon: '🏫', label: 'School (v3b)' },
-    { id: 'quests', icon: '📜', label: 'Quests (v3b)' },
+    { id: 'school', icon: '🏫', label: 'School' },
+    { id: 'quests', icon: '📜', label: 'Quests' },
   ],
 };
 
@@ -169,6 +193,25 @@ export function HomeAndGardenView({
   const [viewAs, setViewAs] = useState<string>('');
   const [activeTab, setActiveTab] = useState<NavPageId>('home');
   const [speakEnabled, setSpeakEnabled] = useState(true);
+  const [hgDark, setHgDark] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hg_dark') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  function toggleHgDark() {
+    setHgDark((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('hg_dark', next ? '1' : '0');
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   // Kid Login PIN modal state
   const [kidLoginOpen, setKidLoginOpen] = useState(false);
@@ -219,6 +262,21 @@ export function HomeAndGardenView({
   });
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [publicPublished, setPublicPublished] = useState(false);
+  const [publicClaims, setPublicClaims] = useState<Record<string, PublicGiftClaim>>({});
+  const [gabeConfig, setGabeConfig] = useState<GabeConfigDoc>({
+    activeScienceUnitId: '',
+    assessmentEnabled: false,
+  });
+  const [gabeResults, setGabeResults] = useState<QuestResultEntry[]>([]);
+  const [gabeAssessment, setGabeAssessment] = useState<AssessmentResultEntry[]>([]);
+  const [parentGabeGrades, setParentGabeGrades] = useState<Record<string, ParentGradeEntry>>({});
+  const [spellingWords, setSpellingWords] = useState<SpellingWordsDoc>({
+    Liam: { weekOf: '', words: [] },
+    Oliver: { weekOf: '', words: [] },
+  });
+  const gabeResultsRef = useRef<QuestResultEntry[]>([]);
+  const gabeAssessmentRef = useRef<AssessmentResultEntry[]>([]);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -239,6 +297,16 @@ export function HomeAndGardenView({
       subscribeCalendar(setCalendarData, onErr),
       subscribeChatRooms(setChatRooms, onErr),
       subscribeChatMessages(setChatMessages, onErr),
+      subscribeGabeConfig(setGabeConfig, onErr),
+      subscribeGabeResults((rows) => {
+        gabeResultsRef.current = rows;
+        setGabeResults(rows);
+      }, onErr),
+      subscribeGabeAssessment((rows) => {
+        gabeAssessmentRef.current = rows;
+        setGabeAssessment(rows);
+      }, onErr),
+      subscribeSpellingWords(setSpellingWords, onErr),
     ];
     if (isParentAuth) {
       unsubs.push(
@@ -247,7 +315,10 @@ export function HomeAndGardenView({
           setKidPins(p);
           setLiamPinDraft(p.Liam || '');
           setOliverPinDraft(p.Oliver || '');
-        }, onErr)
+        }, onErr),
+        subscribePublicWishList((sections) => setPublicPublished(sections.length > 0), onErr),
+        subscribePublicGiftClaims(setPublicClaims, onErr),
+        subscribeParentGabeGrades(setParentGabeGrades, onErr)
       );
     }
     return () => unsubs.forEach((u) => u());
@@ -510,7 +581,7 @@ export function HomeAndGardenView({
   // Person Picker Screen (when nobody picked yet or clicking Switch Person)
   if (!activePerson) {
     return (
-      <section className="fixed inset-0 z-50 bg-gradient-to-b from-[#e9f5ec] to-[#d4ebd9] text-[#1b4332] flex flex-col overflow-y-auto">
+      <section className={`fixed inset-0 z-50 bg-gradient-to-b from-[#e9f5ec] to-[#d4ebd9] text-[#1b4332] flex flex-col overflow-y-auto ${hgDark ? 'hg-dark' : ''}`}>
         <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#2d6a4f] text-white shadow">
           <div className="min-w-0">
             <h2 className="font-atlas text-lg font-bold truncate">🏡 Home and Garden</h2>
@@ -519,6 +590,13 @@ export function HomeAndGardenView({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleHgDark}
+              className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+              title="Toggle Light / Dark Theme"
+            >
+              {hgDark ? '☀️' : '🌙'}
+            </button>
             {isChancellor && (
               <button
                 onClick={() => setAdminOpen((v) => !v)}
@@ -615,7 +693,7 @@ export function HomeAndGardenView({
   }
 
   return (
-    <section className="fixed inset-0 z-50 bg-gradient-to-b from-[#e9f5ec] to-[#d4ebd9] text-[#1b4332] flex flex-col">
+    <section className={`fixed inset-0 z-50 bg-gradient-to-b from-[#e9f5ec] to-[#d4ebd9] text-[#1b4332] flex flex-col ${hgDark ? 'hg-dark' : ''}`}>
       {/* Top Bar */}
       <header className="flex items-center justify-between gap-2 px-4 py-2.5 bg-[#2d6a4f] text-white shadow shrink-0">
         <div className="min-w-0">
@@ -627,6 +705,13 @@ export function HomeAndGardenView({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={toggleHgDark}
+            className="px-2 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+            title="Toggle Light / Dark Theme"
+          >
+            {hgDark ? '☀️' : '🌙'}
+          </button>
           <button
             onClick={() => {
               if (kidLockName) {
@@ -814,6 +899,28 @@ export function HomeAndGardenView({
                   };
                   await saveChoresList(choresWeekOf, [...chores, item], actorEmail);
                 }}
+                onUpdateChore={async (updated) => {
+                  if (!canEdit) return;
+                  await saveChoresList(
+                    choresWeekOf,
+                    chores.map((c) => (c.id === updated.id ? updated : c)),
+                    actorEmail
+                  );
+                }}
+                onDeleteChore={async (choreId) => {
+                  if (!canEdit) return;
+                  await saveChoresList(
+                    choresWeekOf,
+                    chores.filter((c) => c.id !== choreId),
+                    actorEmail
+                  );
+                }}
+                onSendMissionsToChat={async (text) => {
+                  if (!canEdit) return;
+                  const targetRoom =
+                    chatRooms.find((r) => /family/i.test(r.name))?.id || chatRooms[0]?.id || 'c_family';
+                  await sendFamilyChatMessage(targetRoom, activePerson.name, text, actorEmail);
+                }}
                 onClearWeek={async () => {
                   if (!canEdit) return;
                   const cleared = chores.map((c) => ({
@@ -903,6 +1010,23 @@ export function HomeAndGardenView({
                     notes: "From Pantry (we're out)",
                   };
                   await saveGroceryList([...grocery, newItem], actorEmail);
+                }}
+                onAddPantryItem={async (inp) => {
+                  if (!canEdit) return;
+                  const newPantry: PantryItem = {
+                    id: `pn_${Date.now().toString(36)}`,
+                    item: inp.item,
+                    category: inp.category,
+                    source: 'Family hub',
+                    how: '',
+                    alsoMatches: inp.alsoMatches,
+                    out: false,
+                  };
+                  await savePantryData(
+                    [...pantryData.items, newPantry],
+                    pantryData.dietaryProfiles,
+                    actorEmail
+                  );
                 }}
                 onSaveMealPick={async (pick) => {
                   if (!canEdit) return;
@@ -998,6 +1122,8 @@ export function HomeAndGardenView({
                 viewAs={viewAs}
                 sections={giftSections}
                 parentBoughtMap={parentGiftBought}
+                publicPublished={publicPublished}
+                publicClaims={publicClaims}
                 onAddGift={async (forPerson, item: Omit<GiftItem, 'id'>) => {
                   if (!canEdit) return;
                   const newItem: GiftItem = { ...item, id: `gf_${Date.now().toString(36)}` };
@@ -1007,6 +1133,15 @@ export function HomeAndGardenView({
                         s.person === forPerson ? { ...s, items: [...s.items, newItem] } : s
                       )
                     : [...giftSections, { person: forPerson, title: `${forPerson} Wish List`, items: [newItem] }];
+                  await saveGiftSections(next, actorEmail);
+                }}
+                onUpdateGift={async (forPerson, item) => {
+                  if (!canEdit) return;
+                  const next = giftSections.map((s) =>
+                    s.person === forPerson
+                      ? { ...s, items: s.items.map((x) => (x.id === item.id ? item : x)) }
+                      : s
+                  );
                   await saveGiftSections(next, actorEmail);
                 }}
                 onDeleteGift={async (forPerson, giftId) => {
@@ -1022,6 +1157,14 @@ export function HomeAndGardenView({
                   if (bought) next[giftId] = `✔ (${activePerson.name})`;
                   else delete next[giftId];
                   await saveParentGiftBought(next, actorEmail);
+                }}
+                onPublishPublic={async () => {
+                  if (!isParentAuth || isReadOnly || viewAs) return;
+                  await publishPublicWishList(giftSections, actorEmail);
+                }}
+                onUnpublishPublic={async () => {
+                  if (!isParentAuth || isReadOnly || viewAs) return;
+                  await unpublishPublicWishList();
                 }}
               />
             )}
@@ -1048,21 +1191,64 @@ export function HomeAndGardenView({
 
             {activeTab === 'info' && <FamilyInfoTab data={announcementsData} />}
 
-            {(activeTab === 'school' || activeTab === 'quests') && (
-              <div className="p-6 rounded-2xl bg-white border-2 border-[#74c69d] text-center space-y-2">
-                <div className="text-3xl">{activeTab === 'quests' ? '📜' : '🏫'}</div>
-                <h3 className="font-atlas text-lg font-bold text-[#1b4332]">
-                  {activeTab === 'quests'
-                    ? 'Gabe’s Interactive Quests & Vault of Chambers'
-                    : 'Kid School Center & Learning Games'}
-                </h3>
-                <p className="text-xs text-[#40916c] max-w-md mx-auto leading-relaxed">
-                  Arriving next in <strong>v3b</strong>! That update brings in Liam &amp; Oliver’s Math,
-                  Spelling &amp; Reverse-Multiply Games, Preston’s Mini Crosswords, Logic Puzzles &amp; Spanish,
-                  Chase’s Word of the Day &amp; Python Tips, and Gabe’s full Know Your Dice / Science Units 1–5 /
-                  GED Quests.
-                </p>
-              </div>
+            {activeTab === 'school' && (
+              <FamilySchoolTab
+                activePerson={activePerson}
+                isParentActor={isParentAuth}
+                canEdit={canEdit}
+                viewAs={viewAs}
+                readOnly={isReadOnly}
+                speakEnabled={speakEnabled}
+                spellingWords={spellingWords}
+                calendarEvents={calendarData.events || []}
+                onSaveSpelling={async (kid, weekOf, words) => {
+                  if (!canEdit || !isParentAuth) return;
+                  const next: SpellingWordsDoc = {
+                    ...spellingWords,
+                    [kid]: { weekOf, words },
+                  };
+                  await saveSpellingWords(next, actorEmail);
+                }}
+                onOpenQuests={() => setActiveTab('quests')}
+              />
+            )}
+
+            {activeTab === 'quests' && (
+              <FamilyQuestsTab
+                activePerson={activePerson}
+                isParentActor={isParentAuth}
+                canEdit={canEdit}
+                viewAs={viewAs}
+                readOnly={isReadOnly}
+                gabeConfig={gabeConfig}
+                gabeResults={gabeResults}
+                gabeAssessment={gabeAssessment}
+                parentGrades={parentGabeGrades}
+                onSaveConfig={async (cfg) => {
+                  if (!canEdit || !isParentAuth) return;
+                  await saveGabeConfig(cfg, actorEmail);
+                }}
+                onAppendResult={async (entry) => {
+                  if (!canEdit) return;
+                  const updated = await appendGabeResult(entry, gabeResultsRef.current, actorEmail);
+                  gabeResultsRef.current = updated;
+                  setGabeResults(updated);
+                }}
+                onAppendAssessment={async (entry) => {
+                  if (!canEdit) return;
+                  const updated = await appendGabeAssessment(
+                    entry,
+                    gabeAssessmentRef.current,
+                    actorEmail
+                  );
+                  gabeAssessmentRef.current = updated;
+                  setGabeAssessment(updated);
+                }}
+                onSaveParentGrades={async (grades) => {
+                  if (!canEdit || !isParentAuth) return;
+                  await saveParentGabeGrades(grades, actorEmail);
+                }}
+              />
             )}
           </div>
         </main>

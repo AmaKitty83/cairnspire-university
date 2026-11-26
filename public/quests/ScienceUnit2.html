@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 2: The Trial Log</title>
+<style>
+:root{
+  --bg:#1d2326;--bg2:#252d31;--parch:#efe3c8;--parch2:#e4d4b0;--ink:#2e2619;--ink2:#5a4a33;
+  --teal:#3f8f8a;--teal2:#2c6b67;--tealsoft:#cfe6e2;--gold:#c9a24a;--gold2:#9c7a2e;--line:#c7b48a;
+  --text:#f1eadb;--soft:#c9c1ae;--r:16px;--acc:#2c6b67;--accsoft:#cfe6e2;
+  font-size:17px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.app{display:grid;grid-template-columns:1fr 300px;gap:16px;max-width:1200px;margin:0 auto;padding:16px}
+@media (max-width:900px){.app{grid-template-columns:1fr}.side .card{position:static}}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:14px 16px 0}
+header.top h1{margin:0;font-size:1.45rem;color:var(--gold);font-family:Georgia,"Times New Roman",serif;letter-spacing:.3px}
+.sub{color:var(--soft);font-size:.92rem}
+.btn{border:0;border-radius:12px;padding:10px 16px;min-height:44px;background:var(--teal2);color:#fff;font-weight:700}
+.btn:hover{background:#245a56}
+.btn.alt{background:transparent;color:var(--text);border:1px solid #4a5559}
+.parch .btn.alt,.guide .btn.alt{color:var(--ink);border-color:var(--gold2)}
+.btn.gold{background:var(--gold);color:#2b2210}
+.btn.big{font-size:1.05rem;padding:12px 20px;box-shadow:0 0 0 3px #f3e6c4}
+.btn[disabled]{opacity:.5;cursor:default}
+.card{background:var(--bg2);border:1px solid #39454a;border-radius:var(--r);padding:16px;margin-bottom:16px}
+.parch{background:var(--parch);color:var(--ink);border:1px solid var(--line)}
+.parch .sub{color:var(--ink2)}
+h2,h3,h4{font-family:Georgia,"Times New Roman",serif;margin:.2em 0 .5em}
+.parch h2,.parch h3,.parch h4{color:#3b2e17}
+.pvbar{background:#2f3a3e;border:1px solid var(--gold2);color:var(--text);border-radius:12px;padding:10px 14px;margin:12px auto 0;max-width:1168px}
+.hidden{display:none!important}
+.note{font-size:.88rem;color:var(--soft)}
+.parch .note{color:var(--ink2)}
+/* map */
+.mapwrap{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.mapwrap svg{display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node circle.ring{fill:var(--parch);stroke:var(--gold2);stroke-width:3}
+.node.done circle.ring{fill:var(--accsoft);stroke:var(--acc)}
+.node.pinned circle.ring{fill:#f3e6c4;stroke:var(--gold2);stroke-dasharray:4 3}
+.node.locked{cursor:default;opacity:.45}
+.node.next circle.ring{stroke:var(--acc);stroke-width:5}
+.node text{font-family:Georgia,serif;font-size:17px;fill:#2e2619;font-weight:700;pointer-events:none}
+.node text.lbl{font-size:13px;font-weight:700;paint-order:stroke;stroke:#f3e8cf;stroke-width:3px}
+.node:focus{outline:none}.node:not(.locked):focus circle.ring,.node:not(.locked):hover circle.ring{stroke:var(--teal);stroke-width:5}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+/* quest log */
+.qlog{display:grid;gap:10px}
+.qsess{border:1px solid #39454a;border-radius:12px;padding:10px 12px;background:#20282b}
+.qsess.locked{opacity:.6}
+.qsess h4{margin:0 0 6px;color:var(--text)}
+.qbtns{display:flex;flex-wrap:wrap;gap:6px}
+.qb{border:1px solid #4a5559;background:#2f3a3e;color:var(--text);border-radius:10px;padding:8px 10px;min-height:40px;font-size:.92rem}
+.qb.done{background:#2b4643;border-color:var(--teal)}
+.qb[disabled]{opacity:.5;cursor:default}
+/* dialogue */
+.dlg{display:flex;gap:14px;align-items:flex-start;margin:10px 0}
+.portrait{flex:0 0 76px;height:76px;border-radius:14px;background:#2f3a3e;border:2px solid var(--gold2);overflow:hidden}
+.portrait svg{width:100%;height:100%}
+.bubble{flex:1;background:#fffaf0;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.bubble b.who{display:block;color:var(--teal2);font-family:Georgia,serif}
+/* scene */
+.scene{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#2a3236;position:relative}
+.scene svg{display:block;width:100%;height:auto;max-height:260px}
+.mover{transition:transform 1.4s ease-in-out}
+.won .mover{transform:translate(var(--dx),var(--dy))}
+.glow{opacity:0;transition:opacity 1s}
+.won .glow{opacity:.8}
+.spark{opacity:0;transition:opacity .6s .9s}
+.won .spark{opacity:1}
+.bob{animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* boxes */
+.boxes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:12px 0}
+.kbox{background:#fffaf0;border:1px solid var(--line);border-left:6px solid var(--acc);border-radius:12px;padding:10px 14px}
+.kbox h4{margin:0 0 4px;font-size:1rem}
+.kbox ul{margin:0;padding-left:18px}.kbox li{margin:3px 0}
+.kbox.strip{border-left-color:var(--gold2);background:repeating-linear-gradient(0deg,#fffaf0,#fffaf0 26px,#f6ecd6 27px)}
+.task{background:#f6ecd6;border:1px dashed var(--gold2);border-radius:12px;padding:10px 14px;margin:12px 0}
+.task ul{margin:6px 0 0;padding-left:20px}
+table.data{border-collapse:collapse;margin:8px 0;min-width:240px;background:#fffaf0}
+table.data th,table.data td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+table.data th{background:#ead9b5}
+.tcap{font-weight:700;margin-top:8px;font-family:Georgia,serif}
+.tables{display:flex;gap:16px;flex-wrap:wrap}
+.chipline{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{display:inline-block;background:#ead9b5;color:#3b2e17;border-radius:999px;padding:3px 10px;font-size:.85rem;font-weight:700}
+/* fields */
+.fields{display:grid;gap:14px;margin-top:12px}
+.field label{display:block;font-weight:700;margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fffaf0;color:var(--ink);font-size:1.05rem}
+.field textarea{resize:vertical;min-height:56px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.pick{border:1px solid var(--gold2);background:#fbf3df;color:var(--ink);border-radius:999px;padding:5px 12px;min-height:36px;font-size:.9rem}
+.pick:hover{background:#f3e6c4}
+.fb{margin-top:6px;border-radius:10px;padding:8px 10px;font-size:.95rem}
+.fb.ok{background:#d8ece7;color:#1f4d49}
+.fb.re{background:#f3e6c4;color:#4b3a14}
+.fb.log{background:#e7e1f3;color:#352a52}
+/* punnett */
+.punnett table{border-collapse:separate;border-spacing:6px}
+.punnett th,.punnett td{width:78px;height:62px;text-align:center}
+.punnett input{width:72px;height:56px;text-align:center;font-size:1.35rem;font-weight:700;border-radius:10px;border:2px solid var(--gold2);background:#fffaf0;color:var(--ink)}
+.punnett th input{background:#ead9b5;border-style:dashed;font-size:1.2rem;height:48px}
+.punnett .corner{font-size:.8rem;color:var(--ink2)}
+.punnett input.hl{border-color:var(--teal);background:#e3f1ee}
+/* guide + hints */
+.guide{background:#fffaf0;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:12px 0;color:var(--ink)}
+.guide summary{cursor:pointer;min-height:32px}
+.guide ol{margin:8px 0 0 20px;padding:0}.guide li{margin:6px 0}
+.hints{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.hintbtn{align-self:flex-start;border:2px solid var(--gold2);background:#fbf3df;color:var(--ink);border-radius:12px;padding:8px 14px;min-height:42px;font-weight:700}
+.hintbtn.nudge{animation:pulse 1.6s ease-in-out 3}
+.hint{background:#fbf3df;border:1px solid var(--gold2);border-radius:12px;padding:8px 12px;color:var(--ink)}
+.winbox{margin-top:14px;border-radius:12px;padding:12px 14px;background:#d8ece7;color:#1f4d49;border:1px solid var(--teal)}
+/* side */
+.side .card{position:sticky;top:12px}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #39454a}
+.chk input{flex:0 0 22px;width:22px;height:22px;margin-top:3px;accent-color:var(--teal)}
+.loot{display:flex;flex-wrap:wrap;gap:8px}
+.lootitem{background:#2f3a3e;border:1px solid var(--gold2);border-radius:10px;padding:6px 10px;font-size:.88rem;color:var(--text)}
+button.lootitem{cursor:pointer}
+.toggle{display:flex;align-items:center;gap:8px}
+#askT{width:100%;border-radius:10px;padding:8px;font:inherit;color:var(--ink);background:#fffaf0;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--parch);color:var(--ink);border:1px solid var(--gold2);padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none;z-index:9;max-width:90vw}
+.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(10,14,16,.6);display:flex;align-items:center;justify-content:center;z-index:8;padding:16px}
+.modal .card{max-width:520px;width:100%}
+.pop{animation:pop .6s ease-out}
+@keyframes pop{0%{transform:scale(.97);opacity:.3}100%{transform:scale(1);opacity:1}}
+.navrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+:root{--acc:#7a5a1e;--accsoft:#f1e3bf}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><h1>📒 Unit 2: The Trial Log</h1><div class="sub">The Science Path · The Trial Log · GED Science</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn alt" onclick="showMap()">🗺️ Map</button>
+    <button class="btn gold" onclick="saveLeave()">💾 Save &amp; leave</button>
+  </div>
+</header>
+<div id="pvbar" class="pvbar hidden" role="status">👀 <b>Preview mode.</b> Every session is open so you can look around. Answers are checked so you can see what the page does (Matches / Not yet), but nothing is saved as quest work.</div>
+<div class="app">
+  <main id="main"></main>
+  <aside class="side">
+    <div class="card">
+      <h3>📜 Today's plan</h3>
+      <div class="note" id="planFor"></div>
+      <div id="checklist"></div>
+      <p class="note">Checking steps off is optional. One step at a time. You can stop anytime; your place is saved.</p>
+      <h3 style="margin-top:14px">🙋 Ask a question</h3>
+      <p class="note">Any question is a good question. It is saved with your answers so someone can help later.</p>
+      <textarea id="askT" rows="2" aria-label="Your question"></textarea>
+      <button class="btn alt" style="margin-top:6px" onclick="askQ()">Save my question</button>
+      <h3 style="margin-top:14px">🎒 Loot</h3>
+      <div class="loot" id="loot"></div>
+      <h3 style="margin-top:14px">⚙️ Settings</h3>
+      <label class="toggle"><input type="checkbox" id="soundT" onchange="S.sound=this.checked;save()"> Sound (off by default)</label>
+      <p class="note" id="saveNote"></p>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal hidden" id="modal" onclick="if(event.target===this)closeModal()"></div>
+<script>
+var U={"id":"SCI-U2-trial-log","title":"Unit 2: The Trial Log","icon":"📒","calc":true,"sub":"The Science Path · The Trial Log · GED Science","mapTitle":"The Trial Log Trail","encWord":"Encounter","mapLine":"Four sections in the Trial Log. Sessions open in order. In Session 2, the encounters go in order too. Start with the 📖 spot in each session.","checkLabel":"🖋️ Write it in the Trial Log","winLine":"The page is written in the Trial Log.","accent":"#7a5a1e","accsoft":"#f1e3bf","mapEdge":"#d6c08c","mapDeco":[["🌾",300,330],["🌉",560,350,34],["🐟",600,380],["🌳",830,360],["🍎",870,340],["⛰️",60,360,34]],"hookScene":{"bg":"indoor","props":[["📒",200,150,60],["🏹",110,150,40],["📓",300,155,40]],"cap":"TRIAL LOG"},"doneScene":{"bg":"indoor","props":[["🎒",210,150,60],["📒",140,155,40],["📓",280,155,40]],"cap":"The Trial Log goes in the pack"},"hook":["Calciber the skeleton ranger walks back into the Archive of Hollowmere. Their bow is on one shoulder and the Field Journal is tucked under one arm, full of fair tests.","Orrin the archivist sets a second book on the desk. It is wide and flat, with columns ruled in neat lines. The cover says TRIAL LOG.",{"o":"Orrin","t":"\"Your Field Journal tells us how to set up a fair test. A fair test gives you numbers. This log is where we find out what the numbers say.\""},{"o":"Calciber","t":"Calciber runs a finger down the empty columns. \"Numbers from more than one trial never match exactly.\""},{"o":"Orrin","t":"\"That is why we have the mean. And when something changes, we find out how much it changed, one step at a time. I will print my method on every page, so you never have to hold it in your head.\""},"Calciber opens the Trial Log to the first page. There are four sections, one for each part of the journey."],"how":["There are 4 sessions. Each one is short, about 15 to 25 minutes.","The sessions open in order. Inside most sessions, after you read the intro, you can do the encounters in any order. In Session 2, the encounters build on each other, so they go in order.","You can do one session a day, or stop partway through a session. Your answers save.","A calculator is welcome on every encounter.","Formulas, Orrin's Method, Orrin's rounding rule, and hints are printed right where you need them. Using them is part of how the quest works."],"complete":["Orrin turns the pages of the Trial Log one by one: the torches, the eggs, the hawk, the Saltmarsh wheat, the Brackenford trout, the honey, the march, the orchard. Each page has its means written first, its original labeled, and its answer rounded by the rule.",{"o":"Orrin","t":"He closes the log, wraps it in a soft cloth, and ties it with string. \"Every page in here starts with the means and divides by the original. That is how a trial table is read. This log is ready for the next part of the path.\""},"Calciber puts the Trial Log in the ranger's pack, next to the Field Journal and the map."],"ribsBye":"Snack break! I saved you a (pretend) slice of new-yeast bread.","sessions":[{"id":"S1","title":"Session 1: The Mean of the Trials","short":"1 · The Mean","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 1 intro.","Pick any Session 1 encounter to start. Encounter 1 is a good first stop, but any order is fine.","Save and leave whenever you want."],"scene":{"bg":"indoor","props":[["📃",140,150,34],["📃",200,145,34],["📃",260,150,34],["📒",340,150,40]],"cap":"Three slips of paper"},"intro":["Orrin lays three slips of paper on the desk. Each one has a different number from the same test.",{"o":"Orrin","t":"\"When a ranger runs a test three times, the three results are a little different. The mean is one number that stands for all of them. Add them up, then share the total out evenly.\""},"Calciber writes the formula at the top of the first page of the Trial Log."],"encounters":[{"id":"E1","n":"1","title":"The Torch Trials","calc":true,"scene":{"bg":"indoor","props":[["🔥",150,140,36],["🔥",210,140,36],["🔥",270,140,36]],"mover":["⏳",60,160,34,0,-20],"cap":"48, 53, and 49 minutes","glow":[210,120]},"story":["Before a night patrol, Calciber tests a new kind of pine-pitch torch. They light three torches, one at a time, in the same stone guardroom. Calciber writes down how long each torch burns.",{"table":[["Torch","Burn time"],["Torch 1","48 minutes"],["Torch 2","53 minutes"],["Torch 3","49 minutes"]]}],"task":"Find the mean burn time of the three torches. Write each step.","boxes":[{"t":"📏 Formula","strip":true,"l":["**mean** = (sum of the trials) / (number of trials)","**Sum of the trials** = all the trial numbers added together.","**Number of trials** = how many numbers you added."]}],"steps":["Add the three burn times: 48 + 53 + 49. Type the sum for A.","Count the trials. There are 3 torches, so there are 3 trials.","Divide the sum by 3. Type the mean for B, with its unit (minutes)."],"fields":[{"id":"A","l":"A. Sum of the trials","k":"short","ph":"a number"},{"id":"B","l":"B. Mean burn time","k":"short","ph":"a number and its unit"}],"hints":["**Sum** means add. Add the three numbers in the Burn time column.","The three burn times add up to 150. Now divide 150 by the number of torches."],"loot":{"name":"📘 Codex: mean","text":"mean = (sum of the trials) / (number of trials). Add them all, then divide by how many there are."}},{"id":"E2","n":"2","title":"The Thornby Hen House","calc":true,"scene":{"bg":"field","props":[["🛖",110,160,60],["🐔",220,170,34,true],["🐔",280,172,30,true]],"mover":["🥚",330,175,26,-40,0],"cap":"20, 21, and 23 eggs"},"story":["At a farm in Thornby, a farmer named Mabry keeps a hen house with a new kind of straw bedding. She asks Calciber to log how many eggs she collects each morning for three days.",{"table":[["Morning","Eggs collected"],["Day 1","20"],["Day 2","21"],["Day 3","23"]]}],"task":"Find the mean number of eggs per morning. Write each step.","boxes":[{"t":"📏 Formula","strip":true,"l":["**mean** = (sum of the trials) / (number of trials)","**Sum of the trials** = all the trial numbers added together.","**Number of trials** = how many numbers you added."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["Add the three egg counts: 20 + 21 + 23. Type the sum for A.","Count the trials. There are 3 mornings, so there are 3 trials.","Divide the sum by 3. Your calculator will show a long decimal.","Round the decimal to 0.001, which means keep three numbers after the decimal point. Type it for B."],"fields":[{"id":"A","l":"A. Sum of the trials","k":"short","ph":"a number"},{"id":"B","l":"B. Mean, rounded with Orrin's rounding rule","k":"short","ph":"three places after the point"}],"hints":["**Rounding to 0.001** means three places after the decimal point. Look at the fourth place to decide whether to round up.","The sum is 64. On a calculator, 64 / 3 shows 21.3333333. Keep three places after the point."],"loot":{"name":"🥚 Thornby egg"}},{"id":"E3","n":"3","title":"The Messenger Hawk","calc":true,"scene":{"bg":"snow","props":[["🏚️",330,165,40],["❄️",120,60,22,true],["❄️",250,40,18,true]],"mover":["🦅",60,90,40,230,-20],"cap":"Sorrel the messenger hawk"},"story":["The archive keeps a messenger hawk named Sorrel. Orrin logs how many days Sorrel takes to bring back an answer on five trips. On the last trip, a snowstorm in the mountains kept Sorrel sheltering in a barn for a long while.",{"table":[["Trip","Days to return"],["Trip 1","4"],["Trip 2","3"],["Trip 3","6"],["Trip 4","4"],["Trip 5","23"]]},{"o":"Orrin","t":"\"One trip was much longer than the rest. Let us see what that does to each number.\""}],"task":"Type a short number or one word for each part.","boxes":[{"t":"📏 Formulas","strip":true,"l":["**median** = the middle value when the numbers are listed in order.","**range** = largest value minus smallest value.","**mean** = (sum of the trials) / (number of trials)"]}],"steps":["List the five numbers in order from smallest to largest: 3, 4, 4, 6, 23.","For A, find the middle number in that list. With five numbers, it is the third one.","For B, take the largest number and subtract the smallest number.","For C, add all five numbers, then divide by 5.","For D, look at the trips in the table. Most of them took between 3 and 6 days. Which of your answers for A and C sits in that group?"],"fields":[{"id":"A","l":"A. The median","k":"short","ph":"a number"},{"id":"B","l":"B. The range","k":"short","ph":"a number"},{"id":"C","l":"C. The mean","k":"short","ph":"a number"},{"id":"D","l":"D. Which one is closer to how long most of the trips took: the mean or the median?","k":"short","chips":["mean","median"]}],"hints":["**Median** is about position, not adding. Count to the middle of the ordered list.","The five trips add up to 40. The long snowstorm trip pulls the mean up, but the median stays with the other trips."],"loot":{"name":"📘 Codex: median and range","text":"median = the middle value when the numbers are in order. range = largest value minus smallest value."}}]},{"id":"S2","title":"Session 2: The Saltmarsh Ledger","short":"2 · Saltmarsh","order":true,"checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 2 intro.","Start with Encounter 4. In this session, the encounters go in order.","Save and leave whenever you want."],"scene":{"bg":"indoor","props":[["📚",120,150,44],["🌾",230,150,40],["📖",320,155,40]],"cap":"The Saltmarsh ledger"},"intro":[{"o":"Orrin","t":"Orrin pulls a heavy ledger from a high shelf and blows dust off the cover. \"From the Saltmarsh fields. The farmers there tried a new compost on their wheat. They wrote down the harvest from each plot, and they want to know how much the new compost helped.\""},"He opens it to a page with two small tables.",{"tables":[{"table":[["Plot","Wheat harvest"],["Plot 1","20 bushels"],["Plot 2","24 bushels"],["Plot 3","22 bushels"]],"cap":"Old compost"},{"table":[["Plot","Wheat harvest"],["Plot 4","27 bushels"],["Plot 5","29 bushels"],["Plot 6","28 bushels"]],"cap":"New compost"}]},{"o":"Orrin","t":"\"Three encounters, three steps. First the means. Then the change. Then the rounding.\""}],"encounters":[{"id":"E4","n":"4","title":"Two Composts, Two Means","calc":true,"scene":{"bg":"field","props":[["🌾",100,170,30],["🌾",140,170,30],["🌾",180,170,30],["🌾",260,165,38],["🌾",300,165,38],["🌾",340,165,38]],"mover":["🧺",220,120,34,0,20],"cap":"Old compost and new compost plots"},"story":[{"tables":[{"table":[["Plot","Wheat harvest"],["Plot 1","20 bushels"],["Plot 2","24 bushels"],["Plot 3","22 bushels"]],"cap":"Old compost"},{"table":[["Plot","Wheat harvest"],["Plot 4","27 bushels"],["Plot 5","29 bushels"],["Plot 6","28 bushels"]],"cap":"New compost"}]},{"o":"Calciber","t":"Calciber reads the two tables. \"Before I can say how much the harvest changed, I need one number for each compost.\""}],"task":"Find both means. Write each step.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first.","**Step 2:** Label the original value.","**Step 3:** Use percent change = (new - original) / original x 100.","**Step 4:** Round the percent to a whole number using Orrin's rounding rule.","This encounter is Step 1 only."]},{"t":"📏 Formula","strip":true,"l":["**mean** = (sum of the trials) / (number of trials)","**Sum of the trials** = all the trial numbers added together.","**Number of trials** = how many numbers you added."]}],"steps":["For A, add the old compost harvests: 20 + 24 + 22. Then divide by 3.","For B, add the new compost harvests: 27 + 29 + 28. Then divide by 3.","Type each mean with its unit (bushels)."],"fields":[{"id":"A","l":"A. Mean harvest with the old compost","k":"short","ph":"a number and its unit"},{"id":"B","l":"B. Mean harvest with the new compost","k":"short","ph":"a number and its unit"}],"hints":["Do the two tables one at a time. Each table has 3 plots, so each one divides by 3.","The old compost plots add up to 66. The new compost plots add up to 84."],"loot":{"name":"📄 Ledger page: two means"}},{"id":"E5","n":"5","title":"Label the Original","calc":true,"after":"E4","scene":{"bg":"indoor","props":[["📖",210,150,60]],"mover":["🏷️",80,120,34,100,10],"cap":"Original = the starting value"},"story":["Calciber now has two means: **22 bushels** with the old compost and **28 bushels** with the new compost.",{"o":"Orrin","t":"\"Which one did the farmers start with? That one is the original. It is the number you divide by.\""}],"task":"Write each step.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first. (Done in Encounter 4: 22 and 28.)","**Step 2:** Label the original value.","**Step 3:** Use percent change = (new - original) / original x 100.","**Step 4:** Round the percent to a whole number using Orrin's rounding rule."]},{"t":"📏 Formula","strip":true,"l":["**percent change** = (new - original) / original x 100","**new** = the mean after the change. Here, the new compost mean.","**original** = the mean before the change, the starting value. Here, the old compost mean.","**x 100** turns the decimal into a percent."]}],"steps":["For A, the farmers used the old compost first. Type: original = 22, new = 28.","For B, put the numbers into the formula: (28 - 22) / 22 x 100.","For C, do the subtraction first: 28 - 22. Then divide that answer by 22, the original. Then multiply by 100. Type what your calculator shows."],"fields":[{"id":"A1","l":"A. Original =","k":"short","ph":"a number"},{"id":"A2","l":"A. New =","k":"short","ph":"a number"},{"id":"B","l":"B. The percent change setup with the numbers filled in","k":"short","ph":"( _ - _ ) / _ x 100"},{"id":"C","l":"C. What your calculator shows for the percent change","k":"short","ph":"a number"}],"hints":["**Divide by the original.** The original is the old compost mean, 22, not the new one.","28 - 22 = 6. Then 6 / 22 = 0.2727... Now multiply by 100."],"loot":{"name":"📘 Codex: percent change","text":"percent change = (new - original) / original x 100. Original is the starting value. Positive means an increase. Negative means a decrease."}},{"id":"E6","n":"6","title":"Orrin's Rounding Rule","after":"E5","scene":{"bg":"indoor","props":[["🧮",140,150,44],["📖",280,155,50]],"mover":["✒️",60,100,30,200,30],"cap":"27.2727... and the digits keep going"},"story":[{"o":"Orrin","t":"Calciber's calculator shows 27.2727... and the digits keep going. Orrin taps the ledger. \"A long number is hard to read at market. Round it, then write it in the log.\""}],"task":"Round it, then write the ledger line.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first. (Done: 22 and 28.)","**Step 2:** Label the original value. (Done: 22 is the original.)","**Step 3:** Use percent change = (new - original) / original x 100. (Done: 27.2727...)","**Step 4:** Round the percent to a whole number using Orrin's rounding rule."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["For A, this is a percent, so round it to a whole number. Look at the first number after the decimal point. If it is 5 or more, round up. If it is 4 or less, keep the whole number the same.","The answer is positive, so the harvest went up. That is an increase.","For B, use this pattern: \"The new compost raised the wheat harvest by about ...%.\""],"fields":[{"id":"A","l":"A. Round the percent change with Orrin's rounding rule","k":"short","ph":"a whole number percent"},{"id":"B","l":"B. One short sentence for the Saltmarsh ledger about what the new compost did","k":"sentence","ph":"The new compost raised the wheat harvest by about ...%."}],"hints":["**Whole number** means no decimal point at all. 27.2727... sits between 27 and 28.","The first number after the decimal point is 2. That is 4 or less, so the whole number stays 27."],"loot":{"name":"🌾 Saltmarsh wheat sheaf"}}]},{"id":"S3","title":"Session 3: When the Numbers Fall","short":"3 · Numbers Fall","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 3 intro.","Pick either Session 3 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"water","props":[["🌉",210,130,60],["🐟",150,160,26,true],["🐟",270,165,24,true]],"cap":"The weir at Brackenford"},"intro":["Calciber travels east to the river town of Brackenford, where a wooden weir crosses the water. The fishers there count trout as they swim through a gap in the weir.",{"o":"Orrin","t":"\"Not every change goes up,\" Orrin wrote in a note tucked into the Trial Log. \"When a number falls, the method is the same. The answer just comes out negative, and that means a decrease.\""}],"encounters":[{"id":"E7","n":"7","title":"The Brackenford Weir","calc":true,"scene":{"bg":"water","props":[["🪵",210,135,40],["🎣",340,120,36]],"mover":["🐟",60,160,30,290,0],"cap":"Trout through the gap in the weir"},"story":["Before the summer, the fishers counted trout at the weir on three mornings. After a long dry summer, they counted again on three mornings.",{"tables":[{"cap":"Before the dry summer","table":[["Morning","Trout counted"],["Morning 1","40"],["Morning 2","36"],["Morning 3","38"]]},{"cap":"After the dry summer","table":[["Morning","Trout counted"],["Morning 1","30"],["Morning 2","32"],["Morning 3","31"]]}]}],"task":"Find the percent change. Write each step.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first.","**Step 2:** Label the original value.","**Step 3:** Use percent change = (new - original) / original x 100.","**Step 4:** Round the percent to a whole number using Orrin's rounding rule."]},{"t":"📏 Formulas","strip":true,"l":["**mean** = (sum of the trials) / (number of trials)","**percent change** = (new - original) / original x 100","**new** = the mean after the change. **original** = the mean before the change, the starting value. **x 100** turns the decimal into a percent."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["For A, add the three \"before\" counts and divide by 3. Then add the three \"after\" counts and divide by 3.","For B, the \"before\" mean is the starting value. Label it original.","For C, write (new - original) / original x 100 with your two means. Subtract first, divide by the original, then multiply by 100.","For D, the answer is negative. Round it to a whole number and say it as a decrease. For example, -10% is a 10% decrease."],"fields":[{"id":"A1","l":"A. Mean before","k":"short","ph":"a number"},{"id":"A2","l":"A. Mean after","k":"short","ph":"a number"},{"id":"B","l":"B. Original =","k":"short","ph":"the starting mean"},{"id":"C1","l":"C. Percent change setup","k":"short","ph":"(new - original) / original x 100 with your numbers"},{"id":"C2","l":"C. What your calculator shows","k":"short","ph":"a number"},{"id":"D1","l":"D. Rounded percent change","k":"short","ph":"a whole number, like 12%"},{"id":"D2","l":"D. Increase or decrease?","k":"short","chips":["increase","decrease"]}],"hints":["**Negative** is fine here. A minus sign at the front just means the number went down.","The means are 38 and 31. The original is 38. So it is (31 - 38) / 38 x 100, and 31 - 38 = -7."],"loot":{"name":"🐟 Brackenford trout token"}},{"id":"E8","n":"8","title":"The Clerk's Honey Log","calc":true,"scene":{"bg":"indoor","props":[["🍯",120,150,36],["🍯",165,150,36],["🐝",260,80,24,true],["☘️",320,160,30]],"mover":["✏️",60,110,30,220,20],"cap":"Hollis's beehive records"},"story":["In the Brackenford market hall, a young clerk named Hollis keeps the town's beehive records. The beekeepers planted clover near the hives this year, and Hollis worked out how much the honey changed.","Hollis shows Calciber the log:",{"list":["\"Mean honey per hive before the clover: 16 jars.\"","\"Mean honey per hive after the clover: 20 jars.\"","\"Percent change: (20 - 16) / 20 x 100 = 20%.\""]},{"o":"Calciber","t":"Calciber reads it and nods kindly. \"Good start. The means are right. One number in the setup needs to change.\""}],"task":"Find what to change, then fix it.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first.","**Step 2:** Label the original value.","**Step 3:** Use percent change = (new - original) / original x 100.","**Step 4:** Round the percent to a whole number using Orrin's rounding rule."]},{"t":"📏 Formula","strip":true,"l":["**percent change** = (new - original) / original x 100","**new** = the mean after the change. **original** = the mean before the change, the starting value. **x 100** turns the decimal into a percent."]}],"steps":["Label the two means. Before the clover is the starting value, so 16 is the original. After the clover, 20 is the new.","Look at the number Hollis divided by. Compare it to the original.","For A, the pattern \"Hollis divided by ... instead of ...\" is enough.","For B, write (20 - 16) / 16 x 100 and work it out. Round to a whole number if needed."],"fields":[{"id":"A","l":"A. In one sentence, say what is off in Hollis's setup.","k":"sentence","ph":"Hollis divided by ... instead of ..."},{"id":"B1","l":"B. The correct setup","k":"short","ph":"( _ - _ ) / _ x 100"},{"id":"B2","l":"B. The correct percent change","k":"short","ph":"a percent"}],"hints":["The bottom of the fraction should always be the original, the \"before\" number.","Hollis divided by 20, the new mean. 20 - 16 = 4. Try 4 / 16, then multiply by 100."],"loot":{"name":"🍯 Clover honey jar"}}]},{"id":"S4","title":"Session 4: Rates and Rechecks","short":"4 · Rates","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 4 intro.","Pick any Session 4 encounter to start. The side quest is optional.","Save and leave whenever you want."],"scene":{"bg":"indoor","props":[["📒",160,150,44],["✏️",240,150,34],["🪑",320,165,40]],"cap":"The last section of the Trial Log"},"intro":[{"o":"Orrin","t":"Orrin turns to the last section of the Trial Log. \"Two more pages. One is a rate, which tells how much happens in each day or each hour. The other is a percent change with brand-new numbers, so you can see the whole method in one place.\""},"Calciber sharpens a pencil and pulls up a chair."],"encounters":[{"id":"E9","n":"9","title":"The March to Greywater","calc":true,"scene":{"bg":"field","props":[["⛰️",200,120,50],["🏘️",370,140,44]],"mover":["🚶",40,165,36,300,0],"cap":"21, 15, and 24 miles"},"story":["Calciber carries a sealed letter from the archive to the town of Greywater. Each night, they write down how far they walked that day.",{"table":[["Day","Miles walked"],["Day 1","21 miles"],["Day 2 (steep hills)","15 miles"],["Day 3","24 miles"]]}],"task":"Find Calciber's rate in miles per day. Write each step.","boxes":[{"t":"📏 Formula","strip":true,"l":["**rate** = total amount / total time","**Total amount** = all the miles added together.","**Total time** = how many days the march took."]}],"steps":["For A, add the miles from all three days: 21 + 15 + 24. Type the total with its unit (miles).","Count the days. The march took 3 days.","For B, divide the total distance by 3. Type the rate with its unit (miles per day)."],"fields":[{"id":"A","l":"A. Step 1: Total distance","k":"short","ph":"a number and its unit"},{"id":"B","l":"B. Step 2: Rate in miles per day","k":"short","ph":"a number and its unit"}],"hints":["**Per day** means \"for each day.\" That is why you divide by the number of days.","The total distance is 60 miles. Now divide 60 by 3."],"loot":{"name":"📘 Codex: rate","text":"rate = total amount / total time. \"Per day\" means for each day, so divide by the number of days."}},{"id":"E10","n":"10","title":"The Ashby Orchard","calc":true,"scene":{"bg":"field","props":[["🌳",110,165,50],["🌳",210,160,54],["🌳",310,165,50],["🐝",160,90,22,true]],"mover":["🍎",210,120,26,0,50],"cap":"Before the hives and after"},"story":["At the Ashby orchard, the grower set beehives among the apple trees this spring. She counted baskets of apples from three trees last year, before the hives, and from the same three trees this year, after the hives.",{"tables":[{"cap":"Before the hives","table":[["Tree","Baskets of apples"],["Tree 1","23"],["Tree 2","24"],["Tree 3","25"]]},{"cap":"After the hives","table":[["Tree","Baskets of apples"],["Tree 1","30"],["Tree 2","31"],["Tree 3","32"]]}]}],"task":"Find the percent change. Write each step.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first.","**Step 2:** Label the original value.","**Step 3:** Use percent change = (new - original) / original x 100.","**Step 4:** Round the percent to a whole number using Orrin's rounding rule."]},{"t":"📏 Formulas","strip":true,"l":["**mean** = (sum of the trials) / (number of trials)","**percent change** = (new - original) / original x 100","**new** = the mean after the change. **original** = the mean before the change, the starting value. **x 100** turns the decimal into a percent."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["For A, find the mean of the \"before\" baskets and the mean of the \"after\" baskets.","For B, the \"before\" mean is the starting value. Label it original.","For C, write (new - original) / original x 100 with your two means, then work it out.","For D, round to a whole number and say whether the harvest went up or down."],"fields":[{"id":"A1","l":"A. Mean before","k":"short","ph":"a number"},{"id":"A2","l":"A. Mean after","k":"short","ph":"a number"},{"id":"B","l":"B. Original =","k":"short","ph":"the starting mean"},{"id":"C1","l":"C. Percent change setup","k":"short","ph":"(new - original) / original x 100 with your numbers"},{"id":"C2","l":"C. What your calculator shows","k":"short","ph":"a number"},{"id":"D1","l":"D. Rounded percent change","k":"short","ph":"a whole number, like 12%"},{"id":"D2","l":"D. Increase or decrease?","k":"short","chips":["increase","decrease"]}],"hints":["**Divide by the original.** Last year's mean, before the hives, goes on the bottom.","The means are 24 and 31. So it is (31 - 24) / 24 x 100, and 31 - 24 = 7."],"loot":{"name":"🍎 Ashby apple"}},{"id":"SIDE","n":"✦","side":true,"title":"Side Quest: The Loaf Trial","calc":true,"scene":{"bg":"indoor","props":[["👨‍🍳",80,160,44],["🔥",340,165,36]],"mover":["🍞",210,170,36,0,-26],"cap":"Old yeast and new yeast"},"story":[{"o":"Ribs","t":"Baby Back Ribs bursts into the archive with flour on both hands. \"Calciber! The bakery down the lane sold me a new yeast. I baked three loaves with my old yeast and three loaves with the new yeast, same recipe, same oven. Then I measured how tall each loaf was. Is the new yeast really better? By how much?\""},"He sets down a sheet of paper, a little floury.",{"tables":[{"cap":"Old yeast","table":[["Loaf","Height"],["Loaf 1","80 mm"],["Loaf 2","85 mm"],["Loaf 3","90 mm"]]},{"cap":"New yeast","table":[["Loaf","Height"],["Loaf 4","100 mm"],["Loaf 5","102 mm"],["Loaf 6","104 mm"]]}]}],"task":"Find the percent change in loaf height. Write each step.","boxes":[{"t":"📐 Orrin's Method","l":["**Step 1:** Write each mean first.","**Step 2:** Label the original value.","**Step 3:** Use percent change = (new - original) / original x 100.","**Step 4:** Round the percent to a whole number using Orrin's rounding rule."]},{"t":"📏 Formulas","strip":true,"l":["**mean** = (sum of the trials) / (number of trials)","**percent change** = (new - original) / original x 100","**new** = the mean after the change. **original** = the mean before the change, the starting value. **x 100** turns the decimal into a percent."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["For A, find the mean of the old yeast loaves and the mean of the new yeast loaves.","For B, Baby Back Ribs used the old yeast first. Label that mean original.","For C, write (new - original) / original x 100, work it out, and round to a whole number."],"fields":[{"id":"A1","l":"A. Mean height with the old yeast","k":"short","ph":"a number"},{"id":"A2","l":"A. Mean height with the new yeast","k":"short","ph":"a number"},{"id":"B","l":"B. Original =","k":"short","ph":"the starting mean"},{"id":"C1","l":"C. Percent change, rounded","k":"short","ph":"a whole number percent"},{"id":"C2","l":"C. Increase or decrease?","k":"short","chips":["increase","decrease"]}],"hints":["The means are 85 mm and 102 mm. The original is 85, so it is (102 - 85) / 85 x 100."],"after_win":[{"o":"Ribs","t":"Baby Back Ribs writes \"NEW YEAST\" on a card in big letters and tapes it to the flour bin. \"The numbers have spoken. My loaves will be famous. And measured.\""}],"loot":{"name":"🍞 A tall, measured loaf"}}]}]};
+/* =====================================================================
+ * Science Path quest page, inside the Family Hub's Quests tab (built like Quest 1).
+ * Each typed answer goes to google.script.run.saveQuestAnswer(record). The SERVER checks it
+ * and saves {questId, problemId, field, answer, matched, date}. No answer key is in this page.
+ * If the Hub can't be reached, answers wait in localStorage (pending) and are sent when it is back.
+ * window.QUEST_HOST (set by the Hub) gives person() and leave(). window.QUEST_PREVIEW=true means a
+ * preview (not Gabe): everything is open, nothing is queued, and progress is kept under a separate key.
+ * ===================================================================== */
+var QUEST_ID=U.id;
+var QUEST_SAVE_FN='saveQuestAnswer';
+function detectPreview(){try{if(window.QUEST_PREVIEW===true||window.QUEST_PREVIEW==='1')return true;if(window.QUEST_HOST&&window.QUEST_HOST.preview===true)return true;}catch(e){}try{return /preview/.test(String(location.hash||''));}catch(e){return false;}}
+var PREVIEW=detectPreview();
+var STORE_KEY=(PREVIEW?'gabeQuestPreview:':'gabeQuest:')+QUEST_ID;
+var PREVIEW_NOTE='Preview mode: this answer is checked here so you can see the page, but nothing is saved.';
+var OFFLINE='Saved on this device. It will be checked when the Hub is connected.';
+var SAVE_NOTE='What is saved: your typed answers, whether each one matches, any questions you write, and the date. Nothing about time or screens is saved. Your checklist and your place on the map stay on this device.';
+
+var S={hook:false,intro:{},done:{},pinned:{},ans:{},fb:{},hints:{},checks:{},loot:[],sound:false,view:'map',pending:[]};
+function load(){try{var x=JSON.parse(localStorage.getItem(STORE_KEY)||'null');if(x&&typeof x==='object')for(var k in x)S[k]=x[k];}catch(e){}
+  ['intro','done','pinned','ans','fb','hints','checks'].forEach(function(k){if(!S[k]||typeof S[k]!=='object'||Array.isArray(S[k]))S[k]={};});
+  if(!Array.isArray(S.loot))S.loot=[];if(!Array.isArray(S.pending))S.pending=[];if(PREVIEW)S.pending=[];}
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hubPerson(){try{return window.QUEST_HOST&&QUEST_HOST.person?String(QUEST_HOST.person()||''):'';}catch(e){return '';}}
+function hubOk(){try{return !!(window.google&&google.script&&google.script.run);}catch(e){return false;}}
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2800);}
+var AC=null;function chime(){if(!S.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();[523,659,784].forEach(function(f,i){var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+i*.12;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.07,t+.04);g.gain.exponentialRampToValueAtTime(.0001,t+.5);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.55);});}catch(e){}}
+function showPv(){var b=$('pvbar');if(b)b.classList.remove('hidden');}
+
+/* ---- saving (same record shape as Quest 1) ---- */
+function hubSave(problemId,field,answer){
+  var rec={questId:QUEST_ID,problemId:problemId,field:field,answer:String(answer).slice(0,300),date:today(),person:hubPerson()};
+  return new Promise(function(res){
+    var keep=function(){if(PREVIEW){res({readonly:true,local:true});return;}S.pending=(S.pending||[]).concat([rec]).slice(-300);save();res(null);};
+    if(!hubOk())return keep();
+    try{google.script.run.withSuccessHandler(function(r){if(r&&r.preview){showPv();}if(!PREVIEW)flushPending();res(r||null);}).withFailureHandler(function(e){
+        var m=String(e&&e.message||e);if(/read-only|view-as/i.test(m)){res({readonly:true});}else if(/not available|only for gabe|pick who/i.test(m)){res({blocked:true,msg:m});}else keep();
+      })[QUEST_SAVE_FN](rec);}catch(e){keep();}
+  });
+}
+var flushing=false;
+/* Sends answers that were kept on this device. Only sends records made by the same person who is signed in now. */
+function flushPending(){if(PREVIEW||flushing||!hubOk()||!(S.pending&&S.pending.length))return;var me=hubPerson();
+  var p=S.pending.filter(function(r){return !r.person||!me||r.person===me;});var rest=S.pending.filter(function(r){return p.indexOf(r)<0;});
+  if(!p.length)return;flushing=true;S.pending=rest;save();var left=p.length;
+  p.forEach(function(rec){rec.person=rec.person||me;try{google.script.run.withSuccessHandler(function(){if(--left<=0)flushing=false;}).withFailureHandler(function(e){if(!/read-only|view-as|not available/i.test(String(e&&e.message||e))){S.pending=(S.pending||[]).concat([rec]);save();}if(--left<=0)flushing=false;})[QUEST_SAVE_FN](rec);}catch(e){flushing=false;}});}
+window.addEventListener('online',function(){flushPending();});
+
+/* ---- structure helpers ---- */
+var ENC={},SES={};
+U.sessions.forEach(function(s,si){s.idx=si;SES[s.id]=s;s.encounters.forEach(function(e){e.sid=s.id;ENC[e.id]=e;});});
+function cleared(id){return !!(S.done[id]||S.pinned[id]);}
+function sessionComplete(s){return s.encounters.filter(function(e){return !e.side;}).every(function(e){return cleared(e.id);});}
+function sessionOpen(s){if(PREVIEW)return true;if(s.idx===0)return true;return sessionComplete(U.sessions[s.idx-1]);}
+function encOpen(e){var s=SES[e.sid];if(PREVIEW)return true;if(!sessionOpen(s)||!S.intro[s.id])return false;if(e.after&&!cleared(e.after))return false;return true;}
+function allComplete(){return U.sessions.every(sessionComplete);}
+function currentSession(){for(var i=0;i<U.sessions.length;i++){var s=U.sessions[i];if(!sessionComplete(s))return s;}return U.sessions[U.sessions.length-1];}
+function chamberOf(cid){return (U.chambers||[]).filter(function(c){return c.id===cid;})[0];}
+function chamberComplete(c){return U.sessions.filter(function(s){return s.chamber===c.id;}).every(sessionComplete);}
+function chamberOpen(c){var first=U.sessions.filter(function(s){return s.chamber===c.id;})[0];return first?sessionOpen(first):false;}
+
+/* ---- art ---- */
+function calciberSVG(){return '<svg viewBox="0 0 100 100" aria-label="Calciber the skeleton ranger, smiling"><rect width="100" height="100" fill="#2f4a4a"/><path d="M14 100 Q16 58 50 52 Q84 58 86 100Z" fill="#3f6b55"/><path d="M20 46 Q50 -2 80 46 L74 60 Q50 44 26 60Z" fill="#355c4a"/><ellipse cx="50" cy="48" rx="21" ry="22" fill="#f2ead8"/><ellipse cx="41" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><ellipse cx="59" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><circle cx="42" cy="46" r="2.4" fill="#8fe0d6"/><circle cx="60" cy="46" r="2.4" fill="#8fe0d6"/><path d="M48 55 L50 52 L52 55Z" fill="#2b3a3a"/><path d="M40 61 Q50 68 60 61" stroke="#2b3a3a" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M44 63v2M50 64v2.5M56 63v2" stroke="#2b3a3a" stroke-width="1.4"/><path d="M84 20 Q96 50 84 84" stroke="#c9a24a" stroke-width="3" fill="none"/><line x1="84" y1="20" x2="84" y2="84" stroke="#efe3c8" stroke-width="1"/></svg>';}
+function orrinSVG(){return '<svg viewBox="0 0 100 100" aria-label="Orrin the calm dwarf archivist"><rect width="100" height="100" fill="#4a3c2c"/><path d="M12 100 Q14 66 50 62 Q86 66 88 100Z" fill="#2c6b67"/><ellipse cx="50" cy="42" rx="20" ry="20" fill="#e8bf98"/><path d="M28 30 Q50 10 72 30 Q66 22 50 22 Q34 22 28 30Z" fill="#b9b2a6"/><path d="M30 48 Q30 90 50 92 Q70 90 70 48 Q60 60 50 58 Q40 60 30 48Z" fill="#d9d3c7"/><circle cx="42" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><circle cx="58" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><line x1="48" y1="42" x2="52" y2="42" stroke="#9c7a2e" stroke-width="2"/><circle cx="42" cy="42" r="1.8" fill="#3b2e17"/><circle cx="58" cy="42" r="1.8" fill="#3b2e17"/><path d="M44 56 Q50 60 56 56" stroke="#7a5a3a" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="58" y="74" width="26" height="18" rx="2" fill="#7a2f2a"/><line x1="71" y1="74" x2="71" y2="92" stroke="#c9a24a"/></svg>';}
+function ribsSVG(){return '<svg viewBox="0 0 100 100" aria-label="Baby Back Ribs, a small smiling skeleton chef"><rect width="100" height="100" fill="#3a4a44"/><path d="M22 100 Q24 70 50 66 Q76 70 78 100Z" fill="#efe3c8"/><path d="M38 72 h24 v28 h-24z" fill="#3f8f8a"/><circle cx="50" cy="82" r="2" fill="#c9a24a"/><rect x="34" y="20" width="32" height="12" rx="3" fill="#fbf6ea" stroke="#c7b48a"/><circle cx="38" cy="18" r="8" fill="#fbf6ea"/><circle cx="50" cy="13" r="9" fill="#fbf6ea"/><circle cx="62" cy="18" r="8" fill="#fbf6ea"/><ellipse cx="50" cy="48" rx="18" ry="18" fill="#f2ead8"/><ellipse cx="43" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><ellipse cx="57" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><circle cx="44" cy="46" r="2" fill="#f3c98a"/><circle cx="58" cy="46" r="2" fill="#f3c98a"/><path d="M48.5 55 L50 53 L51.5 55Z" fill="#2b3a3a"/><path d="M42 59 Q50 66 58 59" stroke="#2b3a3a" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M80 60 v28 M76 60 v8 M84 60 v8 M76 68 h8" stroke="#c9a24a" stroke-width="2.5" stroke-linecap="round"/></svg>';}
+var FOLK_COL=['#7a5a3a','#3f6b55','#6b4d7a','#7a2f2a','#2c5a7a','#8a6a2a'];
+function folkSVG(name){var h=0;for(var i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;var c=FOLK_COL[h%FOLK_COL.length],skin=['#e8bf98','#c99a72','#a8754f','#f0d2b4'][h%4],hair=['#5a3a22','#2b2219','#b98a4a','#7a7a7a'][(h>>3)%4];
+  return '<svg viewBox="0 0 100 100" aria-label="'+esc(name)+'"><rect width="100" height="100" fill="#3a4448"/><path d="M14 100 Q16 64 50 60 Q84 64 86 100Z" fill="'+c+'"/><ellipse cx="50" cy="44" rx="19" ry="20" fill="'+skin+'"/><path d="M30 40 Q32 18 50 18 Q68 18 70 40 Q62 28 50 28 Q38 28 30 40Z" fill="'+hair+'"/><circle cx="43" cy="45" r="2.4" fill="#2b2219"/><circle cx="57" cy="45" r="2.4" fill="#2b2219"/><path d="M43 54 Q50 59 57 54" stroke="#5a3a22" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';}
+var WHO={Orrin:['Orrin, the archivist',orrinSVG],Ribs:['Baby Back Ribs, Calciber\'s little brother (future famous chef)',ribsSVG],Calciber:['Calciber, the ranger',calciberSVG]};
+function say(who,txt){var w=WHO[who],pic=w?w[1]():folkSVG(who),nm=w?w[0]:who;return '<div class="dlg"><div class="portrait">'+pic+'</div><div class="bubble"><b class="who">'+esc(nm)+'</b>'+md(txt)+'</div></div>';}
+
+/* Scenes: a painted backdrop plus props. On a match, the "mover" travels and the scene lights up. */
+var BG={
+  indoor:'<rect width="420" height="200" fill="#4a3c2c"/><rect y="150" width="420" height="50" fill="#5f4a33"/><path d="M300 150 V60 Q340 20 380 60 V150Z" fill="#2f4a5a" stroke="#c9a24a" stroke-width="3"/><rect x="30" y="40" width="150" height="8" fill="#7a5a3a"/><rect x="30" y="95" width="150" height="8" fill="#7a5a3a"/>'+[0,1,2,3,4,5].map(function(i){return '<rect x="'+(36+i*24)+'" y="'+(14+i%2*6)+'" width="16" height="'+(26-i%2*6)+'" fill="'+['#2c6b67','#9c7a2e','#7a2f2a','#3f8f8a','#5a4a33','#6b4d7a'][i]+'"/>';}).join(''),
+  field:'<rect width="420" height="200" fill="#bfdbe8"/><circle cx="360" cy="40" r="22" fill="#f3d27a"/><path d="M0 120 Q100 80 210 110 T420 100 V200 H0Z" fill="#8fb07a"/><path d="M0 150 Q120 130 260 150 T420 145 V200 H0Z" fill="#6f9a5a"/>',
+  night:'<rect width="420" height="200" fill="#1f2b44"/>'+[[40,30],[90,60],[150,20],[230,45],[300,25],[380,70],[340,110],[60,100]].map(function(p){return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.8" fill="#efe3c8"/>';}).join('')+'<path d="M0 170 Q140 140 280 165 T420 160 V200 H0Z" fill="#2f3f3a"/>',
+  snow:'<rect width="420" height="200" fill="#dfe9f0"/><path d="M0 120 L80 50 L150 110 L230 40 L320 115 L420 60 V200 H0Z" fill="#b9c8d4"/><path d="M60 68 L80 50 L98 66Z M210 58 L230 40 L250 58Z" fill="#fff"/><path d="M0 150 Q140 130 280 150 T420 140 V200 H0Z" fill="#f7fbff"/>',
+  water:'<rect width="420" height="200" fill="#c6e0ea"/><path d="M0 100 Q90 70 200 95 T420 85 V200 H0Z" fill="#8fb07a"/><path d="M0 130 Q100 120 210 132 T420 126 V200 H0Z" fill="#5f9fb5"/><path d="M20 150 q20 -6 40 0 M120 165 q20 -6 40 0 M260 150 q20 -6 40 0" stroke="#d9eef5" stroke-width="2" fill="none"/>',
+  desert:'<rect width="420" height="200" fill="#f3d9a6"/><circle cx="330" cy="45" r="28" fill="#f5b041"/><path d="M0 130 Q90 90 200 125 T420 110 V200 H0Z" fill="#e0b46a"/><path d="M0 160 Q130 135 260 160 T420 150 V200 H0Z" fill="#cf9a4e"/>',
+  vault:'<rect width="420" height="200" fill="#3a3a40"/>'+[0,1,2,3,4,5,6].map(function(i){return '<rect x="'+(12+i*58)+'" y="8" width="54" height="26" fill="#45454c" stroke="#2c2c31"/>';}).join('')+'<rect y="160" width="420" height="40" fill="#2c2c31"/>'+[0,1,2,3,4].map(function(i){return '<g><circle cx="'+(40+i*80)+'" cy="52" r="4" fill="#9c7a2e"/><rect x="'+(28+i*80)+'" y="56" width="24" height="70" fill="#efe3c8" stroke="#c7b48a"/></g>';}).join(''),
+  chamber:'<rect width="420" height="200" fill="#3d3a36"/><path d="M140 200 V70 Q210 10 280 70 V200Z" fill="#2a2724" stroke="#c9a24a" stroke-width="4"/><rect y="180" width="420" height="20" fill="#2a2724"/>',
+  fair:'<rect width="420" height="200" fill="#cfe3ee"/><path d="M0 140 Q120 120 240 140 T420 135 V200 H0Z" fill="#8fb07a"/><path d="M40 60 L70 30 L100 60Z M300 60 L330 30 L360 60Z" fill="#c0504d"/><rect x="45" y="60" width="50" height="40" fill="#efe3c8"/><rect x="305" y="60" width="50" height="40" fill="#efe3c8"/>',
+  map:'<rect width="420" height="200" fill="#efe3c8"/><path d="M20 30 Q120 10 200 40 T400 30 V180 Q300 190 200 170 T20 180Z" fill="#e4d4b0" stroke="#9c7a2e" stroke-width="2"/><path d="M60 140 Q110 120 160 140" stroke="#7fb3ad" stroke-width="6" fill="none"/>'
+};
+function scene(e){var sc=e.scene||{bg:'indoor'};var h='<svg viewBox="0 0 420 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+(BG[sc.bg]||BG.indoor);
+  h+='<circle class="glow" cx="'+((sc.glow||[210,100])[0])+'" cy="'+((sc.glow||[210,100])[1])+'" r="60" fill="#f6e3a1"/>';
+  (sc.props||[]).forEach(function(p){h+='<text x="'+p[1]+'" y="'+p[2]+'" font-size="'+(p[3]||34)+'" text-anchor="middle"'+(p[4]?' class="bob"':'')+'>'+p[0]+'</text>';});
+  if(sc.mover){var m=sc.mover;h+='<g class="mover" style="--dx:'+(m[4]||0)+'px;--dy:'+(m[5]||0)+'px"><text x="'+m[1]+'" y="'+m[2]+'" font-size="'+(m[3]||36)+'" text-anchor="middle">'+m[0]+'</text></g>';}
+  h+='<g class="spark">'+[[60,40],[370,50],[200,30],[120,150],[320,160]].map(function(p){return '<text x="'+p[0]+'" y="'+p[1]+'" font-size="20" text-anchor="middle">✨</text>';}).join('')+'</g>';
+  if(sc.cap)h+='<text x="210" y="194" text-anchor="middle" fill="#fff" stroke="#2e2619" stroke-width="3" paint-order="stroke" font-family="Georgia" font-size="13">'+esc(sc.cap)+'</text>';
+  return h+'</svg>';}
+
+/* ---- story renderer ---- */
+function storyHTML(items){return (items||[]).map(function(it){
+  if(typeof it==='string')return '<p>'+md(it)+'</p>';
+  if(it.o)return say(it.o,it.t);
+  if(it.list)return '<ul>'+it.list.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>';
+  if(it.tables)return '<div class="tables">'+it.tables.map(tableHTML).join('')+'</div>';
+  if(it.table)return tableHTML(it);
+  return '';}).join('');}
+function tableHTML(t){var r=t.table;return '<div>'+(t.cap?'<div class="tcap">'+esc(t.cap)+'</div>':'')+'<table class="data"><thead><tr>'+r[0].map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'+r.slice(1).map(function(row){return '<tr>'+row.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';}
+function boxesHTML(bx){if(!bx||!bx.length)return '';return '<div class="boxes">'+bx.map(function(b){return '<div class="kbox'+(b.strip?' strip':'')+'"><h4>'+esc(b.t)+'</h4><ul>'+b.l.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul></div>';}).join('')+'</div>';}
+
+/* ---- side panel ---- */
+function drawSide(){var s=currentSession(),ck=S.checks[s.id]||[];
+  $('planFor').textContent=s.title;
+  $('checklist').innerHTML=(s.checklist||[]).map(function(t,i){return '<label class="chk"><input type="checkbox"'+(ck[i]?' checked':'')+' onchange="setCheck(\''+s.id+'\','+i+',this.checked)"><span>'+(i===0?'<b>Do this first:</b> ':'')+esc(t)+'</span></label>';}).join('');
+  $('loot').innerHTML=S.loot.length?S.loot.map(function(n,i){var L=lootOf(n);return L&&L.text?'<button class="lootitem" onclick="codex('+i+')">'+esc(n)+'</button>':'<span class="lootitem">'+esc(n)+'</span>';}).join(''):'<span class="note">Pages and keys from each encounter land here.</span>';
+  $('soundT').checked=!!S.sound;$('saveNote').textContent=SAVE_NOTE;}
+function setCheck(sid,i,v){var c=S.checks[sid]||[];c[i]=v;S.checks[sid]=c;save();}
+function lootOf(name){for(var k in ENC){var L=ENC[k].loot;if(L&&L.name===name)return L;}return null;}
+function giveLoot(e){var L=e.loot||{name:'📄 Page: '+e.title};if(S.loot.indexOf(L.name)<0){S.loot.push(L.name);save();drawSide();toast('Loot: '+L.name);}}
+function codex(i){var n=S.loot[i],L=lootOf(n);if(!L)return;var m=$('modal');m.innerHTML='<div class="card parch pop" role="dialog" aria-label="'+esc(n)+'"><h3>'+esc(n)+'</h3><p>'+md(L.text)+'</p><button class="btn" onclick="closeModal()">Close</button></div>';m.classList.remove('hidden');}
+function closeModal(){$('modal').classList.add('hidden');$('modal').innerHTML='';}
+
+/* ---- map ---- */
+function nodeList(){var out=[];U.sessions.forEach(function(s){out.push({type:'intro',s:s});s.encounters.forEach(function(e){out.push({type:'enc',s:s,e:e});});});return out;}
+function showMap(){S.view='map';save();
+  if(!S.hook&&!PREVIEW){showHook();return;}
+  var n=U.sessions.length,W=960,colW=W/n,maxN=0;U.sessions.forEach(function(s){maxN=Math.max(maxN,s.encounters.length+1);});
+  var H=Math.max(380,130+maxN*78+30),pts=[],nodes='',bands='',pathPts=[],cur=currentSession();
+  if(U.chambers){U.chambers.forEach(function(c){var ss=U.sessions.filter(function(s){return s.chamber===c.id;});if(!ss.length)return;var x0=ss[0].idx*colW+6,x1=(ss[ss.length-1].idx+1)*colW-6,open=chamberOpen(c),dn=chamberComplete(c);
+    bands+='<g opacity="'+(open?1:.55)+'"><rect x="'+x0+'" y="54" width="'+(x1-x0)+'" height="'+(H-70)+'" rx="22" fill="'+c.color+'" opacity=".22" stroke="'+c.color+'" stroke-width="3"/><text x="'+((x0+x1)/2)+'" y="'+(H-22)+'" text-anchor="middle" font-family="Georgia" font-size="15" fill="#3b2e17">'+(dn?'✓ ':open?'🔑 ':'🔒 ')+esc(c.plate)+'</text></g>';});}
+  U.sessions.forEach(function(s,si){var cx=si*colW+colW/2,open=sessionOpen(s),dn=sessionComplete(s);
+    bands+='<rect x="'+(cx-colW/2+6)+'" y="54" width="'+(colW-12)+'" height="'+(H-64)+'" rx="18" fill="'+(open?'#fffaf0':'#cbbf9f')+'" opacity="'+(open?.35:.35)+'"/>';
+    bands+='<g><rect x="'+(cx-colW/2+10)+'" y="12" width="'+(colW-20)+'" height="36" rx="10" fill="'+(dn?'#cfe6e2':open?'#f6ecd6':'#d9cdb2')+'" stroke="#9c7a2e"/><text x="'+cx+'" y="35" text-anchor="middle" font-family="Georgia" font-size="'+(n>4?12:14)+'" fill="#3b2e17">'+(dn?'✓ ':open?'':'🔒 ')+esc(s.short||s.title)+'</text></g>';
+    var items=[{type:'intro',s:s}].concat(s.encounters.map(function(e){return {type:'enc',s:s,e:e};}));
+    items.forEach(function(it,k){var x=cx+(k%2?1:-1)*Math.min(30,colW/5),y=92+k*78;if(k===0)x=cx;
+      var id,label,title,cls='node',isOpen,isDone;
+      if(it.type==='intro'){id='I_'+s.id;label='📖';title='Intro';isOpen=sessionOpen(s);isDone=!!S.intro[s.id];}
+      else{var e=it.e;id=e.id;label=e.side?'✦':e.n;title=e.title+(e.side?' (optional)':'');isOpen=encOpen(e);isDone=!!S.done[e.id];if(S.pinned[e.id]&&!isDone)cls+=' pinned';}
+      if(isDone)cls+=' done';if(!isOpen)cls+=' locked';
+      if(isOpen&&!isDone&&s===cur&&!(it.type==='enc'&&(it.e.side||S.pinned[it.e.id])))cls+=' next';
+      if(!(it.type==='enc'&&it.e.side))pathPts.push([x,y]);
+      var act=isOpen?(it.type==='intro'?'openIntro(\''+s.id+'\')':'openEnc(\''+id+'\')'):'lockedMsg(\''+s.id+'\')';
+      nodes+='<g class="'+cls+'" tabindex="0" role="button" aria-label="'+esc(title)+(isDone?' (done)':'')+(isOpen?'':' (locked for now)')+'" onclick="'+act+'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();'+act+'}" transform="translate('+x.toFixed(1)+' '+y+')"><circle class="ring" r="25"/><text text-anchor="middle" y="6">'+(isDone?'✓':isOpen?label:'🔒')+'</text><text class="lbl" text-anchor="middle" y="42">'+esc(short(title,n>4?18:24))+'</text></g>';});});
+  var path=pathPts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1];}).join(' ');
+  var deco=(U.mapDeco||[]).map(function(d){return '<text x="'+d[1]+'" y="'+d[2]+'" font-size="'+(d[3]||26)+'" opacity=".55" text-anchor="middle">'+d[0]+'</text>';}).join('');
+  var h='<div class="card parch pop"><h2>🗺️ '+esc(U.mapTitle)+'</h2>'+say('Orrin',U.mapLine)+'<div class="chipline">'+(PREVIEW?'<span class="chip">👀 Preview: every session is open</span>':'')+(U.calc?'<span class="chip">🧮 A calculator is welcome</span>':'')+'<span class="chip">No timer. Stop anytime.</span></div></div>';
+  h+='<div class="mapwrap"><svg viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Quest map. Choose a spot.">'+
+   '<defs><radialGradient id="pg" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#f3e8cf"/><stop offset="1" stop-color="'+(U.mapEdge||'#d9c59a')+'"/></radialGradient></defs>'+
+   '<rect width="'+W+'" height="'+H+'" fill="url(#pg)"/>'+deco+bands+'<path d="'+path+'" stroke="#9c7a2e" stroke-width="3" stroke-dasharray="8 8" fill="none"/>'+nodes+
+   '<g transform="translate('+(W-40)+' '+(H-40)+')"><circle r="20" fill="none" stroke="#5a4a33"/><path d="M0 -18 L5 0 L0 18 L-5 0Z" fill="#7a2f2a"/></g></svg></div>';
+  h+=questLog();
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function short(t,n){return t.length>n?t.slice(0,n-1)+'…':t;}
+function lockedMsg(sid){var s=SES[sid];if(!sessionOpen(s)){toast(s.chamber&&U.chambers?'This door opens after the chamber before it is done.':'This session opens after the one before it.');return;}if(!S.intro[sid]){toast('Read the session intro first. It is the 📖 spot.');return;}toast('This one opens after the encounter before it.');}
+function questLog(){var h='<div class="card"><h3>📜 Quest log</h3><div class="qlog">';
+  h+='<div class="qsess"><div class="qbtns"><button class="qb" onclick="showHook()">★ The story hook</button>'+(allComplete()||PREVIEW?'<button class="qb" onclick="showComplete()">🏁 Quest complete</button>':'')+'</div></div>';
+  var lastCh='';
+  U.sessions.forEach(function(s){
+    if(s.chamber&&U.chambers&&s.chamber!==lastCh){lastCh=s.chamber;var c=chamberOf(s.chamber);h+='<div class="note" style="margin-top:4px"><b>'+(chamberComplete(c)?'✓ ':chamberOpen(c)?'🔑 ':'🔒 ')+esc(c.title)+'</b>'+(chamberComplete(c)&&c.complete?' <button class="qb" onclick="showChamberDone(\''+c.id+'\')">🚪 Chamber done</button>':'')+'</div>';}
+    var open=sessionOpen(s),dn=sessionComplete(s);
+    h+='<div class="qsess'+(open?'':' locked')+'"><h4>'+(dn?'✓ ':open?'':'🔒 ')+esc(s.title)+'</h4><div class="qbtns"><button class="qb'+(S.intro[s.id]?' done':'')+'"'+(open?'':' disabled')+' onclick="openIntro(\''+s.id+'\')">📖 Intro</button>'+
+      s.encounters.map(function(e){var o=encOpen(e);return '<button class="qb'+(S.done[e.id]?' done':'')+'"'+(o?'':' disabled')+' onclick="openEnc(\''+e.id+'\')">'+(S.done[e.id]?'✓ ':S.pinned[e.id]?'📌 ':o?'':'🔒 ')+(e.side?'✦ ':e.n+'. ')+esc(e.title)+'</button>';}).join('')+'</div></div>';});
+  return h+'</div></div>';}
+
+/* ---- hook / intro / complete ---- */
+function showHook(){S.view='hook';save();
+  $('main').innerHTML='<div class="card parch pop"><div class="sub">'+esc(U.sub)+'</div><h2>'+esc(U.title)+'</h2><div class="scene">'+scene({scene:U.hookScene})+'</div>'+storyHTML(U.hook)+
+   '<h3>How this quest works</h3><ul>'+U.how.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>'+
+   '<div class="navrow"><button class="btn big" onclick="S.hook=true;save();showMap()">🗺️ Open the quest map</button></div></div>';drawSide();window.scrollTo(0,0);}
+function openIntro(sid){var s=SES[sid];if(!sessionOpen(s)){lockedMsg(sid);return;}S.view='I_'+sid;save();var ck=S.checks[sid]||[];
+  var h='<div class="card parch pop"><div class="sub">'+(s.chamber&&U.chambers?esc(chamberOf(s.chamber).title)+' · ':'')+'Session intro</div><h2>'+esc(s.title)+'</h2>';
+  if(s.chamberIntro)h+=storyHTML(s.chamberIntro);
+  h+='<div class="task"><b>📋 Setup checklist</b><div class="note">Setup and flow only. The steps for each problem are inside each encounter, under How to solve.</div>'+(s.checklist||[]).map(function(t,i){return '<label class="chk" style="border-color:#e4d4b0"><input type="checkbox"'+(ck[i]?' checked':'')+' onchange="setCheck(\''+sid+'\','+i+',this.checked);drawSide()"><span>'+esc(t)+'</span></label>';}).join('')+'</div>';
+  h+='<div class="scene">'+scene({scene:s.scene})+'</div>'+storyHTML(s.intro);
+  h+='<div class="navrow"><button class="btn big" onclick="startSession(\''+sid+'\')">'+(S.intro[sid]?'Back to the map':'✔ I read the intro. Open the encounters')+'</button></div></div>';
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function startSession(sid){if(!S.intro[sid]){S.intro[sid]=true;save();toast(SES[sid].order?'Encounters are open. In this session they go in order.':'Encounters are open. Any order is fine.');}showMap();}
+function showComplete(){S.view='complete';save();$('main').innerHTML='<div class="card parch pop"><h2>🏁 Quest Complete</h2><div class="scene won">'+scene({scene:U.doneScene})+'</div>'+storyHTML(U.complete)+'<div class="navrow"><button class="btn" onclick="showMap()">Back to the map</button></div></div>';window.scrollTo(0,0);}
+function showChamberDone(cid){var c=chamberOf(cid);$('main').innerHTML='<div class="card parch pop"><h2>🚪 '+esc(c.title)+' complete</h2><div class="scene won">'+scene({scene:c.scene})+'</div>'+storyHTML(c.complete)+'<div class="navrow"><button class="btn" onclick="showMap()">Back to the map</button></div></div>';window.scrollTo(0,0);}
+
+/* ---- encounters ---- */
+function fieldHTML(e,f){var a=S.ans[e.id]||{},v=a[f.id],base='in_'+e.id+'_'+f.id,h='<div class="field">';
+  if(f.k==='square'){var q=v&&typeof v==='object'?v:{t:['',''],s:['',''],b:['','','','']};
+    h+='<label>'+md(f.l)+'</label><div class="punnett"><table role="grid" aria-label="Punnett square"><tr><th class="corner">top →<br>side ↓</th>'+[0,1].map(function(i){return '<th><input id="'+base+'_t'+i+'" maxlength="2" aria-label="Top letter '+(i+1)+'" value="'+esc(q.t[i]||'')+'"></th>';}).join('')+'</tr>'+
+      [0,1].map(function(r){return '<tr><th><input id="'+base+'_s'+r+'" maxlength="2" aria-label="Side letter '+(r+1)+'" value="'+esc(q.s[r]||'')+'"></th>'+[0,1].map(function(c){var i=r*2+c;return '<td><input id="'+base+'_b'+i+'" maxlength="3" aria-label="Box row '+(r+1)+' column '+(c+1)+'" data-r="'+r+'" data-c="'+c+'" onfocus="hlSq(\''+base+'\','+r+','+c+',true)" onblur="hlSq(\''+base+'\','+r+','+c+',false)" value="'+esc(q.b[i]||'')+'"></td>';}).join('')+'</tr>';}).join('')+'</table></div><div class="note">Each box: one letter from the top and one from the side. Capital first.</div>';}
+  else if(f.k==='two'){var p=Array.isArray(v)?v:['',''];h+='<label>'+md(f.l)+'</label><div class="two"><input id="'+base+'_0" autocomplete="off" placeholder="first one" value="'+esc(p[0]||'')+'"><input id="'+base+'_1" autocomplete="off" placeholder="second one" value="'+esc(p[1]||'')+'"></div>';}
+  else if(f.k==='sentence'){h+='<label for="'+base+'">'+md(f.l)+'</label><textarea id="'+base+'" rows="2" placeholder="'+esc(f.ph||'One sentence is enough.')+'">'+esc(v||'')+'</textarea>';}
+  else{h+='<label for="'+base+'">'+md(f.l)+'</label><input id="'+base+'" autocomplete="off" placeholder="'+esc(f.ph||'')+'" value="'+esc(v||'')+'" onkeydown="if(event.key===\'Enter\')checkEnc(\''+e.id+'\')">';}
+  if(f.chips)h+='<div class="chipline">'+f.chips.map(function(c){return '<button type="button" class="pick" onclick="pickChip(\''+base+'\',this.textContent)">'+esc(c)+'</button>';}).join('')+'</div>';
+  var fbv=(S.fb[e.id]||{})[f.id];
+  return h+'<div id="fb_'+base+'" aria-live="polite">'+(fbv?fbHTML(fbv):'')+'</div></div>';}
+function pickChip(base,t){var el=$(base);if(el){el.value=t;el.focus();}}
+function hlSq(base,r,c,on){var a=$(base+'_t'+c),b=$(base+'_s'+r);[a,b].forEach(function(x){if(x)x.classList.toggle('hl',on);});}
+function readField(e,f){var base='in_'+e.id+'_'+f.id;
+  if(f.k==='square'){var q={t:[0,1].map(function(i){return $(base+'_t'+i).value.trim();}),s:[0,1].map(function(i){return $(base+'_s'+i).value.trim();}),b:[0,1,2,3].map(function(i){return $(base+'_b'+i).value.trim();})};return {store:q,send:q.b.every(Boolean)?q.b.join(', '):'',partial:q.b.some(Boolean)};}
+  if(f.k==='two'){var p=[$(base+'_0').value.trim(),$(base+'_1').value.trim()];return {store:p,send:p.filter(Boolean).join(' | ')};}
+  var v=$(base).value;return {store:v,send:String(v).trim()};}
+function openEnc(id){var e=ENC[id];if(!encOpen(e)){lockedMsg(e.sid);return;}S.view=id;save();var s=SES[e.sid];
+  var h='<div class="card parch pop"><div class="sub">'+esc(s.title)+' · '+(e.side?'Side quest (optional)':(U.encWord||'Encounter')+' '+esc(e.n))+'</div><h2>'+esc(e.title)+'</h2>';
+  h+='<div class="scene'+(S.done[id]?' won':'')+'" id="scene">'+scene(e)+'</div>';
+  h+=storyHTML(e.story);
+  h+='<div class="task"><b>📜 Your task:</b> '+md(e.task)+(e.taskList?'<ul>'+e.taskList.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>':'')+(e.calc?'<div class="chipline"><span class="chip">🧮 A calculator is welcome</span></div>':'')+'</div>';
+  h+=boxesHTML(e.boxes);
+  h+='<details class="guide" id="g_'+id+'"><summary><b>🧭 How to solve</b> <span class="note">(open any time)</span></summary><ol>'+e.steps.map(function(t){return '<li>'+md(t.replace(/^Step \d+:\s*/,''))+'</li>';}).join('')+'</ol></details>';
+  h+='<div class="fields">'+e.fields.map(function(f){return fieldHTML(e,f);}).join('')+'</div>';
+  h+='<div class="navrow"><button class="btn big" onclick="checkEnc(\''+id+'\')">'+esc(e.checkLabel||U.checkLabel||'🖋️ Write it in the journal')+'</button></div>';
+  h+='<div class="hints" id="hints_'+id+'">'+hintsHTML(e)+'</div><div id="pin_'+id+'"></div><div id="win_'+id+'">'+(S.done[id]?winHTML(e):'')+'</div>';
+  h+='<div class="navrow"><button class="btn alt" onclick="showMap()">← Back to the map</button>'+nextBtn(e)+'</div></div>';
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function hintsHTML(e){var n=S.hints[e.id]||0,h='';for(var i=0;i<n&&i<e.hints.length;i++)h+='<div class="hint">🎲 <b>Re-roll hint '+(i+1)+':</b> '+md(e.hints[i])+'</div>';
+  if(n<e.hints.length)h+='<button class="hintbtn" id="hb_'+e.id+'" onclick="moreHint(\''+e.id+'\')">🎲 '+'Re-roll hint '+(n+1)+(e.hints.length>1?' of '+e.hints.length:'')+'</button>';
+  return h;}
+function moreHint(id){var e=ENC[id];S.hints[id]=Math.min((S.hints[id]||0)+1,e.hints.length);save();$('hints_'+id).innerHTML=hintsHTML(e);}
+function nextBtn(e){var s=SES[e.sid],list=s.encounters,i=list.indexOf(e),nx=list[i+1];if(nx&&encOpen(nx))return '<button class="btn alt" onclick="openEnc(\''+nx.id+'\')">Next: '+esc(nx.title)+' →</button>';return '';}
+function fbHTML(r){
+  if(r.off)return '<div class="fb re">💾 '+esc(OFFLINE)+'</div>';
+  if(r.ro)return '<div class="fb re">👀 '+esc(PREVIEW_NOTE)+'</div>';
+  if(r.blocked)return '<div class="fb re">This page is resting right now. Your answer is kept here.</div>';
+  if(r.m)return '<div class="fb ok">✔ Matches.'+(r.msg?' '+esc(r.msg):'')+'</div>';
+  if(r.lg)return '<div class="fb log">📝 Logged in the journal.'+(r.msg?' '+esc(r.msg):' If you want, roll a hint and compare.')+'</div>';
+  return '<div class="fb re">🎲 Not yet. Re-roll: look at step '+(r.st||1)+' of How to solve.'+(r.msg?' '+esc(r.msg):'')+'</div>';}
+function toFb(r){if(r===null)return {off:1};if(r.readonly)return {ro:1};if(r.blocked)return {blocked:1};if(r.matched)return {m:1,msg:r.msg||''};if(r.logged||r.checked===false)return {lg:1,msg:r.msg||''};return {st:r.step,msg:r.msg||''};}
+function checkEnc(id){var e=ENC[id],a=S.ans[id]||{},sends=[],missing=0;
+  e.fields.forEach(function(f){var r=readField(e,f);a[f.id]=r.store;if(r.send)sends.push([f,r.send]);else missing++;});
+  S.ans[id]=a;save();
+  if(!sends.length){toast('Type an answer first, whenever you are ready.');return;}
+  if(missing)toast('Saved what you wrote. Fill the empty boxes whenever you are ready.');
+  S.fb[id]=S.fb[id]||{};
+  Promise.all(sends.map(function(x){var f=x[0];return hubSave(id,f.id,x[1]).then(function(r){var v=toFb(r);S.fb[id][f.id]=v;var el=$('fb_in_'+id+'_'+f.id);if(el)el.innerHTML=fbHTML(v);return v;});})).then(function(vs){
+    save();var anyRe=vs.some(function(v){return !(v.m||v.lg||v.off||v.ro||v.blocked);});
+    if(!missing&&!anyRe&&!vs.some(function(v){return v.blocked;})){win(e);return;}
+    if(anyRe){var g=$('g_'+id);if(g)g.open=true;var hb=$('hb_'+id);if(hb){hb.classList.remove('nudge');void hb.offsetWidth;hb.classList.add('nudge');}
+      if((S.hints[id]||0)>=e.hints.length&&!S.done[id]&&!S.pinned[id]&&!e.side)$('pin_'+id).innerHTML='<div class="note" style="margin-top:10px">Want a break from this one? You can set it aside and keep going. It stays on the map.</div><button class="btn alt" onclick="pinEnc(\''+id+'\')">📌 Set this page aside for now</button>';}});}
+function win(e){var sc=$('scene');if(sc)sc.classList.add('won');chime();
+  var first=!S.done[e.id];S.done[e.id]=true;delete S.pinned[e.id];save();
+  var w=$('win_'+e.id);if(w)w.innerHTML=winHTML(e);if(first)setTimeout(function(){giveLoot(e);checkMilestones(e);},900);drawSide();
+  var nb=$('main').querySelector('.navrow:last-child');if(nb&&first)nb.innerHTML='<button class="btn alt" onclick="showMap()">← Back to the map</button>'+nextBtn(e);}
+function winHTML(e){return '<div class="winbox pop">🌟 '+esc(e.winLine||U.winLine||'The page is written in the journal.')+' You found '+esc((e.loot||{name:'📄 Page: '+e.title}).name)+'.</div>'+(e.after_win?storyHTML(e.after_win):'');}
+function pinEnc(id){S.pinned[id]=true;save();hubSave(id,'pinned','set aside for now');toast('Set aside. It stays on the map for later.');showMap();}
+function checkMilestones(e){var s=SES[e.sid];if(sessionComplete(s)){var nm='🧩 Map piece: '+s.title;if(S.loot.indexOf(nm)<0){S.loot.push(nm);save();drawSide();toast(nm);}}
+  if(U.chambers&&s.chamber){var c=chamberOf(s.chamber);if(c.complete&&chamberComplete(c)&&!S['ch_'+c.id]){S['ch_'+c.id]=true;save();setTimeout(function(){showChamberDone(c.id);},600);return;}}
+  if(allComplete()&&!S.finished){S.finished=true;save();setTimeout(showComplete,600);}}
+
+/* ---- ask a question (saved with the answers; nobody is notified) ---- */
+function askQ(){var t=$('askT');if(!t)return;var v=String(t.value||'').trim();if(!v){toast('Type your question first, whenever you are ready.');return;}
+  hubSave(S.view&&ENC[S.view]?S.view:'MAP','question',v).then(function(r){t.value='';toast(r?(r.readonly||r.preview?'Preview mode: questions are not saved here.':'Question saved with your answers.'):'Saved on this device for now.');});}
+function saveLeave(){save();toast('Saved. Come back anytime.');
+  try{if(window.QUEST_HOST&&typeof QUEST_HOST.leave==='function')setTimeout(QUEST_HOST.leave,800);}catch(e){}
+  setTimeout(function(){$('main').innerHTML='<div class="card parch pop"><h2>Saved</h2>'+say('Calciber','Good place to rest. The map will be right here when you come back.')+say('Ribs',U.ribsBye||'Snack break! I saved you a (pretend) cookie.')+'<button class="btn" onclick="showMap()">Back to the map</button></div>';},300);}
+
+/* ---- start ---- */
+load();if(PREVIEW)showPv();drawSide();flushPending();
+(function(){var v=S.view;if(v&&ENC[v]&&encOpen(ENC[v]))openEnc(v);else if(v&&v.indexOf('I_')===0&&SES[v.slice(2)])openIntro(v.slice(2));else if(v==='hook')showHook();else showMap();})();
+
+</script>
+</body>
+</html>

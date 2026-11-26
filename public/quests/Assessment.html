@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Vault of Chambers: Orrin's Survey</title>
+<style>
+:root{--bg:#1d2326;--bg2:#252d31;--parch:#efe3c8;--parch2:#e4d4b0;--ink:#2e2619;--ink2:#5a4a33;--teal:#3f8f8a;--teal2:#2c6b67;--tealsoft:#cfe6e2;--gold:#c9a24a;--gold2:#9c7a2e;--line:#c7b48a;--text:#f1eadb;--soft:#c9c1ae;--r:16px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:17px/1.55 Georgia,"Times New Roman",serif}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg2);border-bottom:1px solid #34403f;flex-wrap:wrap}
+header h1{font-size:20px;margin:0;flex:1;color:var(--parch)}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--gold2);background:var(--parch);color:var(--ink);padding:8px 14px}
+button.primary{background:var(--teal);color:#fff;border-color:var(--teal2)}button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent;color:var(--soft);border-color:#4a5655}
+.wrap{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}.side{order:2}}
+.side,.card{background:var(--parch);color:var(--ink);border-radius:var(--r);padding:16px;border:1px solid var(--line)}
+.side h2{font-size:17px;margin:0 0 8px}.side ul{list-style:none;padding:0;margin:0}.side li{margin:6px 0}
+.side label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.note{font-size:14px;color:var(--ink2)}
+.chambers{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px}
+.chamber{background:var(--parch2);border:2px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--ink)}
+.chamber .glyph{font-size:30px}.chamber h3{margin:4px 0}.chamber .st{font-size:14px;color:var(--ink2)}
+.chamber.done{border-color:var(--teal)}
+.who{display:flex;gap:12px;align-items:flex-start;margin:10px 0}.who .pic{width:64px;height:64px;flex:none}
+.bubble{background:#fff8ea;border:1px solid var(--line);border-radius:14px;padding:10px 12px;flex:1}
+.bubble b{color:var(--teal2)}
+.passage{background:#fffdf6;border-left:4px solid var(--gold);padding:10px 14px;border-radius:8px;margin:10px 0;white-space:pre-wrap;font-size:16px}
+.passage .src{display:block;font-size:13px;color:var(--ink2);margin-top:6px;font-style:italic}
+.tag{display:inline-block;font-size:13px;padding:3px 10px;border-radius:999px;margin:0 6px 6px 0;border:1px solid var(--line);background:#fff8ea}
+.tag.calc{background:var(--tealsoft);border-color:var(--teal)}
+.opts{display:grid;gap:8px;margin:10px 0}.opts label{display:flex;gap:10px;align-items:flex-start;background:#fffdf6;border:1px solid var(--line);border-radius:12px;padding:9px 12px;cursor:pointer}
+.opts input{margin-top:5px}
+input[type=text],textarea{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--gold2);background:#fffdf6;color:var(--ink);width:100%;max-width:340px}
+textarea{max-width:100%;min-height:200px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.rule{background:var(--tealsoft);border-radius:12px;padding:8px 12px;margin:8px 0;font-size:15px}
+.hidden{display:none!important}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:15px}td,th{border:1px solid var(--line);padding:5px 8px;text-align:left}
+.pv h3{margin:16px 0 4px;color:var(--teal2)}.lvl{font-weight:bold}
+pre.export{white-space:pre-wrap;background:#fffdf6;border:1px solid var(--line);padding:10px;border-radius:10px;font-size:14px;max-height:340px;overflow:auto}
+.modal{position:fixed;inset:0;background:rgba(10,14,15,.7);display:flex;align-items:center;justify-content:center;z-index:9}
+.modal .card{max-width:380px}
+footer{text-align:center;padding:10px;font-size:13px;color:var(--soft)}
+@media(prefers-reduced-motion:no-preference){.card{animation:fade .25s ease}}@keyframes fade{from{opacity:.4}to{opacity:1}}
+</style></head><body>
+<header><h1>🗝️ The Vault of Chambers</h1>
+<button class="ghost" id="btnMap" onclick="showMap()">Map</button>
+<button id="btnLeave" onclick="saveLeave()">Save &amp; leave</button></header>
+<div class="wrap">
+<aside class="side" aria-label="Setup checklist">
+<h2>📜 Before you begin</h2>
+<ul id="checklist"></ul>
+<p class="note">This list is just for getting set up. Tick boxes only if you like.</p>
+<p class="note"><b>What gets saved:</b> your answers and the date. Nothing else, and never your screen.</p>
+</aside>
+<main id="main"></main>
+</div>
+<footer><button class="ghost" style="font-size:13px;padding:4px 10px" onclick="openParent()">Parent view</button></footer>
+<div id="modal" class="modal hidden"><div class="card"><h3 style="margin-top:0">Parent view</h3>
+<p class="note">For Amarette and Dad. Enter the parent code.</p>
+<input type="text" id="pcode" autocomplete="off" aria-label="Parent code"><div class="row">
+<button class="primary" onclick="checkCode()">Open</button><button onclick="closeModal()">Close</button></div>
+<p class="note" id="pmsg"></p></div></div>
+<script>
+function calciberSVG(){return '<svg viewBox="0 0 100 100" aria-label="Calciber the skeleton ranger, smiling"><rect width="100" height="100" fill="#2f4a4a"/><path d="M14 100 Q16 58 50 52 Q84 58 86 100Z" fill="#3f6b55"/><path d="M20 46 Q50 -2 80 46 L74 60 Q50 44 26 60Z" fill="#355c4a"/><ellipse cx="50" cy="48" rx="21" ry="22" fill="#f2ead8"/><ellipse cx="41" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><ellipse cx="59" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><circle cx="42" cy="46" r="2.4" fill="#8fe0d6"/><circle cx="60" cy="46" r="2.4" fill="#8fe0d6"/><path d="M48 55 L50 52 L52 55Z" fill="#2b3a3a"/><path d="M40 61 Q50 68 60 61" stroke="#2b3a3a" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M44 63v2M50 64v2.5M56 63v2" stroke="#2b3a3a" stroke-width="1.4"/><path d="M84 20 Q96 50 84 84" stroke="#c9a24a" stroke-width="3" fill="none"/><line x1="84" y1="20" x2="84" y2="84" stroke="#efe3c8" stroke-width="1"/></svg>';}
+function orrinSVG(){return '<svg viewBox="0 0 100 100" aria-label="Orrin the calm dwarf archivist"><rect width="100" height="100" fill="#4a3c2c"/><path d="M12 100 Q14 66 50 62 Q86 66 88 100Z" fill="#2c6b67"/><ellipse cx="50" cy="42" rx="20" ry="20" fill="#e8bf98"/><path d="M28 30 Q50 10 72 30 Q66 22 50 22 Q34 22 28 30Z" fill="#b9b2a6"/><path d="M30 48 Q30 90 50 92 Q70 90 70 48 Q60 60 50 58 Q40 60 30 48Z" fill="#d9d3c7"/><circle cx="42" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><circle cx="58" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><line x1="48" y1="42" x2="52" y2="42" stroke="#9c7a2e" stroke-width="2"/><circle cx="42" cy="42" r="1.8" fill="#3b2e17"/><circle cx="58" cy="42" r="1.8" fill="#3b2e17"/><path d="M44 56 Q50 60 56 56" stroke="#7a5a3a" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="58" y="74" width="26" height="18" rx="2" fill="#7a2f2a"/><line x1="71" y1="74" x2="71" y2="92" stroke="#c9a24a"/></svg>';}
+function ribsSVG(){return '<svg viewBox="0 0 100 100" aria-label="Baby Back Ribs, a small smiling skeleton chef"><rect width="100" height="100" fill="#3a4a44"/><path d="M22 100 Q24 70 50 66 Q76 70 78 100Z" fill="#efe3c8"/><path d="M38 72 h24 v28 h-24z" fill="#3f8f8a"/><circle cx="50" cy="82" r="2" fill="#c9a24a"/><rect x="34" y="20" width="32" height="12" rx="3" fill="#fbf6ea" stroke="#c7b48a"/><circle cx="38" cy="18" r="8" fill="#fbf6ea"/><circle cx="50" cy="13" r="9" fill="#fbf6ea"/><circle cx="62" cy="18" r="8" fill="#fbf6ea"/><ellipse cx="50" cy="48" rx="18" ry="18" fill="#f2ead8"/><ellipse cx="43" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><ellipse cx="57" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><circle cx="44" cy="46" r="2" fill="#f3c98a"/><circle cx="58" cy="46" r="2" fill="#f3c98a"/><path d="M48.5 55 L50 53 L51.5 55Z" fill="#2b3a3a"/><path d="M42 59 Q50 66 58 59" stroke="#2b3a3a" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M80 60 v28 M76 60 v8 M84 60 v8 M76 68 h8" stroke="#c9a24a" stroke-width="2.5" stroke-linecap="round"/></svg>';}
+
+var KEY='gabeAssessment:v1', CODE_KEY='gabeAssessParentCode', DEFAULT_CODE='vault-orrin';
+var SAVE_FN='saveAssessmentResult', MAX_ITEMS=13, MIN_FOR_EARLY=10;
+var RULE='Orrin\'s rounding rule: "If your answer has decimals, round to the thousandths place, like 0.125. If it\'s a percent, round to a whole percent, like 38%. Fractions are welcome too."';
+var CHECK=['Grab a snack and some water','Get comfortable','Pick one chamber','Save & leave any time. Orrin keeps your place'];
+var SUBJ={
+ math:{name:'Chamber of Numbers',glyph:'🎲',label:'Math',intro:'Each riddle shows a tag. <b>No calculator</b> means work it out by hand or on scratch paper. The <b>🧮 calculator</b> tag means a calculator is allowed, like the TI-30XS on the real test. A formula scroll is below if you want it.'},
+ rla:{name:'Chamber of Scrolls',glyph:'📜',label:'Reading & Writing',intro:'Read each short scroll, then pick the best answer. No calculator in this chamber. At the end there\'s an optional written piece that Amarette or Dad will read.'},
+ sci:{name:'Chamber of Elements',glyph:'⚗️',label:'Science',intro:'Experiments, living things, forces and the sky. A calculator is allowed in this whole chamber.'},
+ ss:{name:'Chamber of the Realm',glyph:'🏛️',label:'Social Studies',intro:'Old charters, maps and markets. Some scrolls are real founding documents. A calculator is allowed in this whole chamber.'}
+};
+var ORDER=['math','rla','sci','ss'];
+var FORMULAS='Area: rectangle A = lw · triangle A = ½bh · circle A = πr² (π ≈ 3.14)\nCircumference C = 2πr · Volume: rectangular prism V = lwh · cylinder V = πr²h\nSlope m = (y₂ − y₁)/(x₂ − x₁) · Slope-intercept y = mx + b\nQuadratic formula x = (−b ± √(b² − 4ac)) / 2a · Pythagorean theorem a² + b² = c²';
+var P={
+ lib:{t:'From a report to the Hollow Creek town council\n\nThe Hollow Creek library has been open only three afternoons a week since 2019. In a survey of 412 residents, 68 percent said they would visit more often if the library opened on Saturdays. Teen patrons in particular reported that they had nowhere quiet to study on weekends. Extending hours to include Saturday mornings would cost about $9,000 a year, roughly the price of resurfacing a single block of Main Street. The council should approve Saturday hours for a one-year trial and measure attendance before deciding whether to make the change permanent.',s:'Original passage written for this survey'},
+ paine:{t:'"These are the times that try men\'s souls. The summer soldier and the sunshine patriot will, in this crisis, shrink from the service of their country; but he that stands by it now, deserves the love and thanks of man and woman. Tyranny, like hell, is not easily conquered; yet we have this consolation with us, that the harder the conflict, the more glorious the triumph."',s:'Thomas Paine, The American Crisis (December 1776)'},
+ letters:{t:'Letter A (from a market organizer): The night market should stay open until ten. Last season, stalls that stayed open late earned 30 percent more, according to the market\'s own sales records, and the town\'s two late-night bus routes already run past the square.\n\nLetter B (from a resident): The night market should close at eight. Everyone knows late crowds are a problem, and my neighbor told me it gets far too noisy. Closing earlier is simply the right thing to do.',s:'Original passages written for this survey'},
+ decl:{t:'"We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness. — That to secure these rights, Governments are instituted among Men, deriving their just powers from the consent of the governed."',s:'Declaration of Independence (1776)'},
+ fed51:{t:'"If men were angels, no government would be necessary. If angels were to govern men, neither external nor internal controls on government would be necessary. In framing a government which is to be administered by men over men, the great difficulty lies in this: you must first enable the government to control the governed; and in the next place oblige it to control itself."',s:'James Madison, Federalist No. 51 (1788)'},
+ amend1:{t:'"Congress shall make no law respecting an establishment of religion, or prohibiting the free exercise thereof; or abridging the freedom of speech, or of the press; or the right of the people peaceably to assemble, and to petition the Government for a redress of grievances."',s:'First Amendment, U.S. Constitution (1791)'},
+ pre:{t:'"We the People of the United States, in Order to form a more perfect Union, establish Justice, insure domestic Tranquility, provide for the common defence, promote the general Welfare, and secure the Blessings of Liberty to ourselves and our Posterity, do ordain and establish this Constitution for the United States of America."',s:'Preamble, U.S. Constitution (1787)'},
+ views:{t:'Speaker 1: A strong national government can raise an army, pay the war debts, and keep the states from taxing one another\'s goods.\n\nSpeaker 2: A distant national government with power to tax will soon forget the people. Each state knows its own citizens best and should keep most of the power.',s:'Original paraphrase in the style of the 1787–88 ratification debates'},
+ plants:{t:'Sunleaf seedlings, height in centimeters\nDay 2: 1.5 · Day 4: 3.0 · Day 6: 4.8 · Day 8: 4.6 · Day 10: 5.9',s:'Original data'},
+ trials:{t:'A team tested how far a catapult throws a 50 g stone.\nOld arm (3 trials): 12 m, 14 m, 13 m\nNew arm (3 trials): 18 m, 17 m, 19 m',s:'Original data'},
+ regions:{t:'Realm population by region (thousands)\nNorth Reach 240 · River Lands 615 · Eastern Hills 180 · Coast 410',s:'Original data'},
+ census:{t:'U.S. population (U.S. Census): 1800 about 5.3 million · 1850 about 23.2 million',s:'U.S. Census Bureau historical counts, rounded'}
+};
+// fields: id,s(subject),lv(1-3),dok,code,area,calc,type(mc|fill),q,o(options),a(answer index or number),alt(extra numbers),pct(percent answer),p(passage)
+var BANK=[
+// ---- MATH ----
+{id:'M01',s:'math',lv:1,dok:1,code:'Q.1.a',area:'Number sense & ordering',calc:false,type:'mc',q:'Four potions are labeled with how full they are. Which one is the fullest?',o:['0.6','5/8','0.59','3/5'],a:1},
+{id:'M02',s:'math',lv:1,dok:1,code:'Q.2.a',area:'Fractions & operations',calc:false,type:'mc',q:'A quiver is 3/4 full. Calciber adds 1/8 of a quiver more. How full is it now?',o:['4/12','7/8','1/2','1'],a:1},
+{id:'M03',s:'math',lv:1,dok:1,code:'Q.3.d',area:'Ratios, rates & percents',calc:true,type:'fill',q:'A cloak costs 40 gold. The merchant takes 25% off. What is the sale price, in gold?',a:30},
+{id:'M04',s:'math',lv:1,dok:1,code:'Q.7.a',area:'Data & statistics',calc:true,type:'fill',q:'Five rolls of a d20 gave 12, 15, 9, 20 and 14. What is the mean?',a:14},
+{id:'M05',s:'math',lv:1,dok:1,code:'A.1.a',area:'Expressions & equations',calc:true,type:'fill',q:'Evaluate 3x − 5 when x = 4.',a:7},
+{id:'M06',s:'math',lv:2,dok:2,code:'Q.1.b',area:'Number sense & ordering',calc:false,type:'fill',q:'Torches are restocked every 6 days and arrows every 8 days. Both were restocked today. In how many days will both be restocked on the same day again?',a:24},
+{id:'M07',s:'math',lv:2,dok:1,code:'Q.2.b',area:'Fractions & operations',calc:false,type:'fill',q:'What is √81 + 4² ?',a:25},
+{id:'M08',s:'math',lv:2,dok:2,code:'Q.8.b',area:'Probability',calc:true,type:'fill',q:'A pouch holds 3 red gems, 5 blue gems and 2 gold gems. Calciber draws one without looking. What is the probability it is red or gold, as a percent?',a:50,pct:true},
+{id:'M09',s:'math',lv:2,dok:2,code:'A.2.a',area:'Expressions & equations',calc:true,type:'fill',q:'Solve for x: 4x + 7 = 31',a:6},
+{id:'M10',s:'math',lv:2,dok:2,code:'Q.4.a',area:'Geometry & measurement',calc:true,type:'fill',q:'A triangular banner has a base of 14 inches and a height of 9 inches. What is its area, in square inches?',a:63},
+{id:'M11',s:'math',lv:3,dok:2,code:'A.5/A.6',area:'Graphs, slope & functions',calc:true,type:'fill',q:'A path on the map goes through the points (2, 5) and (6, 17). What is the slope of the path?',a:3},
+{id:'M12',s:'math',lv:3,dok:2,code:'A.4.a',area:'Expressions & equations',calc:true,type:'fill',q:'x² − 5x − 14 = 0 has two solutions. What is the positive one?',a:7},
+{id:'M13',s:'math',lv:3,dok:3,code:'Q.5.a',area:'Geometry & measurement',calc:true,type:'fill',q:'A cylinder-shaped well has a radius of 3 feet and a depth of 10 feet. Using π ≈ 3.14, what is its volume, in cubic feet?',a:282.6,alt:[282.743]},
+{id:'M14',s:'math',lv:3,dok:3,code:'A.3.a',area:'Expressions & equations',calc:true,type:'fill',q:'Calciber has 50 gold. Arrow bundles cost 3 gold each, plus a one-time 5 gold delivery fee. What is the greatest number of bundles they can buy?',a:15},
+{id:'M15',s:'math',lv:3,dok:3,code:'Q.3.d',area:'Ratios, rates & percents',calc:true,type:'fill',q:'The price of a lantern rises from 80 gold to 92 gold. What is the percent increase?',a:15,pct:true},
+{id:'M16',s:'math',lv:3,dok:2,code:'A.7.a',area:'Graphs, slope & functions',calc:true,type:'fill',q:'If f(x) = 2x² − 3x, what is f(−2)?',a:14},
+// ---- RLA ----
+{id:'R01',s:'rla',lv:1,dok:1,code:'R.2.1',area:'Main idea & details',calc:false,type:'mc',p:'lib',q:'What is the report mainly asking the council to do?',o:['Resurface Main Street','Try Saturday library hours for a year','Close the library on weekdays','Survey more residents'],a:1},
+{id:'R02',s:'rla',lv:1,dok:1,code:'R.2.1',area:'Main idea & details',calc:false,type:'mc',p:'lib',q:'According to the report, what share of surveyed residents said they would visit more with Saturday hours?',o:['412 residents','9 percent','68 percent','Three afternoons'],a:2},
+{id:'R03',s:'rla',lv:1,dok:1,code:'L.1.1',area:'Grammar & usage',calc:false,type:'mc',q:'Choose the sentence written correctly.',o:['Me and Orrin opened the vault.','Orrin and I opened the vault.','Orrin and me opened the vault.','I and Orrin opens the vault.'],a:1},
+{id:'R04',s:'rla',lv:1,dok:1,code:'L.2.1',area:'Punctuation & mechanics',calc:false,type:'mc',q:'Drop-down style: pick the choice that fixes the sentence. "The vault is old ___ it is still strong."',o:['old it','old, but it','old, it','old but, it'],a:1},
+{id:'R05',s:'rla',lv:1,dok:2,code:'R.4.1',area:'Word meaning & tone',calc:false,type:'mc',p:'lib',q:'In the report, "permanent" most nearly means:',o:['lasting for good','paid for','very costly','tested once'],a:0},
+{id:'R06',s:'rla',lv:2,dok:2,code:'R.5.1',area:'Text structure',calc:false,type:'mc',p:'lib',q:'Why does the writer compare the cost to resurfacing a block of Main Street?',o:['To show Main Street needs repair','To make the cost seem reasonable','To criticize the council','To list town expenses'],a:1},
+{id:'R07',s:'rla',lv:2,dok:2,code:'R.6.1',area:"Author's purpose & argument",calc:false,type:'mc',p:'paine',q:"What is Paine's main purpose in this passage?",o:['To describe summer weather','To encourage people to keep supporting the cause','To explain how soldiers are paid','To argue that the conflict is already won'],a:1},
+{id:'R08',s:'rla',lv:2,dok:2,code:'R.4.2',area:'Word meaning & tone',calc:false,type:'mc',p:'paine',q:'A "summer soldier" is best described as someone who:',o:['fights only in warm months','helps only when things are easy','trains new soldiers','farms in the summer'],a:1},
+{id:'R09',s:'rla',lv:2,dok:2,code:'L.1.2',area:'Grammar & usage',calc:false,type:'mc',q:'Choose the correct verb: "The box of old maps ___ on the top shelf."',o:['sit','sits','are sitting','have sat'],a:1},
+{id:'R10',s:'rla',lv:2,dok:2,code:'L.2.2',area:'Punctuation & mechanics',calc:false,type:'mc',q:'Which word best joins these ideas? "The bridge was closed. ___, the travelers took the river path."',o:['However','Therefore','Similarly','For example'],a:1},
+{id:'R11',s:'rla',lv:3,dok:3,code:'R.8.2',area:"Author's purpose & argument",calc:false,type:'mc',p:'letters',q:'Which statement best compares the support in the two letters?',o:['Both rely mainly on personal stories','Letter A uses records and facts; Letter B relies on opinion and hearsay','Letter B gives more data than Letter A','Neither letter states a position'],a:1},
+{id:'R12',s:'rla',lv:3,dok:3,code:'R.8.3',area:"Author's purpose & argument",calc:false,type:'mc',p:'letters',q:'Which detail would most strengthen Letter B?',o:['A count of noise complaints from the past season','A statement that the writer dislikes markets','A longer description of the neighbor','A repeat of the main claim in capital letters'],a:0},
+{id:'R13',s:'rla',lv:3,dok:3,code:'R.6.3',area:'Word meaning & tone',calc:false,type:'mc',p:'paine',q:'How does the final sentence work to persuade readers?',o:['It lists the costs of the war','It turns the difficulty of the struggle into a reason for hope','It describes a battle in detail','It quotes another leader'],a:1},
+{id:'R14',s:'rla',lv:3,dok:3,code:'R.8.1',area:'Main idea & details',calc:false,type:'mc',p:'lib',q:'Which piece of information is the weakest support for the claim that the library should be open on Saturdays?',o:['68 percent of residents would visit more','Teens have nowhere quiet to study on weekends','The library has been open three afternoons since 2019','The cost is about $9,000 a year'],a:2},
+{id:'R15',s:'rla',lv:3,dok:2,code:'L.1.3',area:'Grammar & usage',calc:false,type:'mc',q:'Choose the sentence with no confusing modifier.',o:['Covered in dust, Orrin found the map.','Orrin found the map covered in dust under the stairs.','Under the stairs, Orrin found a map covered in dust.','Orrin, covered in dust, the map was found.'],a:2},
+// ---- SCIENCE ----
+{id:'S01',s:'sci',lv:1,dok:1,code:'L.a.2',area:'Life science',calc:true,type:'mc',q:'Which part of a plant cell captures light energy for photosynthesis?',o:['Nucleus','Chloroplast','Cell wall','Vacuole'],a:1},
+{id:'S02',s:'sci',lv:1,dok:1,code:'SP.3.a',area:'Reading data & graphs',calc:true,type:'mc',p:'plants',q:'On which day was the seedling tallest?',o:['Day 6','Day 8','Day 10','Day 4'],a:2},
+{id:'S03',s:'sci',lv:1,dok:1,code:'ES.b.1',area:'Earth & space science',calc:true,type:'mc',q:'What causes the Moon to show different phases?',o:["Earth's shadow covering the Moon each night",'The changing positions of the Sun, Earth and Moon','Clouds blocking part of the Moon','The Moon making its own light'],a:1},
+{id:'S04',s:'sci',lv:1,dok:2,code:'P.b.1',area:'Physical science',calc:true,type:'fill',q:'A messenger hawk flies 120 meters in 8 seconds. What is its average speed, in meters per second?',a:15},
+{id:'S05',s:'sci',lv:1,dok:1,code:'P.c.1',area:'Physical science',calc:true,type:'mc',q:'A lantern changes chemical energy in oil into which two main kinds of energy?',o:['Light and heat','Sound and motion','Magnetic and electric','Nuclear and sound'],a:0},
+{id:'S06',s:'sci',lv:2,dok:2,code:'L.e.1',area:'Life science',calc:true,type:'fill',q:'Two pea plants are both Bb (B = tall, b = short). What percent of their offspring are expected to be short (bb)?',a:25,pct:true},
+{id:'S07',s:'sci',lv:2,dok:2,code:'SP.1.b',area:'Experiment design',calc:true,type:'mc',q:'Calciber tests whether the amount of water changes how fast moss grows. What is the independent variable?',o:['How fast the moss grows','The amount of water','The type of pot','The temperature of the room'],a:1},
+{id:'S08',s:'sci',lv:2,dok:2,code:'P.a.1',area:'Physical science',calc:true,type:'fill',q:'A metal coin has a mass of 54 g and a volume of 20 cm³. What is its density, in g/cm³?',a:2.7},
+{id:'S09',s:'sci',lv:2,dok:2,code:'L.c.1',area:'Life science',calc:true,type:'fill',q:'In a meadow food chain, producers store 5,000 kcal of energy. If about 10% passes to each next level, about how many kcal reach the secondary consumers?',a:50},
+{id:'S10',s:'sci',lv:2,dok:2,code:'SP.2.b',area:'Experiment design',calc:true,type:'mc',q:'Which is a testable hypothesis?',o:['Moss is the most beautiful plant.','If moss gets more shade, then it will grow taller in four weeks.','Moss should be planted everywhere.','Moss is better than grass.'],a:1},
+{id:'S11',s:'sci',lv:3,dok:3,code:'SP.2.d',area:'Experiment design',calc:true,type:'mc',p:'trials',q:'Which change would make the catapult test most reliable?',o:['Use a heavier stone for the new arm only','Run more trials of each arm with the same stone and launch angle','Test the new arm on a windier day','Measure only the best throw'],a:1},
+{id:'S12',s:'sci',lv:3,dok:3,code:'SP.8.a',area:'Reading data & graphs',calc:true,type:'fill',p:'trials',q:'Find the mean distance for each arm. By what percent did the mean distance increase with the new arm?',a:38.46,pct:true},
+{id:'S13',s:'sci',lv:3,dok:3,code:'SP.3.c',area:'Reading data & graphs',calc:true,type:'mc',p:'plants',q:'Which claim is best supported by the data?',o:['The seedling grew at exactly the same rate every day','The seedling generally grew, with a small dip between days 6 and 8','The seedling stopped growing after day 4','The seedling will be 8 cm on day 12'],a:1},
+{id:'S14',s:'sci',lv:3,dok:3,code:'P.b.2',area:'Physical science',calc:true,type:'fill',q:'A 1,500 kg cart speeds up from 0 to 20 m/s in 8 seconds. Using F = ma, what net force acts on it, in newtons?',a:3750},
+{id:'S15',s:'sci',lv:3,dok:3,code:'L.e.2',area:'Life science',calc:true,type:'fill',q:'A plant that is Aa is crossed with one that is aa. What is the probability that two offspring in a row are both aa? Give a decimal.',a:0.25},
+// ---- SOCIAL STUDIES ----
+{id:'C01',s:'ss',lv:1,dok:1,code:'CG.c.1',area:'Civics & government',calc:true,type:'mc',q:'Which branch of the U.S. government makes federal laws?',o:['The President','Congress','The Supreme Court','The states'],a:1},
+{id:'C02',s:'ss',lv:1,dok:1,code:'CG.b.8',area:'Civics & government',calc:true,type:'mc',p:'amend1',q:'Which freedom is NOT named in this excerpt?',o:['Freedom of the press','Freedom to assemble','The right to bear arms','Freedom of speech'],a:2},
+{id:'C03',s:'ss',lv:1,dok:1,code:'SSP.10.a',area:'Maps, data & geography',calc:true,type:'mc',p:'regions',q:'Which region has the most people?',o:['North Reach','River Lands','Eastern Hills','Coast'],a:1},
+{id:'C04',s:'ss',lv:1,dok:2,code:'E.c.3',area:'Economics',calc:true,type:'mc',q:'Many more travelers want healing potions, but the supply of potions stays the same. What is most likely to happen to the price?',o:['It rises','It falls','It stays the same','It drops to zero'],a:0},
+{id:'C05',s:'ss',lv:1,dok:1,code:'USH.b.1',area:'U.S. history',calc:true,type:'mc',q:'Which 1776 document announced that the colonies were separating from Great Britain?',o:['The Constitution','The Bill of Rights','The Declaration of Independence','The Federalist Papers'],a:2},
+{id:'C06',s:'ss',lv:2,dok:2,code:'CG.a.1',area:'Civics & government',calc:true,type:'mc',p:'decl',q:'The phrase "consent of the governed" expresses which idea?',o:['Rulers inherit power','Government gets its power from the people','Courts decide who governs','Only landowners may vote'],a:1},
+{id:'C07',s:'ss',lv:2,dok:2,code:'CG.b.2',area:'Civics & government',calc:true,type:'mc',p:'fed51',q:'Why does Madison say government must "control itself"?',o:['Because people, including leaders, are not angels','Because angels run the government','Because no government is needed','Because the states have no power'],a:0},
+{id:'C08',s:'ss',lv:2,dok:2,code:'SSP.11.a',area:'Maps, data & geography',calc:true,type:'fill',q:'A city budget is $2,400,000. Of that, $600,000 goes to roads. What percent of the budget is for roads?',a:25,pct:true},
+{id:'C09',s:'ss',lv:2,dok:2,code:'E.a.1',area:'Economics',calc:true,type:'mc',q:'Calciber can spend Saturday crafting arrows or guiding travelers for pay. They choose crafting. What is the opportunity cost?',o:['The arrows','The pay from guiding','The wood used','Nothing'],a:1},
+{id:'C10',s:'ss',lv:2,dok:2,code:'USH.c.1',area:'U.S. history',calc:true,type:'mc',q:'What was a major effect of the Louisiana Purchase (1803)?',o:['It roughly doubled the size of the United States','It ended the Civil War','It created the Bill of Rights','It gave Florida to Spain'],a:0},
+{id:'C11',s:'ss',lv:3,dok:3,code:'CG.b.3',area:'Civics & government',calc:true,type:'mc',p:'pre',q:'A law that sets up courts to settle disputes fairly most directly serves which goal of the Preamble?',o:['Provide for the common defence','Establish Justice','Secure the Blessings of Liberty','Form a more perfect Union'],a:1},
+{id:'C12',s:'ss',lv:3,dok:3,code:'SSP.5.a',area:'U.S. history',calc:true,type:'mc',p:'views',q:'Which statement best describes the disagreement?',o:['Both want the states to hold most power','Speaker 1 favors a strong national government; Speaker 2 fears it and favors state power','Speaker 2 wants a national army','They agree but use different words'],a:1},
+{id:'C13',s:'ss',lv:3,dok:3,code:'SSP.11.b',area:'Maps, data & geography',calc:true,type:'fill',p:'census',q:'By about what percent did the U.S. population increase from 1800 to 1850?',a:337.74,pct:true},
+{id:'C14',s:'ss',lv:3,dok:3,code:'SSP.5.b',area:'Economics',calc:true,type:'mc',q:'A guild leader says: "Our tax brought in 400 gold last year. It is the fairest tax in the realm." Which part is an opinion?',o:['The tax brought in 400 gold','It was last year','It is the fairest tax in the realm','The leader made a statement'],a:2},
+{id:'C15',s:'ss',lv:3,dok:3,code:'CG.c.2',area:'Civics & government',calc:true,type:'mc',q:'Which is an example of checks and balances?',o:['A governor gives a speech','The President vetoes a bill passed by Congress','A city plants trees','A citizen writes a letter'],a:1}
+];
+var ER={id:'RER',s:'rla',code:'R.8 / W ER',area:'Extended response (parent-scored)',p:'letters',q:'Optional written piece: Read both letters again. Which letter makes the better-supported argument? Explain using details from both letters. A few paragraphs is plenty. Amarette or Dad will read this.'};
+var st=load();
+function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&s.subj)return s}catch(e){}var o={subj:{},checks:{},er:''};ORDER.forEach(function(k){o.subj[k]={level:2,asked:[],resp:{},cur:null,done:false}});return o}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+function hosted(){return typeof google!=='undefined'&&google.script&&google.script.run}
+function send(rec){if(hosted()){try{google.script.run.withFailureHandler(function(){}).saveAssessmentResult(rec)}catch(e){}}}
+function el(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function say(who,txt){var pic={orrin:orrinSVG,calciber:calciberSVG,ribs:ribsSVG}[who]();var nm={orrin:'Orrin',calciber:'Calciber',ribs:'Baby Back Ribs'}[who];return '<div class="who"><div class="pic">'+pic+'</div><div class="bubble"><b>'+nm+':</b> '+txt+'</div></div>'}
+function renderChecklist(){el('checklist').innerHTML=CHECK.map(function(c,i){return '<li><label><input type="checkbox" '+(st.checks[i]?'checked':'')+' onchange="st.checks['+i+']=this.checked;persist()"> '+esc(c)+'</label></li>'}).join('')}
+function byId(id){for(var i=0;i<BANK.length;i++)if(BANK[i].id===id)return BANK[i]}
+function showMap(){var h='<div class="card">'+say('orrin','Welcome to the Vault, Gabe. This isn\'t a test you can pass or fail. I\'m just learning which rooms of the GED you already know well, so Amarette and Dad can skip the easy parts. Pick any chamber. Each one is short, and you can save and leave between them.')+say('calciber','The riddles shift as you go, some easier, some harder. That\'s on purpose. Just give each one your best try.')+'<div class="chambers">';
+ORDER.forEach(function(k){var s=st.subj[k],S=SUBJ[k],n=s.asked.length;var stt=s.done?'Explored ✓':(n?'In progress, '+n+' riddles so far':'Not opened yet');h+='<button class="chamber'+(s.done?' done':'')+'" id="ch-'+k+'" onclick="enter(\''+k+'\')"><div class="glyph">'+S.glyph+'</div><h3>'+S.name+'</h3><div class="st">'+S.label+' · '+stt+'</div></button>'});
+h+='</div></div>';el('main').innerHTML=h;window.scrollTo(0,0)}
+function enter(k){var s=st.subj[k];if(s.done){finishScreen(k,true);return}if(!s.cur){var it=pick(k);if(!it){s.done=true;persist();finishScreen(k);return}s.cur=it.id;persist()}
+if(!s.asked.length&&!s.seenIntro){s.seenIntro=true;persist();el('main').innerHTML='<div class="card"><h2>'+SUBJ[k].glyph+' '+SUBJ[k].name+'</h2>'+say('orrin',SUBJ[k].intro)+(k!=='rla'?'<div class="rule">'+esc(RULE)+'</div>':'')+'<div class="row"><button class="primary" id="begin" onclick="showItem(\''+k+'\')">Begin</button><button onclick="showMap()">Back to map</button></div></div>';return}
+showItem(k)}
+function pick(k){var s=st.subj[k];var pool=BANK.filter(function(b){return b.s===k&&s.asked.indexOf(b.id)<0});if(!pool.length)return null;var used={};s.asked.forEach(function(id){used[byId(id).area]=1});
+pool.sort(function(a,b){var da=Math.abs(a.lv-s.level),db=Math.abs(b.lv-s.level);if(da!==db)return da-db;if(a.lv!==b.lv)return b.lv-a.lv;var ua=used[a.area]?1:0,ub=used[b.area]?1:0;return ua-ub});return pool[0]}
+function tags(it){var c=it.calc?'<span class="tag calc">🧮 Calculator allowed (TI-30XS)</span>':'<span class="tag">✋ No calculator</span>';return c}
+function showItem(k){var s=st.subj[k],it=byId(s.cur);var h='<div class="card"><div class="note">'+SUBJ[k].glyph+' '+SUBJ[k].name+' · riddle '+(s.asked.length+1)+'</div>'+tags(it);
+if(it.p)h+='<div class="passage">'+esc(P[it.p].t)+'<span class="src">'+esc(P[it.p].s)+'</span></div>';
+h+='<p><b>'+esc(it.q)+'</b></p>';
+if(it.type==='mc'){h+='<div class="opts">'+it.o.map(function(o,i){return '<label><input type="radio" name="opt" value="'+i+'" onchange="el(\'go\').disabled=false"> '+esc(o)+'</label>'}).join('')+'</div>'}
+else{h+='<input type="text" id="fill" inputmode="decimal" autocomplete="off" aria-label="Your answer" oninput="el(\'go\').disabled=!this.value.trim()">'+(it.pct?' <span>%</span>':'')+'<div class="rule">'+esc(RULE)+'</div>'}
+if(k==='math'&&it.calc)h+='<details><summary>Formula scroll</summary><div class="passage">'+esc(FORMULAS)+'</div></details>';
+h+='<div class="row"><button class="primary" id="go" disabled onclick="answer(\''+k+'\')">Record my answer</button></div><div id="after"></div></div>';el('main').innerHTML=h;window.scrollTo(0,0)}
+function num(v){v=String(v).replace(/[,\s%$]/g,'');var m=v.match(/^(-?\d+)\/(\d+)$/);if(m)return +m[2]?(+m[1])/(+m[2]):NaN;m=v.match(/^(-?\d+)\s*(\d+)\/(\d+)$/);return v===''?NaN:Number(v)}
+function judge(it,raw){if(it.type==='mc')return Number(raw)===it.a;var x=num(raw);if(isNaN(x))return false;var c=[it.a].concat(it.alt||[]);
+for(var i=0;i<c.length;i++){var t=c[i];if(it.pct){if(Math.abs(x-t)<=0.5001||Math.abs(x*100-t)<=0.5001)return true}else{if(Math.abs(x-t)<=0.0006)return true}}return false}
+function answer(k){var s=st.subj[k],it=byId(s.cur),raw;if(it.type==='mc'){var r=document.querySelector('input[name=opt]:checked');if(!r)return;raw=r.value}else{raw=el('fill').value.trim();if(!raw)return}
+var m=judge(it,raw),d=new Date().toISOString().slice(0,10);s.resp[it.id]={answer:raw,matches:m,level:it.lv,date:d};s.asked.push(it.id);
+s.level=m?Math.min(3,s.level+1):Math.max(1,s.level-1);s.cur=null;
+send({subject:k,itemId:it.id,code:it.code,area:it.area,dok:it.dok,calculator:it.calc,level:it.lv,answer:it.type==='mc'?it.o[+raw]:raw,matches:m,date:d});
+var stop=shouldStop(k);if(!stop){var nx=pick(k);if(nx)s.cur=nx.id;else stop=true}if(stop)s.done=true;persist();
+document.querySelectorAll('#main input,#go').forEach(function(x){x.disabled=true});
+el('after').innerHTML=say('orrin','Orrin records your answer. Noted, onward.')+'<div class="row"><button class="primary" id="next" onclick="'+(stop?'finishScreen(\''+k+'\')':'showItem(\''+k+'\')')+'">'+(stop?'Close the chamber':'Next riddle')+'</button><button onclick="saveLeave()">Save &amp; leave</button></div>'}
+function stats(k){var s=st.subj[k],L={1:{n:0,m:0},2:{n:0,m:0},3:{n:0,m:0}};s.asked.forEach(function(id){var r=s.resp[id];L[r.level].n++;if(r.matches)L[r.level].m++});return L}
+function shouldStop(k){var s=st.subj[k],n=s.asked.length;if(n>=MAX_ITEMS)return true;if(n<MIN_FOR_EARLY)return false;var L=stats(k);
+if(L[3].m>=3&&L[3].m/L[3].n>=0.75)return true;if(L[1].n-L[1].m>=3&&L[1].m/L[1].n<=0.34)return true;if(L[2].n>=4&&L[2].m/L[2].n>=0.5&&L[3].n>=2&&L[3].m/L[3].n<=0.34)return true;return false}
+function finishScreen(k,again){var left=ORDER.filter(function(x){return !st.subj[x].done}).map(function(x){return SUBJ[x].name});
+var h='<div class="card"><h2>'+SUBJ[k].glyph+' '+SUBJ[k].name+': explored</h2>'+say('ribs','*happy tail thumps* You explored a whole chamber! Snack break? '+(left.length?'The '+esc(left.join(', '))+' will wait right here.':'That was every chamber in the Vault. Amarette and Dad will take it from here.'))+say('orrin','Everything is saved: your answers and the date, nothing else.');
+if(k==='rla')h+='<h3>Optional written piece</h3><div class="passage">'+esc(P.letters.t)+'</div><p><b>'+esc(ER.q)+'</b></p><textarea id="er" aria-label="Written piece">'+esc(st.er||'')+'</textarea><div class="row"><button onclick="saveER()">Save my writing</button><span id="erMsg" class="note"></span></div>';
+h+='<div class="row"><button class="primary" onclick="showMap()">Back to the map</button><button onclick="saveLeave()">Save &amp; leave</button></div></div>';el('main').innerHTML=h;window.scrollTo(0,0)}
+function saveER(){st.er=el('er').value;st.erDate=new Date().toISOString().slice(0,10);persist();send({subject:'rla',itemId:'RER',code:ER.code,area:ER.area,dok:3,calculator:false,level:3,answer:st.er,matches:null,parentScored:true,date:st.erDate});el('erMsg').textContent='Saved. Amarette or Dad will read it.'}
+function saveLeave(){persist();if(window.QUEST_HOST&&QUEST_HOST.leave){QUEST_HOST.leave();return}el('main').innerHTML='<div class="card">'+say('orrin','Your place is saved. Come back whenever you like, and the Vault will be just as you left it.')+'<div class="row"><button class="primary" onclick="showMap()">Back to the map</button></div></div>'}
+// ---- parent view ----
+function openParent(){el('modal').classList.remove('hidden');el('pcode').value='';el('pmsg').textContent='';el('pcode').focus()}
+function closeModal(){el('modal').classList.add('hidden')}
+function parentCode(){try{return localStorage.getItem(CODE_KEY)||DEFAULT_CODE}catch(e){return DEFAULT_CODE}}
+function checkCode(){if(el('pcode').value.trim()===parentCode()){closeModal();renderParent()}else el('pmsg').textContent='That code did not open it.'}
+function levelOf(k){var s=st.subj[k];if(!s.asked.length)return 'Not started';var L=stats(k);if(L[3].n>=2&&L[3].m/L[3].n>=0.67)return 'Ready for GED';if(L[2].n>=2&&L[2].m/L[2].n>=0.6)return 'Near GED-ready';if(L[3].n>=1&&L[3].m===L[3].n&&L[2].n&&L[2].m===L[2].n)return 'Near GED-ready';return 'Below GED-ready'}
+var RANK={'Ready for GED':3,'Near GED-ready':2,'Below GED-ready':1,'Not started':0};
+function areas(k){var s=st.subj[k],A={};s.asked.forEach(function(id){var it=byId(id),r=s.resp[id];var a=A[it.area]||(A[it.area]={n:0,m:0,codes:{},maxDok:0});a.n++;if(r.matches){a.m++;a.maxDok=Math.max(a.maxDok,it.dok)}a.codes[it.code]=1});
+Object.keys(A).forEach(function(n){var a=A[n],r=a.m/a.n;a.status=r>=0.75?'Secure':r>=0.4?'Developing':'Revisit'});return A}
+function analysis(){var out={};ORDER.forEach(function(k){var s=st.subj[k],dok=0,c={y:[0,0],n:[0,0]},m=0;s.asked.forEach(function(id){var it=byId(id),r=s.resp[id];var b=it.calc?c.y:c.n;b[0]++;if(r.matches){b[1]++;m++;dok=Math.max(dok,it.dok)}});out[k]={level:levelOf(k),areas:areas(k),dok:dok,calc:c,n:s.asked.length,m:m,done:s.done}});return out}
+function plan(an){var subs=ORDER.filter(function(k){return an[k].n}).sort(function(a,b){return (RANK[an[b].level]-RANK[an[a].level])||(an[b].m/an[b].n-an[a].m/an[a].n)});var lines=[],step=1;
+subs.forEach(function(k,i){var A=an[k].areas,sec=[],dev=[],rev=[];Object.keys(A).forEach(function(n){({Secure:sec,Developing:dev,Revisit:rev})[A[n].status].push(n)});
+lines.push('Block '+(i+1)+': '+SUBJ[k].label+' ('+an[k].level+')'+(i===0?', starting with a strength':''));
+if(k==='math'){var pr=A['Probability'];lines.push('  • Quest 1 (Know Your Dice): '+((pr&&pr.status==='Secure')||(!pr&&an[k].level==='Ready for GED')?'optional quick check, then move on'+(pr?'':' (probability was not sampled, so a short check is worth doing)'):'keep as a full quest'));}
+if(sec.length)lines.push('  • Compress (one quick-check session): '+sec.join('; '));
+rev.concat(dev).forEach(function(n){lines.push('  • Unit '+(step++)+' (focus, '+A[n].status.toLowerCase()+'): '+n+' ['+Object.keys(A[n].codes).join(', ')+']')});
+if(!rev.length&&!dev.length)lines.push('  • No gaps found in this sample. Consider an official GED Ready practice test, then schedule this subject\'s exam.');});
+var ns=ORDER.filter(function(k){return !an[k].n});if(ns.length)lines.push('Not yet surveyed: '+ns.map(function(k){return SUBJ[k].label}).join(', ')+'. Add after those chambers are explored.');
+lines.push('Pacing: one subject and one unit at a time; a unit is about 1 week of short sessions. Re-run that chamber at the end of each block to check progress.');return lines}
+function exportText(an,pl){var t=['Gabe: GED pre-assessment summary ('+new Date().toISOString().slice(0,10)+')','Estimate from a short adaptive sample, not an official GED score.',''];
+ORDER.forEach(function(k){var a=an[k];t.push(SUBJ[k].label+': '+a.level+' | items '+a.n+', matched '+a.m+' | highest DOK matched '+(a.dok||'none'));if(a.calc.y[0])t.push('  Calculator items: '+a.calc.y[1]+'/'+a.calc.y[0]);if(a.calc.n[0])t.push('  No-calculator items: '+a.calc.n[1]+'/'+a.calc.n[0]);
+Object.keys(a.areas).forEach(function(n){var x=a.areas[n];t.push('  - '+n+': '+x.status+' ('+x.m+'/'+x.n+')')})});
+t.push('','RLA extended response (parent-scored): '+(st.er?'submitted '+(st.erDate||'')+'\n'+st.er:'not written yet'),'','Proposed re-paced curriculum:');return t.concat(pl).join('\n')}
+function renderParent(){var an=analysis(),pl=plan(an),h='<div class="card pv"><h2>Parent view: GED pre-assessment</h2><p class="note">Gabe never sees this page. Estimates come from a short adaptive sample (about 10–13 items per subject), not an official GED score. Levels: Below / Near / Ready for GED, meaning roughly below 145, near 145, or comfortably at 145+.</p>';
+ORDER.forEach(function(k){var a=an[k];h+='<h3>'+SUBJ[k].glyph+' '+SUBJ[k].label+': <span class="lvl">'+a.level+'</span></h3><div class="note">Items '+a.n+' · matched '+a.m+' · highest DOK matched: '+(a.dok||'none')+(a.done?' · chamber complete':' · in progress')+'</div>';
+if(a.n){h+='<table><tr><th>Skill area</th><th>Codes</th><th>Status</th><th>Matched</th></tr>';Object.keys(a.areas).forEach(function(n){var x=a.areas[n];h+='<tr><td>'+esc(n)+'</td><td>'+Object.keys(x.codes).join(', ')+'</td><td>'+x.status+'</td><td>'+x.m+'/'+x.n+'</td></tr>'});h+='</table>';
+h+='<div class="note">Calculator items: '+(a.calc.y[0]?a.calc.y[1]+'/'+a.calc.y[0]:'none')+' · No-calculator items: '+(a.calc.n[0]?a.calc.n[1]+'/'+a.calc.n[0]:'none')+'</div>'}});
+h+='<h3>RLA extended response (parent-scored)</h3>'+(st.er?'<div class="passage">'+esc(st.er)+'</div><p class="note">Score with the GED 3-trait rubric: argument and evidence, development and organization, conventions (0–2 each).</p>':'<p class="note">Not written yet.</p>');
+h+='<h3>Proposed re-paced curriculum</h3><pre class="export" id="planTxt">'+esc(pl.join('\n'))+'</pre><h3>Export</h3><pre class="export" id="exportTxt">'+esc(exportText(an,pl))+'</pre>';
+h+='<div class="row"><button class="primary" onclick="copyExport()">Copy as text</button><button onclick="downloadExport()">Download .txt</button><button onclick="showMap()">Close parent view</button><span id="cpMsg" class="note"></span></div></div>';el('main').innerHTML=h;window.scrollTo(0,0)}
+function copyExport(){var t=el('exportTxt').textContent;function ok(){el('cpMsg').textContent='Copied.'}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok,fallback)}else fallback();function fallback(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){el('cpMsg').textContent='Select the text above and copy it.'}a.remove()}}
+function downloadExport(){var b=new Blob([el('exportTxt').textContent],{type:'text/plain'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='gabe-ged-preassessment.txt';a.click()}
+renderChecklist();showMap();
+</script></body></html>

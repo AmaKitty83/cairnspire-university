@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 3: Orrin's Given Formulas</title>
+<style>
+:root{
+  --bg:#1d2326;--bg2:#252d31;--parch:#efe3c8;--parch2:#e4d4b0;--ink:#2e2619;--ink2:#5a4a33;
+  --teal:#3f8f8a;--teal2:#2c6b67;--tealsoft:#cfe6e2;--gold:#c9a24a;--gold2:#9c7a2e;--line:#c7b48a;
+  --text:#f1eadb;--soft:#c9c1ae;--r:16px;--acc:#2c6b67;--accsoft:#cfe6e2;
+  font-size:17px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.app{display:grid;grid-template-columns:1fr 300px;gap:16px;max-width:1200px;margin:0 auto;padding:16px}
+@media (max-width:900px){.app{grid-template-columns:1fr}.side .card{position:static}}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:14px 16px 0}
+header.top h1{margin:0;font-size:1.45rem;color:var(--gold);font-family:Georgia,"Times New Roman",serif;letter-spacing:.3px}
+.sub{color:var(--soft);font-size:.92rem}
+.btn{border:0;border-radius:12px;padding:10px 16px;min-height:44px;background:var(--teal2);color:#fff;font-weight:700}
+.btn:hover{background:#245a56}
+.btn.alt{background:transparent;color:var(--text);border:1px solid #4a5559}
+.parch .btn.alt,.guide .btn.alt{color:var(--ink);border-color:var(--gold2)}
+.btn.gold{background:var(--gold);color:#2b2210}
+.btn.big{font-size:1.05rem;padding:12px 20px;box-shadow:0 0 0 3px #f3e6c4}
+.btn[disabled]{opacity:.5;cursor:default}
+.card{background:var(--bg2);border:1px solid #39454a;border-radius:var(--r);padding:16px;margin-bottom:16px}
+.parch{background:var(--parch);color:var(--ink);border:1px solid var(--line)}
+.parch .sub{color:var(--ink2)}
+h2,h3,h4{font-family:Georgia,"Times New Roman",serif;margin:.2em 0 .5em}
+.parch h2,.parch h3,.parch h4{color:#3b2e17}
+.pvbar{background:#2f3a3e;border:1px solid var(--gold2);color:var(--text);border-radius:12px;padding:10px 14px;margin:12px auto 0;max-width:1168px}
+.hidden{display:none!important}
+.note{font-size:.88rem;color:var(--soft)}
+.parch .note{color:var(--ink2)}
+/* map */
+.mapwrap{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.mapwrap svg{display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node circle.ring{fill:var(--parch);stroke:var(--gold2);stroke-width:3}
+.node.done circle.ring{fill:var(--accsoft);stroke:var(--acc)}
+.node.pinned circle.ring{fill:#f3e6c4;stroke:var(--gold2);stroke-dasharray:4 3}
+.node.locked{cursor:default;opacity:.45}
+.node.next circle.ring{stroke:var(--acc);stroke-width:5}
+.node text{font-family:Georgia,serif;font-size:17px;fill:#2e2619;font-weight:700;pointer-events:none}
+.node text.lbl{font-size:13px;font-weight:700;paint-order:stroke;stroke:#f3e8cf;stroke-width:3px}
+.node:focus{outline:none}.node:not(.locked):focus circle.ring,.node:not(.locked):hover circle.ring{stroke:var(--teal);stroke-width:5}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+/* quest log */
+.qlog{display:grid;gap:10px}
+.qsess{border:1px solid #39454a;border-radius:12px;padding:10px 12px;background:#20282b}
+.qsess.locked{opacity:.6}
+.qsess h4{margin:0 0 6px;color:var(--text)}
+.qbtns{display:flex;flex-wrap:wrap;gap:6px}
+.qb{border:1px solid #4a5559;background:#2f3a3e;color:var(--text);border-radius:10px;padding:8px 10px;min-height:40px;font-size:.92rem}
+.qb.done{background:#2b4643;border-color:var(--teal)}
+.qb[disabled]{opacity:.5;cursor:default}
+/* dialogue */
+.dlg{display:flex;gap:14px;align-items:flex-start;margin:10px 0}
+.portrait{flex:0 0 76px;height:76px;border-radius:14px;background:#2f3a3e;border:2px solid var(--gold2);overflow:hidden}
+.portrait svg{width:100%;height:100%}
+.bubble{flex:1;background:#fffaf0;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.bubble b.who{display:block;color:var(--teal2);font-family:Georgia,serif}
+/* scene */
+.scene{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#2a3236;position:relative}
+.scene svg{display:block;width:100%;height:auto;max-height:260px}
+.mover{transition:transform 1.4s ease-in-out}
+.won .mover{transform:translate(var(--dx),var(--dy))}
+.glow{opacity:0;transition:opacity 1s}
+.won .glow{opacity:.8}
+.spark{opacity:0;transition:opacity .6s .9s}
+.won .spark{opacity:1}
+.bob{animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* boxes */
+.boxes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:12px 0}
+.kbox{background:#fffaf0;border:1px solid var(--line);border-left:6px solid var(--acc);border-radius:12px;padding:10px 14px}
+.kbox h4{margin:0 0 4px;font-size:1rem}
+.kbox ul{margin:0;padding-left:18px}.kbox li{margin:3px 0}
+.kbox.strip{border-left-color:var(--gold2);background:repeating-linear-gradient(0deg,#fffaf0,#fffaf0 26px,#f6ecd6 27px)}
+.task{background:#f6ecd6;border:1px dashed var(--gold2);border-radius:12px;padding:10px 14px;margin:12px 0}
+.task ul{margin:6px 0 0;padding-left:20px}
+table.data{border-collapse:collapse;margin:8px 0;min-width:240px;background:#fffaf0}
+table.data th,table.data td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+table.data th{background:#ead9b5}
+.tcap{font-weight:700;margin-top:8px;font-family:Georgia,serif}
+.tables{display:flex;gap:16px;flex-wrap:wrap}
+.chipline{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{display:inline-block;background:#ead9b5;color:#3b2e17;border-radius:999px;padding:3px 10px;font-size:.85rem;font-weight:700}
+/* fields */
+.fields{display:grid;gap:14px;margin-top:12px}
+.field label{display:block;font-weight:700;margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fffaf0;color:var(--ink);font-size:1.05rem}
+.field textarea{resize:vertical;min-height:56px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.pick{border:1px solid var(--gold2);background:#fbf3df;color:var(--ink);border-radius:999px;padding:5px 12px;min-height:36px;font-size:.9rem}
+.pick:hover{background:#f3e6c4}
+.fb{margin-top:6px;border-radius:10px;padding:8px 10px;font-size:.95rem}
+.fb.ok{background:#d8ece7;color:#1f4d49}
+.fb.re{background:#f3e6c4;color:#4b3a14}
+.fb.log{background:#e7e1f3;color:#352a52}
+/* punnett */
+.punnett table{border-collapse:separate;border-spacing:6px}
+.punnett th,.punnett td{width:78px;height:62px;text-align:center}
+.punnett input{width:72px;height:56px;text-align:center;font-size:1.35rem;font-weight:700;border-radius:10px;border:2px solid var(--gold2);background:#fffaf0;color:var(--ink)}
+.punnett th input{background:#ead9b5;border-style:dashed;font-size:1.2rem;height:48px}
+.punnett .corner{font-size:.8rem;color:var(--ink2)}
+.punnett input.hl{border-color:var(--teal);background:#e3f1ee}
+/* guide + hints */
+.guide{background:#fffaf0;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:12px 0;color:var(--ink)}
+.guide summary{cursor:pointer;min-height:32px}
+.guide ol{margin:8px 0 0 20px;padding:0}.guide li{margin:6px 0}
+.hints{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.hintbtn{align-self:flex-start;border:2px solid var(--gold2);background:#fbf3df;color:var(--ink);border-radius:12px;padding:8px 14px;min-height:42px;font-weight:700}
+.hintbtn.nudge{animation:pulse 1.6s ease-in-out 3}
+.hint{background:#fbf3df;border:1px solid var(--gold2);border-radius:12px;padding:8px 12px;color:var(--ink)}
+.winbox{margin-top:14px;border-radius:12px;padding:12px 14px;background:#d8ece7;color:#1f4d49;border:1px solid var(--teal)}
+/* side */
+.side .card{position:sticky;top:12px}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #39454a}
+.chk input{flex:0 0 22px;width:22px;height:22px;margin-top:3px;accent-color:var(--teal)}
+.loot{display:flex;flex-wrap:wrap;gap:8px}
+.lootitem{background:#2f3a3e;border:1px solid var(--gold2);border-radius:10px;padding:6px 10px;font-size:.88rem;color:var(--text)}
+button.lootitem{cursor:pointer}
+.toggle{display:flex;align-items:center;gap:8px}
+#askT{width:100%;border-radius:10px;padding:8px;font:inherit;color:var(--ink);background:#fffaf0;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--parch);color:var(--ink);border:1px solid var(--gold2);padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none;z-index:9;max-width:90vw}
+.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(10,14,16,.6);display:flex;align-items:center;justify-content:center;z-index:8;padding:16px}
+.modal .card{max-width:520px;width:100%}
+.pop{animation:pop .6s ease-out}
+@keyframes pop{0%{transform:scale(.97);opacity:.3}100%{transform:scale(1);opacity:1}}
+.navrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+:root{--acc:#5b4a8a;--accsoft:#e3dcf3}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><h1>📜 Unit 3: Orrin's Given Formulas</h1><div class="sub">The Science Path · The Scroll Vault · GED Science</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn alt" onclick="showMap()">🗺️ Map</button>
+    <button class="btn gold" onclick="saveLeave()">💾 Save &amp; leave</button>
+  </div>
+</header>
+<div id="pvbar" class="pvbar hidden" role="status">👀 <b>Preview mode.</b> Every session is open so you can look around. Answers are checked so you can see what the page does (Matches / Not yet), but nothing is saved as quest work.</div>
+<div class="app">
+  <main id="main"></main>
+  <aside class="side">
+    <div class="card">
+      <h3>📜 Today's plan</h3>
+      <div class="note" id="planFor"></div>
+      <div id="checklist"></div>
+      <p class="note">Checking steps off is optional. One step at a time. You can stop anytime; your place is saved.</p>
+      <h3 style="margin-top:14px">🙋 Ask a question</h3>
+      <p class="note">Any question is a good question. It is saved with your answers so someone can help later.</p>
+      <textarea id="askT" rows="2" aria-label="Your question"></textarea>
+      <button class="btn alt" style="margin-top:6px" onclick="askQ()">Save my question</button>
+      <h3 style="margin-top:14px">🎒 Loot</h3>
+      <div class="loot" id="loot"></div>
+      <h3 style="margin-top:14px">⚙️ Settings</h3>
+      <label class="toggle"><input type="checkbox" id="soundT" onchange="S.sound=this.checked;save()"> Sound (off by default)</label>
+      <p class="note" id="saveNote"></p>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal hidden" id="modal" onclick="if(event.target===this)closeModal()"></div>
+<script>
+var U={"id":"SCI-U3-given-formulas","title":"Unit 3: Orrin's Given Formulas","icon":"📜","calc":true,"sub":"The Science Path · The Scroll Vault · GED Science","mapTitle":"The Scroll Vault","encWord":"Encounter","mapLine":"Six sessions, one strip at a time. Sessions open in order. In Session 3, the two sled parts go in order. Start with the 📖 spot in each session.","checkLabel":"🖋️ Write it on the back of the strip","winLine":"Calciber's numbers are written on the back of the strip.","accent":"#5b4a8a","accsoft":"#e3dcf3","mapEdge":"#c9bfa8","mapDeco":[["🕯️",40,380],["🕯️",920,380],["📜",480,400,30],["🗝️",250,410]],"hookScene":{"bg":"vault","props":[["🕯️",380,150,34]],"cap":"The Scroll Vault"},"doneScene":{"bg":"vault","props":[["🕯️",380,150,34]],"cap":"Every strip back on its peg"},"hook":["Below the Archive of Hollowmere there is a cool stone room called the Scroll Vault. Orrin the archivist leads Calciber down the stairs with a candle.","Rows of thin paper strips hang from pegs along the wall. Each strip has one formula written across the top, and under it a key that says what every letter means.",{"o":"Orrin","t":"\"Rangers have asked me for these for years. Nobody needs to carry them in their head. The strip tells you what each letter is. Your job is to match the numbers to the letters and do the math.\""},{"o":"Calciber","t":"Calciber takes the first strip off its peg. \"So I read the key, fill in the numbers, and solve.\""},{"o":"Orrin","t":"\"Exactly that. Every time, the same way. I wrote the method on the back of every strip.\""}],"how":["There are 6 sessions. Each one is short, about 15 to 25 minutes.","The sessions open in order. Inside most sessions, after you read the intro, you can do the encounters in any order. In Session 3, the two parts of the sled problem go in order.","You can do one session a day, or stop partway through a session. Your answers save.","A calculator is welcome on every encounter.","Every formula is printed right on the page, with what each letter means. Orrin's Formula Method, Orrin's rounding rule, and hints are there whenever you want them."],"complete":["Orrin walks along the vault wall and hangs each strip back on its peg: density, force, acceleration, speed, wave speed, work, and power. Each one has Calciber's numbers written neatly on the back.",{"o":"Orrin","t":"\"Some of these you had never seen before today. And you used every one the same way. Read the key, match the numbers, solve. That works on any strip.\""},"He blows out the candle at the bottom of the stairs. Calciber climbs back up into the archive, the Trial Log and the Field Journal in the ranger's pack."],"ribsBye":"Snack break! I saved you a (pretend) bowl of less-shiny soup.","sessions":[{"id":"S1","title":"Session 1: The Weight of a Thing","short":"1 · Density","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 1 intro.","Pick either Session 1 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"vault","props":[["🕯️",380,150,30]],"cap":"The DENSITY strip"},"intro":["Orrin hands Calciber the first strip. It says DENSITY across the top.",{"o":"Orrin","t":"\"Density tells you how tightly packed something is. A small, heavy thing is dense. A big, light thing is not. Let us start here.\""}],"encounters":[{"id":"E1","n":"1","title":"The River Stone","calc":true,"scene":{"bg":"water","props":[["⚖️",110,140,44],["🫙",300,150,44]],"mover":["🪨",110,110,30,190,30],"cap":"39 grams, 15 cm³"},"story":["Calciber picks up a smooth gray stone from the bank of the Hollow River. Orrin weighs it on the archive scale and finds the mass is 39 grams. Then he drops it into a measuring jar of water. The water rises by 15 cubic centimeters, so the stone's volume is 15 cm³."],"task":"Find the density of the river stone. Write each step.","boxes":[{"t":"📜 Formula strip: DENSITY","strip":true,"l":["**D = m / V**","**D** = density, in grams per cubic centimeter (g/cm³).","**m** = mass, in grams (g).","**V** = volume, in cubic centimeters (cm³)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, copy what each letter means from the strip.","The mass is 39 grams, so m = 39. The volume is 15 cm³, so V = 15.","Put them in: D = 39 / 15. Work it out.","Write the answer with the unit g/cm³."],"fields":[{"id":"L1","l":"A. D stands for","k":"short","ph":"what it means, and its unit"},{"id":"L2","l":"A. m stands for","k":"short","ph":"what it means, and its unit"},{"id":"L3","l":"A. V stands for","k":"short","ph":"what it means, and its unit"},{"id":"B","l":"B. The density, with its unit","k":"short","ph":"a number and g/cm³"}],"hints":["**The slash** ( / ) means divide. Mass goes on top, volume goes on the bottom.","39 / 15 on a calculator. The answer has one number after the decimal point."],"loot":{"name":"📜 Strip: DENSITY","text":"D = m / V. D = density (g/cm³), m = mass (g), V = volume (cm³)."}},{"id":"E2","n":"2","title":"The Pine Block","calc":true,"scene":{"bg":"water","props":[["⚖️",90,130,40]],"mover":["🪵",210,110,40,0,30],"cap":"Does it float?"},"story":["Orrin sets a block of dry pine wood on the scale. Its mass is 30 grams. He measures it with a ruler and works out that its volume is 60 cm³.",{"o":"Orrin","t":"\"Water has a density of 1 g/cm³. Anything less dense than water floats in it.\""}],"task":"Write each step.","boxes":[{"t":"📜 Formula strip: DENSITY","strip":true,"l":["**D = m / V**","**D** = density, in grams per cubic centimeter (g/cm³).","**m** = mass, in grams (g).","**V** = volume, in cubic centimeters (cm³)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["The mass is 30 grams, so m = 30. The volume is 60 cm³, so V = 60.","Put them in: D = 30 / 60. Work it out for A.","For B, compare your answer to 1, the density of water. Is it less than 1?"],"fields":[{"id":"A","l":"A. The density of the pine block, with its unit","k":"short","ph":"a number and g/cm³"},{"id":"B","l":"B. Will the pine block float in water? Type yes or no.","k":"short","chips":["yes","no"]}],"hints":["**Smaller on top:** when the mass is smaller than the volume, the density is less than 1.","30 / 60 is one half. Is one half less than 1?"],"loot":{"name":"🪵 Floating pine block"}}]},{"id":"S2","title":"Session 2: The Pushing Strip","short":"2 · Force","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 2 intro.","Pick either Session 2 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"vault","props":[["🕯️",380,150,30]],"cap":"The FORCE strip"},"intro":["The second strip is a little longer. It says FORCE across the top.",{"o":"Orrin","t":"\"Force is a push or a pull. This strip tells you how big a push has to be to speed something up. The heavier the thing, or the faster you want it to speed up, the bigger the push.\""}],"encounters":[{"id":"E3","n":"3","title":"The Pony Cart","calc":true,"scene":{"bg":"field","props":[["🏘️",380,140,40]],"mover":["🐴",60,165,44,230,0],"cap":"250 kg, 2 m/s²"},"story":["A farm pony named Barley pulls a loaded cart down the lane to Hollowmere market. The cart has a mass of 250 kg. As Barley starts off, the cart speeds up with an acceleration of 2 m/s²."],"task":"Find the force Barley uses. Write each step.","boxes":[{"t":"📜 Formula strip: FORCE","strip":true,"l":["**F = m x a**","**F** = force, in newtons (N).","**m** = mass, in kilograms (kg).","**a** = acceleration, in meters per second each second (m/s²). It tells how fast the speed is going up."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, copy what each letter means from the strip.","The cart's mass is 250 kg, so m = 250. The acceleration is 2 m/s², so a = 2.","Put them in: F = 250 x 2. Work it out.","Write the answer with the unit N (newtons)."],"fields":[{"id":"L1","l":"A. F stands for","k":"short","ph":"what it means, and its unit"},{"id":"L2","l":"A. m stands for","k":"short","ph":"what it means, and its unit"},{"id":"L3","l":"A. a stands for","k":"short","ph":"what it means, and its unit"},{"id":"B","l":"B. The force, with its unit","k":"short","ph":"a number and N"}],"hints":["**m x a** means multiply the mass by the acceleration.","250 x 2. Then add \"N\" after your answer."],"loot":{"name":"📜 Strip: FORCE","text":"F = m x a. F = force (N), m = mass (kg), a = acceleration (m/s²)."}},{"id":"E4","n":"4","title":"The Market Handcart","calc":true,"scene":{"bg":"fair","props":[["🍐",300,160,30]],"mover":["🛒",60,165,40,160,0],"cap":"40 kg, 0.75 m/s²"},"story":["At the market, a fruit seller pushes a small handcart of pears. The handcart has a mass of 40 kg. When she pushes, it speeds up with an acceleration of 0.75 m/s²."],"task":"Find the force of her push, with its unit. Write each step.","boxes":[{"t":"📜 Formula strip: FORCE","strip":true,"l":["**F = m x a**","**F** = force, in newtons (N).","**m** = mass, in kilograms (kg).","**a** = acceleration, in meters per second each second (m/s²)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["Write m = 40 and a = 0.75.","Put them in: F = 40 x 0.75. Work it out.","Write the answer with the unit N."],"fields":[{"id":"m","l":"m =","k":"short","ph":"a number"},{"id":"a","l":"a =","k":"short","ph":"a number"},{"id":"F","l":"F = (with its unit)","k":"short","ph":"a number and N"}],"hints":["**A decimal acceleration** works the same way. Multiply 40 by 0.75 on the calculator.","0.75 is three quarters. Three quarters of 40 is the answer."],"loot":{"name":"🍐 Market pear"}}]},{"id":"S3","title":"Session 3: The Supply Sled","short":"3 · The Sled","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 3 intro.","Start with Encounter 5. The two sled encounters go in order. Encounter 7 can be done any time after the intro.","Save and leave whenever you want."],"scene":{"bg":"vault","props":[["🕯️",380,150,30]],"cap":"FORCE and ACCELERATION, side by side"},"intro":["Orrin pins two strips side by side on the vault table. One is the FORCE strip. The other says ACCELERATION.",{"o":"Orrin","t":"\"Sometimes the story does not give you every letter. Then you find the missing one first, with a second strip. Two steps. Same method both times.\""}],"encounters":[{"id":"E5","n":"5","title":"The Sled, Part 1","calc":true,"scene":{"bg":"snow","props":[["🏰",380,120,40]],"mover":["🛷",60,160,40,220,0],"cap":"80 kg, 2 m/s to 5 m/s in 2 seconds"},"story":["A loaded supply sled heads up the snowy path to the north watch. The sled has a mass of 80 kg. On a flat stretch, it speeds up from 2 m/s to 5 m/s in 2 seconds.",{"o":"Calciber","t":"Calciber looks at the FORCE strip. \"I have m. I do not have a yet.\""}],"task":"Find the sled's acceleration. This is Step 1 of the sled problem.","boxes":[{"t":"📜 Formula strip: ACCELERATION","strip":true,"l":["**a = (final speed - starting speed) / time**","**a** = acceleration, in meters per second each second (m/s²).","**Final speed** = how fast it is going at the end, in meters per second (m/s).","**Starting speed** = how fast it was going at the start, in meters per second (m/s).","**Time** = how long the speeding up took, in seconds (s)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["The sled ends at 5 m/s, so the final speed is 5. It starts at 2 m/s, so the starting speed is 2. The time is 2 seconds.","Put them in: a = (5 - 2) / 2.","Do the part in parentheses first: 5 - 2. Then divide by 2.","Write the answer with the unit m/s²."],"fields":[{"id":"a","l":"a = (with its unit)","k":"short","ph":"a number and m/s²"}],"hints":["**Parentheses first.** Subtract the two speeds before you divide.","5 - 2 = 3. Now 3 / 2."],"loot":{"name":"📜 Strip: ACCELERATION","text":"a = (final speed - starting speed) / time. Speeds in m/s, time in seconds, a in m/s²."}},{"id":"E6","n":"6","title":"The Sled, Part 2","calc":true,"after":"E5","scene":{"bg":"snow","props":[["🏰",380,120,40]],"mover":["🛷",140,160,40,200,0],"cap":"a = 1.5 m/s²"},"story":["Calciber writes **a = 1.5 m/s²** at the top of the page. Now every letter on the FORCE strip has a number. (The sled's mass is 80 kg.)"],"task":"Find the force that speeds up the sled. This is Step 2 of the sled problem.","boxes":[{"t":"📜 Formula strip: FORCE","strip":true,"l":["**F = m x a**","**F** = force, in newtons (N).","**m** = mass, in kilograms (kg).","**a** = acceleration, in meters per second each second (m/s²)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["The sled's mass is 80 kg, so m = 80. From Part 1, a = 1.5.","Put them in: F = 80 x 1.5. Work it out.","Write the answer with the unit N."],"fields":[{"id":"F","l":"F = (with its unit)","k":"short","ph":"a number and N"}],"hints":["**Use the a you found** in Part 1, not one of the speeds.","80 x 1.5 is the same as 80 plus half of 80."],"loot":{"name":"🛷 Supply sled runner"}},{"id":"E7","n":"7","title":"The Canoe on Mirror Lake","calc":true,"scene":{"bg":"water","props":[["🌲",360,110,34]],"mover":["🛶",60,150,40,240,0],"cap":"90 kg, 0.5 m/s to 2.5 m/s in 4 seconds"},"story":["A trader paddles a canoe across Mirror Lake. The canoe and its load have a mass of 90 kg. It speeds up from 0.5 m/s to 2.5 m/s in 4 seconds."],"task":"Find the force that speeds up the canoe. Write both steps.","boxes":[{"t":"📜 Formula strips","strip":true,"l":["**a = (final speed - starting speed) / time**. Speeds in m/s, time in seconds, a in m/s².","**F = m x a**. F = force in newtons (N), m = mass in kilograms (kg), a = acceleration in m/s²."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, the final speed is 2.5, the starting speed is 0.5, and the time is 4. Put them in: a = (2.5 - 0.5) / 4.","For B, the mass is 90. Use the a you found in A. Put them in: F = 90 x a.","Write each answer with its unit."],"fields":[{"id":"A","l":"A. Step 1: Acceleration","k":"short","ph":"a number and m/s²"},{"id":"B","l":"B. Step 2: Force","k":"short","ph":"a number and N"}],"hints":["**Two strips, in order.** The acceleration strip comes first because the force strip needs a.","2.5 - 0.5 = 2, and 2 / 4 = 0.5. Now 90 x 0.5."],"loot":{"name":"🛶 Canoe paddle"}}]},{"id":"S4","title":"Session 4: The Road Strip","short":"4 · Speed","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 4 intro.","Pick either Session 4 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"vault","props":[["🕯️",380,150,30]],"cap":"The SPEED strip"},"intro":["The next strip is worn soft at the edges from use. It says SPEED across the top.",{"o":"Orrin","t":"\"Every ranger uses this one, even if they never write it down. How far you went, and how long it took. That tells you how fast you were going.\""}],"encounters":[{"id":"E8","n":"8","title":"The Walk to Lowbridge","calc":true,"scene":{"bg":"water","props":[["⛴️",370,140,40]],"mover":["🚶",40,120,34,280,0],"cap":"27 km in 6 hours"},"story":["Calciber walks from the archive to the Lowbridge ferry. The road is 27 kilometers long, and the walk takes 6 hours."],"task":"Find Calciber's speed. Write each step.","boxes":[{"t":"📜 Formula strip: SPEED","strip":true,"l":["**v = d / t**","**v** = speed, in kilometers per hour (km/h) for this trip.","**d** = distance, in kilometers (km).","**t** = time, in hours (h)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, copy what each letter means from the strip.","The road is 27 km, so d = 27. The walk takes 6 hours, so t = 6.","Put them in: v = 27 / 6. Work it out.","Write the answer with the unit km/h."],"fields":[{"id":"L1","l":"A. v stands for","k":"short","ph":"what it means, and its unit"},{"id":"L2","l":"A. d stands for","k":"short","ph":"what it means, and its unit"},{"id":"L3","l":"A. t stands for","k":"short","ph":"what it means, and its unit"},{"id":"B","l":"B. The speed, with its unit","k":"short","ph":"a number and km/h"}],"hints":["**Distance on top, time on the bottom.** The slash means divide.","27 / 6 on a calculator. The answer has one number after the decimal point."],"loot":{"name":"📜 Strip: SPEED","text":"v = d / t. v = speed, d = distance, t = time."}},{"id":"E9","n":"9","title":"The Road to Kestrel Hill","calc":true,"scene":{"bg":"field","props":[["⛰️",370,120,50]],"mover":["🐎",50,165,44,260,-20],"cap":"50 km in 3 hours"},"story":["The road to Kestrel Hill is 50 kilometers. Calciber rides a borrowed horse and gets there in 3 hours."],"task":"Find the speed of the ride. Round by Orrin's rule and write the unit.","boxes":[{"t":"📜 Formula strip: SPEED","strip":true,"l":["**v = d / t**","**v** = speed, in kilometers per hour (km/h).","**d** = distance, in kilometers (km).","**t** = time, in hours (h)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]},{"t":"🎯 Orrin's rounding rule","l":["Decimals to 0.001 (three places after the point).","Percents to whole numbers."]}],"steps":["Write d = 50 and t = 3.","Put them in: v = 50 / 3. Your calculator will show a long decimal.","Round to 0.001, which means keep three numbers after the decimal point.","Write the answer with the unit km/h."],"fields":[{"id":"v","l":"v = (rounded, with its unit)","k":"short","ph":"three places after the point, and km/h"}],"hints":["**Rounding to 0.001** means three places after the decimal point. Look at the fourth place to decide whether to round up.","50 / 3 shows 16.6666666. The fourth place is a 6, so the third place rounds up."],"loot":{"name":"🐎 Borrowed horseshoe"}}]},{"id":"S5","title":"Session 5: The Music Strip","short":"5 · Waves","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 5 intro.","Pick either Session 5 encounter to start.","Save and leave whenever you want."],"scene":{"bg":"vault","props":[["🌊",210,150,34]],"cap":"The WAVE SPEED strip"},"intro":["Orrin lifts a strip that has a little drawing of a wave in the corner. It says WAVE SPEED.",{"o":"Orrin","t":"\"Sound travels as a wave through the air. Each note shakes the air a certain number of times each second. That is its frequency. The length of one wave is its wavelength. Multiply them, and you get how fast the sound moves.\""}],"encounters":[{"id":"E10","n":"10","title":"The Bard's Lute","calc":true,"scene":{"bg":"chamber","props":[["🪕",140,150,50]],"mover":["🎵",180,120,34,160,-30],"cap":"440 hertz, 0.78 meters"},"story":["A bard is tuning a lute in the archive's front hall. The note on the top string has a frequency of 440 hertz. Its wavelength in the air is 0.78 meters."],"task":"Find how fast the sound of the note travels. Write each step.","boxes":[{"t":"📜 Formula strip: WAVE SPEED","strip":true,"l":["**v = f x wavelength**","**v** = wave speed, in meters per second (m/s).","**f** = frequency, in hertz (Hz). Hertz means vibrations each second.","**wavelength** = the length of one wave, in meters (m)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, copy what each part means from the strip.","The frequency is 440 hertz, so f = 440. The wavelength is 0.78 meters.","Put them in: v = 440 x 0.78. Work it out.","Write the answer with the unit m/s."],"fields":[{"id":"L1","l":"A. v stands for","k":"short","ph":"what it means, and its unit"},{"id":"L2","l":"A. f stands for","k":"short","ph":"what it means, and its unit"},{"id":"L3","l":"A. wavelength stands for","k":"short","ph":"what it means, and its unit"},{"id":"B","l":"B. The wave speed, with its unit","k":"short","ph":"a number and m/s"}],"hints":["**The x** means multiply. Frequency times wavelength.","440 x 0.78 on a calculator. The answer is a little over 340."],"loot":{"name":"📜 Strip: WAVE SPEED","text":"v = f x wavelength. v = wave speed (m/s), f = frequency (Hz, vibrations each second), wavelength in meters."}},{"id":"E11","n":"11","title":"The Festival Drum","calc":true,"scene":{"bg":"fair","props":[["🥁",210,170,50]],"mover":["🎶",210,130,34,120,-50],"cap":"110 hertz, 3.12 meters"},"story":["Outside, someone is practicing on a big festival drum. Its low note has a frequency of 110 hertz and a wavelength of 3.12 meters.","The lute note from Encounter 10 traveled at **343.2 m/s**."],"task":"Answer two short questions.","boxes":[{"t":"📜 Formula strip: WAVE SPEED","strip":true,"l":["**v = f x wavelength**","**v** = wave speed, in meters per second (m/s).","**f** = frequency, in hertz (Hz).","**wavelength** = the length of one wave, in meters (m)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, write f = 110 and wavelength = 3.12.","Put them in: v = 110 x 3.12. Work it out.","For B, put your answer next to 343.2. Are they different or the same? One sentence is enough."],"fields":[{"id":"A","l":"A. The wave speed of the drum's note, with its unit","k":"short","ph":"a number and m/s"},{"id":"B","l":"B. In one sentence, compare it to the lute note's speed (343.2 m/s).","k":"sentence"}],"hints":["**Low notes** have long waves. Multiply the two numbers just like the lute.","110 x 3.12 comes out to the same number as the lute note. Sound moves through the same air at the same speed."],"loot":{"name":"🥁 Festival drumstick"}}]},{"id":"S6","title":"Session 6: The Unknown Strips","short":"6 · New Strips","checklist":["Grab a snack or a drink and get comfortable.","Open the quest map.","Read the Session 6 intro.","Pick either Session 6 encounter to start. The side quest is optional.","Save and leave whenever you want."],"scene":{"bg":"vault","props":[["❓",210,150,34]],"cap":"WORK and POWER"},"intro":["At the very back of the vault, Orrin finds two strips Calciber has never seen. One says WORK. The other says POWER.",{"o":"Orrin","t":"\"New strips. But the method does not change. Read the key, name the letters, fill in the numbers, solve.\""}],"encounters":[{"id":"E12","n":"12","title":"The Archive Ramp","calc":true,"scene":{"bg":"indoor","props":[],"mover":["📦",60,170,40,200,-60],"cap":"60 newtons, 5 meters"},"story":["Calciber pushes a crate of old maps up the ramp into the archive. Calciber pushes with a force of 60 newtons, and the crate moves 5 meters up the ramp."],"task":"Find the work Calciber does. Write each step.","boxes":[{"t":"📜 Formula strip: WORK","strip":true,"l":["**W = F x d**","**W** = work, in joules (J).","**F** = force, in newtons (N).","**d** = distance the thing moves, in meters (m)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, copy what each letter means from the strip.","The push is 60 newtons, so F = 60. The crate moves 5 meters, so d = 5.","Put them in: W = 60 x 5. Work it out.","Write the answer with the unit J (joules)."],"fields":[{"id":"L1","l":"A. W stands for","k":"short","ph":"what it means, and its unit"},{"id":"L2","l":"A. F stands for","k":"short","ph":"what it means, and its unit"},{"id":"L3","l":"A. d stands for","k":"short","ph":"what it means, and its unit"},{"id":"B","l":"B. The work, with its unit","k":"short","ph":"a number and J"}],"hints":["**A new strip** is read the same way. W is what you are finding. F and d are in the story.","60 x 5. Then add \"J\" after your answer."],"loot":{"name":"📜 Strip: WORK","text":"W = F x d. W = work (J), F = force (N), d = distance (m)."}},{"id":"E13","n":"13","title":"The Well Windlass","calc":true,"scene":{"bg":"field","props":[["⛲",210,160,60]],"mover":["🪣",270,170,30,0,-60],"cap":"40 newtons, 6 meters, 8 seconds"},"story":["In the village square, Calciber turns the handle of a well windlass to lift a bucket of water. Calciber pulls with a force of 40 newtons and the bucket rises 6 meters. It takes 8 seconds.",{"o":"Orrin","t":"Orrin hands over both new strips. \"How much power did that take?\""}],"task":"Write both steps.","boxes":[{"t":"📜 Formula strips","strip":true,"l":["**W = F x d**. W = work in joules (J), F = force in newtons (N), d = distance in meters (m).","**P = W / t**. P = power in watts (W), W = work in joules (J), t = time in seconds (s)."]},{"t":"📐 Orrin's Formula Method","l":["**Step 1:** Name each letter. Write what it stands for and its unit.","**Step 2:** Match each number in the story to its letter.","**Step 3:** Substitute the numbers into the formula and solve.","**Step 4:** Round by Orrin's rounding rule if needed, and write the unit."]}],"steps":["For A, F = 40 and d = 6. Put them in: W = 40 x 6.","For B, use the work you found in A, and t = 8. Put them in: P = W / 8.","Write each answer with its unit."],"fields":[{"id":"A","l":"A. Step 1: Work, with its unit","k":"short","ph":"a number and J"},{"id":"B","l":"B. Step 2: Power, with its unit","k":"short","ph":"a number and watts"}],"hints":["**The power strip needs work first,** so the work strip comes first.","40 x 6 = 240 joules. Now 240 / 8."],"loot":{"name":"📜 Strip: POWER","text":"P = W / t. P = power (watts), W = work (J), t = time (s)."}},{"id":"SIDE","n":"✦","side":true,"title":"Side Quest: The Soup Oil","calc":true,"scene":{"bg":"indoor","props":[["👨‍🍳",80,160,44],["🍲",300,170,44]],"mover":["🫙",180,120,30,100,30],"cap":"46 grams, 50 cm³"},"story":[{"o":"Ribs","t":"Baby Back Ribs comes down the vault stairs carefully, carrying a small jar. \"Calciber! My soup always has a shiny layer on top. I think it is the oil. Does oil float on water?\""},{"o":"Ribs","t":"He has already weighed it. \"This much oil has a mass of 46 grams, and it fills 50 cubic centimeters.\""}],"task":"Find the density, then decide.","boxes":[{"t":"📜 Formula strip","strip":true,"l":["**D = m / V**. D = density in g/cm³, m = mass in grams, V = volume in cm³."]}],"steps":["Write m = 46 and V = 50.","Put them in: D = 46 / 50. Work it out.","Compare your answer to 1."],"fields":[{"id":"A","l":"A. The density of the oil, with its unit","k":"short","ph":"a number and g/cm³"},{"id":"B","l":"B. Will it float on the soup? (Use water's density, 1 g/cm³.) Type yes or no.","k":"short","chips":["yes","no"]}],"hints":["46 / 50 is a little less than 1. Less dense than water means it floats on top."],"after_win":[{"o":"Ribs","t":"Baby Back Ribs nods slowly. \"So the shiny layer is the oil floating. I will skim it off. My soup will be famous. And less shiny.\""}],"loot":{"name":"🍲 Less-shiny soup"}}]}]};
+/* =====================================================================
+ * Science Path quest page, inside the Family Hub's Quests tab (built like Quest 1).
+ * Each typed answer goes to google.script.run.saveQuestAnswer(record). The SERVER checks it
+ * and saves {questId, problemId, field, answer, matched, date}. No answer key is in this page.
+ * If the Hub can't be reached, answers wait in localStorage (pending) and are sent when it is back.
+ * window.QUEST_HOST (set by the Hub) gives person() and leave(). window.QUEST_PREVIEW=true means a
+ * preview (not Gabe): everything is open, nothing is queued, and progress is kept under a separate key.
+ * ===================================================================== */
+var QUEST_ID=U.id;
+var QUEST_SAVE_FN='saveQuestAnswer';
+function detectPreview(){try{if(window.QUEST_PREVIEW===true||window.QUEST_PREVIEW==='1')return true;if(window.QUEST_HOST&&window.QUEST_HOST.preview===true)return true;}catch(e){}try{return /preview/.test(String(location.hash||''));}catch(e){return false;}}
+var PREVIEW=detectPreview();
+var STORE_KEY=(PREVIEW?'gabeQuestPreview:':'gabeQuest:')+QUEST_ID;
+var PREVIEW_NOTE='Preview mode: this answer is checked here so you can see the page, but nothing is saved.';
+var OFFLINE='Saved on this device. It will be checked when the Hub is connected.';
+var SAVE_NOTE='What is saved: your typed answers, whether each one matches, any questions you write, and the date. Nothing about time or screens is saved. Your checklist and your place on the map stay on this device.';
+
+var S={hook:false,intro:{},done:{},pinned:{},ans:{},fb:{},hints:{},checks:{},loot:[],sound:false,view:'map',pending:[]};
+function load(){try{var x=JSON.parse(localStorage.getItem(STORE_KEY)||'null');if(x&&typeof x==='object')for(var k in x)S[k]=x[k];}catch(e){}
+  ['intro','done','pinned','ans','fb','hints','checks'].forEach(function(k){if(!S[k]||typeof S[k]!=='object'||Array.isArray(S[k]))S[k]={};});
+  if(!Array.isArray(S.loot))S.loot=[];if(!Array.isArray(S.pending))S.pending=[];if(PREVIEW)S.pending=[];}
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hubPerson(){try{return window.QUEST_HOST&&QUEST_HOST.person?String(QUEST_HOST.person()||''):'';}catch(e){return '';}}
+function hubOk(){try{return !!(window.google&&google.script&&google.script.run);}catch(e){return false;}}
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2800);}
+var AC=null;function chime(){if(!S.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();[523,659,784].forEach(function(f,i){var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+i*.12;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.07,t+.04);g.gain.exponentialRampToValueAtTime(.0001,t+.5);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.55);});}catch(e){}}
+function showPv(){var b=$('pvbar');if(b)b.classList.remove('hidden');}
+
+/* ---- saving (same record shape as Quest 1) ---- */
+function hubSave(problemId,field,answer){
+  var rec={questId:QUEST_ID,problemId:problemId,field:field,answer:String(answer).slice(0,300),date:today(),person:hubPerson()};
+  return new Promise(function(res){
+    var keep=function(){if(PREVIEW){res({readonly:true,local:true});return;}S.pending=(S.pending||[]).concat([rec]).slice(-300);save();res(null);};
+    if(!hubOk())return keep();
+    try{google.script.run.withSuccessHandler(function(r){if(r&&r.preview){showPv();}if(!PREVIEW)flushPending();res(r||null);}).withFailureHandler(function(e){
+        var m=String(e&&e.message||e);if(/read-only|view-as/i.test(m)){res({readonly:true});}else if(/not available|only for gabe|pick who/i.test(m)){res({blocked:true,msg:m});}else keep();
+      })[QUEST_SAVE_FN](rec);}catch(e){keep();}
+  });
+}
+var flushing=false;
+/* Sends answers that were kept on this device. Only sends records made by the same person who is signed in now. */
+function flushPending(){if(PREVIEW||flushing||!hubOk()||!(S.pending&&S.pending.length))return;var me=hubPerson();
+  var p=S.pending.filter(function(r){return !r.person||!me||r.person===me;});var rest=S.pending.filter(function(r){return p.indexOf(r)<0;});
+  if(!p.length)return;flushing=true;S.pending=rest;save();var left=p.length;
+  p.forEach(function(rec){rec.person=rec.person||me;try{google.script.run.withSuccessHandler(function(){if(--left<=0)flushing=false;}).withFailureHandler(function(e){if(!/read-only|view-as|not available/i.test(String(e&&e.message||e))){S.pending=(S.pending||[]).concat([rec]);save();}if(--left<=0)flushing=false;})[QUEST_SAVE_FN](rec);}catch(e){flushing=false;}});}
+window.addEventListener('online',function(){flushPending();});
+
+/* ---- structure helpers ---- */
+var ENC={},SES={};
+U.sessions.forEach(function(s,si){s.idx=si;SES[s.id]=s;s.encounters.forEach(function(e){e.sid=s.id;ENC[e.id]=e;});});
+function cleared(id){return !!(S.done[id]||S.pinned[id]);}
+function sessionComplete(s){return s.encounters.filter(function(e){return !e.side;}).every(function(e){return cleared(e.id);});}
+function sessionOpen(s){if(PREVIEW)return true;if(s.idx===0)return true;return sessionComplete(U.sessions[s.idx-1]);}
+function encOpen(e){var s=SES[e.sid];if(PREVIEW)return true;if(!sessionOpen(s)||!S.intro[s.id])return false;if(e.after&&!cleared(e.after))return false;return true;}
+function allComplete(){return U.sessions.every(sessionComplete);}
+function currentSession(){for(var i=0;i<U.sessions.length;i++){var s=U.sessions[i];if(!sessionComplete(s))return s;}return U.sessions[U.sessions.length-1];}
+function chamberOf(cid){return (U.chambers||[]).filter(function(c){return c.id===cid;})[0];}
+function chamberComplete(c){return U.sessions.filter(function(s){return s.chamber===c.id;}).every(sessionComplete);}
+function chamberOpen(c){var first=U.sessions.filter(function(s){return s.chamber===c.id;})[0];return first?sessionOpen(first):false;}
+
+/* ---- art ---- */
+function calciberSVG(){return '<svg viewBox="0 0 100 100" aria-label="Calciber the skeleton ranger, smiling"><rect width="100" height="100" fill="#2f4a4a"/><path d="M14 100 Q16 58 50 52 Q84 58 86 100Z" fill="#3f6b55"/><path d="M20 46 Q50 -2 80 46 L74 60 Q50 44 26 60Z" fill="#355c4a"/><ellipse cx="50" cy="48" rx="21" ry="22" fill="#f2ead8"/><ellipse cx="41" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><ellipse cx="59" cy="46" rx="6.5" ry="7" fill="#2b3a3a"/><circle cx="42" cy="46" r="2.4" fill="#8fe0d6"/><circle cx="60" cy="46" r="2.4" fill="#8fe0d6"/><path d="M48 55 L50 52 L52 55Z" fill="#2b3a3a"/><path d="M40 61 Q50 68 60 61" stroke="#2b3a3a" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M44 63v2M50 64v2.5M56 63v2" stroke="#2b3a3a" stroke-width="1.4"/><path d="M84 20 Q96 50 84 84" stroke="#c9a24a" stroke-width="3" fill="none"/><line x1="84" y1="20" x2="84" y2="84" stroke="#efe3c8" stroke-width="1"/></svg>';}
+function orrinSVG(){return '<svg viewBox="0 0 100 100" aria-label="Orrin the calm dwarf archivist"><rect width="100" height="100" fill="#4a3c2c"/><path d="M12 100 Q14 66 50 62 Q86 66 88 100Z" fill="#2c6b67"/><ellipse cx="50" cy="42" rx="20" ry="20" fill="#e8bf98"/><path d="M28 30 Q50 10 72 30 Q66 22 50 22 Q34 22 28 30Z" fill="#b9b2a6"/><path d="M30 48 Q30 90 50 92 Q70 90 70 48 Q60 60 50 58 Q40 60 30 48Z" fill="#d9d3c7"/><circle cx="42" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><circle cx="58" cy="42" r="6" fill="none" stroke="#9c7a2e" stroke-width="2"/><line x1="48" y1="42" x2="52" y2="42" stroke="#9c7a2e" stroke-width="2"/><circle cx="42" cy="42" r="1.8" fill="#3b2e17"/><circle cx="58" cy="42" r="1.8" fill="#3b2e17"/><path d="M44 56 Q50 60 56 56" stroke="#7a5a3a" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="58" y="74" width="26" height="18" rx="2" fill="#7a2f2a"/><line x1="71" y1="74" x2="71" y2="92" stroke="#c9a24a"/></svg>';}
+function ribsSVG(){return '<svg viewBox="0 0 100 100" aria-label="Baby Back Ribs, a small smiling skeleton chef"><rect width="100" height="100" fill="#3a4a44"/><path d="M22 100 Q24 70 50 66 Q76 70 78 100Z" fill="#efe3c8"/><path d="M38 72 h24 v28 h-24z" fill="#3f8f8a"/><circle cx="50" cy="82" r="2" fill="#c9a24a"/><rect x="34" y="20" width="32" height="12" rx="3" fill="#fbf6ea" stroke="#c7b48a"/><circle cx="38" cy="18" r="8" fill="#fbf6ea"/><circle cx="50" cy="13" r="9" fill="#fbf6ea"/><circle cx="62" cy="18" r="8" fill="#fbf6ea"/><ellipse cx="50" cy="48" rx="18" ry="18" fill="#f2ead8"/><ellipse cx="43" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><ellipse cx="57" cy="47" rx="5.5" ry="6" fill="#2b3a3a"/><circle cx="44" cy="46" r="2" fill="#f3c98a"/><circle cx="58" cy="46" r="2" fill="#f3c98a"/><path d="M48.5 55 L50 53 L51.5 55Z" fill="#2b3a3a"/><path d="M42 59 Q50 66 58 59" stroke="#2b3a3a" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M80 60 v28 M76 60 v8 M84 60 v8 M76 68 h8" stroke="#c9a24a" stroke-width="2.5" stroke-linecap="round"/></svg>';}
+var FOLK_COL=['#7a5a3a','#3f6b55','#6b4d7a','#7a2f2a','#2c5a7a','#8a6a2a'];
+function folkSVG(name){var h=0;for(var i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;var c=FOLK_COL[h%FOLK_COL.length],skin=['#e8bf98','#c99a72','#a8754f','#f0d2b4'][h%4],hair=['#5a3a22','#2b2219','#b98a4a','#7a7a7a'][(h>>3)%4];
+  return '<svg viewBox="0 0 100 100" aria-label="'+esc(name)+'"><rect width="100" height="100" fill="#3a4448"/><path d="M14 100 Q16 64 50 60 Q84 64 86 100Z" fill="'+c+'"/><ellipse cx="50" cy="44" rx="19" ry="20" fill="'+skin+'"/><path d="M30 40 Q32 18 50 18 Q68 18 70 40 Q62 28 50 28 Q38 28 30 40Z" fill="'+hair+'"/><circle cx="43" cy="45" r="2.4" fill="#2b2219"/><circle cx="57" cy="45" r="2.4" fill="#2b2219"/><path d="M43 54 Q50 59 57 54" stroke="#5a3a22" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';}
+var WHO={Orrin:['Orrin, the archivist',orrinSVG],Ribs:['Baby Back Ribs, Calciber\'s little brother (future famous chef)',ribsSVG],Calciber:['Calciber, the ranger',calciberSVG]};
+function say(who,txt){var w=WHO[who],pic=w?w[1]():folkSVG(who),nm=w?w[0]:who;return '<div class="dlg"><div class="portrait">'+pic+'</div><div class="bubble"><b class="who">'+esc(nm)+'</b>'+md(txt)+'</div></div>';}
+
+/* Scenes: a painted backdrop plus props. On a match, the "mover" travels and the scene lights up. */
+var BG={
+  indoor:'<rect width="420" height="200" fill="#4a3c2c"/><rect y="150" width="420" height="50" fill="#5f4a33"/><path d="M300 150 V60 Q340 20 380 60 V150Z" fill="#2f4a5a" stroke="#c9a24a" stroke-width="3"/><rect x="30" y="40" width="150" height="8" fill="#7a5a3a"/><rect x="30" y="95" width="150" height="8" fill="#7a5a3a"/>'+[0,1,2,3,4,5].map(function(i){return '<rect x="'+(36+i*24)+'" y="'+(14+i%2*6)+'" width="16" height="'+(26-i%2*6)+'" fill="'+['#2c6b67','#9c7a2e','#7a2f2a','#3f8f8a','#5a4a33','#6b4d7a'][i]+'"/>';}).join(''),
+  field:'<rect width="420" height="200" fill="#bfdbe8"/><circle cx="360" cy="40" r="22" fill="#f3d27a"/><path d="M0 120 Q100 80 210 110 T420 100 V200 H0Z" fill="#8fb07a"/><path d="M0 150 Q120 130 260 150 T420 145 V200 H0Z" fill="#6f9a5a"/>',
+  night:'<rect width="420" height="200" fill="#1f2b44"/>'+[[40,30],[90,60],[150,20],[230,45],[300,25],[380,70],[340,110],[60,100]].map(function(p){return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.8" fill="#efe3c8"/>';}).join('')+'<path d="M0 170 Q140 140 280 165 T420 160 V200 H0Z" fill="#2f3f3a"/>',
+  snow:'<rect width="420" height="200" fill="#dfe9f0"/><path d="M0 120 L80 50 L150 110 L230 40 L320 115 L420 60 V200 H0Z" fill="#b9c8d4"/><path d="M60 68 L80 50 L98 66Z M210 58 L230 40 L250 58Z" fill="#fff"/><path d="M0 150 Q140 130 280 150 T420 140 V200 H0Z" fill="#f7fbff"/>',
+  water:'<rect width="420" height="200" fill="#c6e0ea"/><path d="M0 100 Q90 70 200 95 T420 85 V200 H0Z" fill="#8fb07a"/><path d="M0 130 Q100 120 210 132 T420 126 V200 H0Z" fill="#5f9fb5"/><path d="M20 150 q20 -6 40 0 M120 165 q20 -6 40 0 M260 150 q20 -6 40 0" stroke="#d9eef5" stroke-width="2" fill="none"/>',
+  desert:'<rect width="420" height="200" fill="#f3d9a6"/><circle cx="330" cy="45" r="28" fill="#f5b041"/><path d="M0 130 Q90 90 200 125 T420 110 V200 H0Z" fill="#e0b46a"/><path d="M0 160 Q130 135 260 160 T420 150 V200 H0Z" fill="#cf9a4e"/>',
+  vault:'<rect width="420" height="200" fill="#3a3a40"/>'+[0,1,2,3,4,5,6].map(function(i){return '<rect x="'+(12+i*58)+'" y="8" width="54" height="26" fill="#45454c" stroke="#2c2c31"/>';}).join('')+'<rect y="160" width="420" height="40" fill="#2c2c31"/>'+[0,1,2,3,4].map(function(i){return '<g><circle cx="'+(40+i*80)+'" cy="52" r="4" fill="#9c7a2e"/><rect x="'+(28+i*80)+'" y="56" width="24" height="70" fill="#efe3c8" stroke="#c7b48a"/></g>';}).join(''),
+  chamber:'<rect width="420" height="200" fill="#3d3a36"/><path d="M140 200 V70 Q210 10 280 70 V200Z" fill="#2a2724" stroke="#c9a24a" stroke-width="4"/><rect y="180" width="420" height="20" fill="#2a2724"/>',
+  fair:'<rect width="420" height="200" fill="#cfe3ee"/><path d="M0 140 Q120 120 240 140 T420 135 V200 H0Z" fill="#8fb07a"/><path d="M40 60 L70 30 L100 60Z M300 60 L330 30 L360 60Z" fill="#c0504d"/><rect x="45" y="60" width="50" height="40" fill="#efe3c8"/><rect x="305" y="60" width="50" height="40" fill="#efe3c8"/>',
+  map:'<rect width="420" height="200" fill="#efe3c8"/><path d="M20 30 Q120 10 200 40 T400 30 V180 Q300 190 200 170 T20 180Z" fill="#e4d4b0" stroke="#9c7a2e" stroke-width="2"/><path d="M60 140 Q110 120 160 140" stroke="#7fb3ad" stroke-width="6" fill="none"/>'
+};
+function scene(e){var sc=e.scene||{bg:'indoor'};var h='<svg viewBox="0 0 420 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+(BG[sc.bg]||BG.indoor);
+  h+='<circle class="glow" cx="'+((sc.glow||[210,100])[0])+'" cy="'+((sc.glow||[210,100])[1])+'" r="60" fill="#f6e3a1"/>';
+  (sc.props||[]).forEach(function(p){h+='<text x="'+p[1]+'" y="'+p[2]+'" font-size="'+(p[3]||34)+'" text-anchor="middle"'+(p[4]?' class="bob"':'')+'>'+p[0]+'</text>';});
+  if(sc.mover){var m=sc.mover;h+='<g class="mover" style="--dx:'+(m[4]||0)+'px;--dy:'+(m[5]||0)+'px"><text x="'+m[1]+'" y="'+m[2]+'" font-size="'+(m[3]||36)+'" text-anchor="middle">'+m[0]+'</text></g>';}
+  h+='<g class="spark">'+[[60,40],[370,50],[200,30],[120,150],[320,160]].map(function(p){return '<text x="'+p[0]+'" y="'+p[1]+'" font-size="20" text-anchor="middle">✨</text>';}).join('')+'</g>';
+  if(sc.cap)h+='<text x="210" y="194" text-anchor="middle" fill="#fff" stroke="#2e2619" stroke-width="3" paint-order="stroke" font-family="Georgia" font-size="13">'+esc(sc.cap)+'</text>';
+  return h+'</svg>';}
+
+/* ---- story renderer ---- */
+function storyHTML(items){return (items||[]).map(function(it){
+  if(typeof it==='string')return '<p>'+md(it)+'</p>';
+  if(it.o)return say(it.o,it.t);
+  if(it.list)return '<ul>'+it.list.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>';
+  if(it.tables)return '<div class="tables">'+it.tables.map(tableHTML).join('')+'</div>';
+  if(it.table)return tableHTML(it);
+  return '';}).join('');}
+function tableHTML(t){var r=t.table;return '<div>'+(t.cap?'<div class="tcap">'+esc(t.cap)+'</div>':'')+'<table class="data"><thead><tr>'+r[0].map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'+r.slice(1).map(function(row){return '<tr>'+row.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';}
+function boxesHTML(bx){if(!bx||!bx.length)return '';return '<div class="boxes">'+bx.map(function(b){return '<div class="kbox'+(b.strip?' strip':'')+'"><h4>'+esc(b.t)+'</h4><ul>'+b.l.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul></div>';}).join('')+'</div>';}
+
+/* ---- side panel ---- */
+function drawSide(){var s=currentSession(),ck=S.checks[s.id]||[];
+  $('planFor').textContent=s.title;
+  $('checklist').innerHTML=(s.checklist||[]).map(function(t,i){return '<label class="chk"><input type="checkbox"'+(ck[i]?' checked':'')+' onchange="setCheck(\''+s.id+'\','+i+',this.checked)"><span>'+(i===0?'<b>Do this first:</b> ':'')+esc(t)+'</span></label>';}).join('');
+  $('loot').innerHTML=S.loot.length?S.loot.map(function(n,i){var L=lootOf(n);return L&&L.text?'<button class="lootitem" onclick="codex('+i+')">'+esc(n)+'</button>':'<span class="lootitem">'+esc(n)+'</span>';}).join(''):'<span class="note">Pages and keys from each encounter land here.</span>';
+  $('soundT').checked=!!S.sound;$('saveNote').textContent=SAVE_NOTE;}
+function setCheck(sid,i,v){var c=S.checks[sid]||[];c[i]=v;S.checks[sid]=c;save();}
+function lootOf(name){for(var k in ENC){var L=ENC[k].loot;if(L&&L.name===name)return L;}return null;}
+function giveLoot(e){var L=e.loot||{name:'📄 Page: '+e.title};if(S.loot.indexOf(L.name)<0){S.loot.push(L.name);save();drawSide();toast('Loot: '+L.name);}}
+function codex(i){var n=S.loot[i],L=lootOf(n);if(!L)return;var m=$('modal');m.innerHTML='<div class="card parch pop" role="dialog" aria-label="'+esc(n)+'"><h3>'+esc(n)+'</h3><p>'+md(L.text)+'</p><button class="btn" onclick="closeModal()">Close</button></div>';m.classList.remove('hidden');}
+function closeModal(){$('modal').classList.add('hidden');$('modal').innerHTML='';}
+
+/* ---- map ---- */
+function nodeList(){var out=[];U.sessions.forEach(function(s){out.push({type:'intro',s:s});s.encounters.forEach(function(e){out.push({type:'enc',s:s,e:e});});});return out;}
+function showMap(){S.view='map';save();
+  if(!S.hook&&!PREVIEW){showHook();return;}
+  var n=U.sessions.length,W=960,colW=W/n,maxN=0;U.sessions.forEach(function(s){maxN=Math.max(maxN,s.encounters.length+1);});
+  var H=Math.max(380,130+maxN*78+30),pts=[],nodes='',bands='',pathPts=[],cur=currentSession();
+  if(U.chambers){U.chambers.forEach(function(c){var ss=U.sessions.filter(function(s){return s.chamber===c.id;});if(!ss.length)return;var x0=ss[0].idx*colW+6,x1=(ss[ss.length-1].idx+1)*colW-6,open=chamberOpen(c),dn=chamberComplete(c);
+    bands+='<g opacity="'+(open?1:.55)+'"><rect x="'+x0+'" y="54" width="'+(x1-x0)+'" height="'+(H-70)+'" rx="22" fill="'+c.color+'" opacity=".22" stroke="'+c.color+'" stroke-width="3"/><text x="'+((x0+x1)/2)+'" y="'+(H-22)+'" text-anchor="middle" font-family="Georgia" font-size="15" fill="#3b2e17">'+(dn?'✓ ':open?'🔑 ':'🔒 ')+esc(c.plate)+'</text></g>';});}
+  U.sessions.forEach(function(s,si){var cx=si*colW+colW/2,open=sessionOpen(s),dn=sessionComplete(s);
+    bands+='<rect x="'+(cx-colW/2+6)+'" y="54" width="'+(colW-12)+'" height="'+(H-64)+'" rx="18" fill="'+(open?'#fffaf0':'#cbbf9f')+'" opacity="'+(open?.35:.35)+'"/>';
+    bands+='<g><rect x="'+(cx-colW/2+10)+'" y="12" width="'+(colW-20)+'" height="36" rx="10" fill="'+(dn?'#cfe6e2':open?'#f6ecd6':'#d9cdb2')+'" stroke="#9c7a2e"/><text x="'+cx+'" y="35" text-anchor="middle" font-family="Georgia" font-size="'+(n>4?12:14)+'" fill="#3b2e17">'+(dn?'✓ ':open?'':'🔒 ')+esc(s.short||s.title)+'</text></g>';
+    var items=[{type:'intro',s:s}].concat(s.encounters.map(function(e){return {type:'enc',s:s,e:e};}));
+    items.forEach(function(it,k){var x=cx+(k%2?1:-1)*Math.min(30,colW/5),y=92+k*78;if(k===0)x=cx;
+      var id,label,title,cls='node',isOpen,isDone;
+      if(it.type==='intro'){id='I_'+s.id;label='📖';title='Intro';isOpen=sessionOpen(s);isDone=!!S.intro[s.id];}
+      else{var e=it.e;id=e.id;label=e.side?'✦':e.n;title=e.title+(e.side?' (optional)':'');isOpen=encOpen(e);isDone=!!S.done[e.id];if(S.pinned[e.id]&&!isDone)cls+=' pinned';}
+      if(isDone)cls+=' done';if(!isOpen)cls+=' locked';
+      if(isOpen&&!isDone&&s===cur&&!(it.type==='enc'&&(it.e.side||S.pinned[it.e.id])))cls+=' next';
+      if(!(it.type==='enc'&&it.e.side))pathPts.push([x,y]);
+      var act=isOpen?(it.type==='intro'?'openIntro(\''+s.id+'\')':'openEnc(\''+id+'\')'):'lockedMsg(\''+s.id+'\')';
+      nodes+='<g class="'+cls+'" tabindex="0" role="button" aria-label="'+esc(title)+(isDone?' (done)':'')+(isOpen?'':' (locked for now)')+'" onclick="'+act+'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();'+act+'}" transform="translate('+x.toFixed(1)+' '+y+')"><circle class="ring" r="25"/><text text-anchor="middle" y="6">'+(isDone?'✓':isOpen?label:'🔒')+'</text><text class="lbl" text-anchor="middle" y="42">'+esc(short(title,n>4?18:24))+'</text></g>';});});
+  var path=pathPts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1];}).join(' ');
+  var deco=(U.mapDeco||[]).map(function(d){return '<text x="'+d[1]+'" y="'+d[2]+'" font-size="'+(d[3]||26)+'" opacity=".55" text-anchor="middle">'+d[0]+'</text>';}).join('');
+  var h='<div class="card parch pop"><h2>🗺️ '+esc(U.mapTitle)+'</h2>'+say('Orrin',U.mapLine)+'<div class="chipline">'+(PREVIEW?'<span class="chip">👀 Preview: every session is open</span>':'')+(U.calc?'<span class="chip">🧮 A calculator is welcome</span>':'')+'<span class="chip">No timer. Stop anytime.</span></div></div>';
+  h+='<div class="mapwrap"><svg viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Quest map. Choose a spot.">'+
+   '<defs><radialGradient id="pg" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#f3e8cf"/><stop offset="1" stop-color="'+(U.mapEdge||'#d9c59a')+'"/></radialGradient></defs>'+
+   '<rect width="'+W+'" height="'+H+'" fill="url(#pg)"/>'+deco+bands+'<path d="'+path+'" stroke="#9c7a2e" stroke-width="3" stroke-dasharray="8 8" fill="none"/>'+nodes+
+   '<g transform="translate('+(W-40)+' '+(H-40)+')"><circle r="20" fill="none" stroke="#5a4a33"/><path d="M0 -18 L5 0 L0 18 L-5 0Z" fill="#7a2f2a"/></g></svg></div>';
+  h+=questLog();
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function short(t,n){return t.length>n?t.slice(0,n-1)+'…':t;}
+function lockedMsg(sid){var s=SES[sid];if(!sessionOpen(s)){toast(s.chamber&&U.chambers?'This door opens after the chamber before it is done.':'This session opens after the one before it.');return;}if(!S.intro[sid]){toast('Read the session intro first. It is the 📖 spot.');return;}toast('This one opens after the encounter before it.');}
+function questLog(){var h='<div class="card"><h3>📜 Quest log</h3><div class="qlog">';
+  h+='<div class="qsess"><div class="qbtns"><button class="qb" onclick="showHook()">★ The story hook</button>'+(allComplete()||PREVIEW?'<button class="qb" onclick="showComplete()">🏁 Quest complete</button>':'')+'</div></div>';
+  var lastCh='';
+  U.sessions.forEach(function(s){
+    if(s.chamber&&U.chambers&&s.chamber!==lastCh){lastCh=s.chamber;var c=chamberOf(s.chamber);h+='<div class="note" style="margin-top:4px"><b>'+(chamberComplete(c)?'✓ ':chamberOpen(c)?'🔑 ':'🔒 ')+esc(c.title)+'</b>'+(chamberComplete(c)&&c.complete?' <button class="qb" onclick="showChamberDone(\''+c.id+'\')">🚪 Chamber done</button>':'')+'</div>';}
+    var open=sessionOpen(s),dn=sessionComplete(s);
+    h+='<div class="qsess'+(open?'':' locked')+'"><h4>'+(dn?'✓ ':open?'':'🔒 ')+esc(s.title)+'</h4><div class="qbtns"><button class="qb'+(S.intro[s.id]?' done':'')+'"'+(open?'':' disabled')+' onclick="openIntro(\''+s.id+'\')">📖 Intro</button>'+
+      s.encounters.map(function(e){var o=encOpen(e);return '<button class="qb'+(S.done[e.id]?' done':'')+'"'+(o?'':' disabled')+' onclick="openEnc(\''+e.id+'\')">'+(S.done[e.id]?'✓ ':S.pinned[e.id]?'📌 ':o?'':'🔒 ')+(e.side?'✦ ':e.n+'. ')+esc(e.title)+'</button>';}).join('')+'</div></div>';});
+  return h+'</div></div>';}
+
+/* ---- hook / intro / complete ---- */
+function showHook(){S.view='hook';save();
+  $('main').innerHTML='<div class="card parch pop"><div class="sub">'+esc(U.sub)+'</div><h2>'+esc(U.title)+'</h2><div class="scene">'+scene({scene:U.hookScene})+'</div>'+storyHTML(U.hook)+
+   '<h3>How this quest works</h3><ul>'+U.how.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>'+
+   '<div class="navrow"><button class="btn big" onclick="S.hook=true;save();showMap()">🗺️ Open the quest map</button></div></div>';drawSide();window.scrollTo(0,0);}
+function openIntro(sid){var s=SES[sid];if(!sessionOpen(s)){lockedMsg(sid);return;}S.view='I_'+sid;save();var ck=S.checks[sid]||[];
+  var h='<div class="card parch pop"><div class="sub">'+(s.chamber&&U.chambers?esc(chamberOf(s.chamber).title)+' · ':'')+'Session intro</div><h2>'+esc(s.title)+'</h2>';
+  if(s.chamberIntro)h+=storyHTML(s.chamberIntro);
+  h+='<div class="task"><b>📋 Setup checklist</b><div class="note">Setup and flow only. The steps for each problem are inside each encounter, under How to solve.</div>'+(s.checklist||[]).map(function(t,i){return '<label class="chk" style="border-color:#e4d4b0"><input type="checkbox"'+(ck[i]?' checked':'')+' onchange="setCheck(\''+sid+'\','+i+',this.checked);drawSide()"><span>'+esc(t)+'</span></label>';}).join('')+'</div>';
+  h+='<div class="scene">'+scene({scene:s.scene})+'</div>'+storyHTML(s.intro);
+  h+='<div class="navrow"><button class="btn big" onclick="startSession(\''+sid+'\')">'+(S.intro[sid]?'Back to the map':'✔ I read the intro. Open the encounters')+'</button></div></div>';
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function startSession(sid){if(!S.intro[sid]){S.intro[sid]=true;save();toast(SES[sid].order?'Encounters are open. In this session they go in order.':'Encounters are open. Any order is fine.');}showMap();}
+function showComplete(){S.view='complete';save();$('main').innerHTML='<div class="card parch pop"><h2>🏁 Quest Complete</h2><div class="scene won">'+scene({scene:U.doneScene})+'</div>'+storyHTML(U.complete)+'<div class="navrow"><button class="btn" onclick="showMap()">Back to the map</button></div></div>';window.scrollTo(0,0);}
+function showChamberDone(cid){var c=chamberOf(cid);$('main').innerHTML='<div class="card parch pop"><h2>🚪 '+esc(c.title)+' complete</h2><div class="scene won">'+scene({scene:c.scene})+'</div>'+storyHTML(c.complete)+'<div class="navrow"><button class="btn" onclick="showMap()">Back to the map</button></div></div>';window.scrollTo(0,0);}
+
+/* ---- encounters ---- */
+function fieldHTML(e,f){var a=S.ans[e.id]||{},v=a[f.id],base='in_'+e.id+'_'+f.id,h='<div class="field">';
+  if(f.k==='square'){var q=v&&typeof v==='object'?v:{t:['',''],s:['',''],b:['','','','']};
+    h+='<label>'+md(f.l)+'</label><div class="punnett"><table role="grid" aria-label="Punnett square"><tr><th class="corner">top →<br>side ↓</th>'+[0,1].map(function(i){return '<th><input id="'+base+'_t'+i+'" maxlength="2" aria-label="Top letter '+(i+1)+'" value="'+esc(q.t[i]||'')+'"></th>';}).join('')+'</tr>'+
+      [0,1].map(function(r){return '<tr><th><input id="'+base+'_s'+r+'" maxlength="2" aria-label="Side letter '+(r+1)+'" value="'+esc(q.s[r]||'')+'"></th>'+[0,1].map(function(c){var i=r*2+c;return '<td><input id="'+base+'_b'+i+'" maxlength="3" aria-label="Box row '+(r+1)+' column '+(c+1)+'" data-r="'+r+'" data-c="'+c+'" onfocus="hlSq(\''+base+'\','+r+','+c+',true)" onblur="hlSq(\''+base+'\','+r+','+c+',false)" value="'+esc(q.b[i]||'')+'"></td>';}).join('')+'</tr>';}).join('')+'</table></div><div class="note">Each box: one letter from the top and one from the side. Capital first.</div>';}
+  else if(f.k==='two'){var p=Array.isArray(v)?v:['',''];h+='<label>'+md(f.l)+'</label><div class="two"><input id="'+base+'_0" autocomplete="off" placeholder="first one" value="'+esc(p[0]||'')+'"><input id="'+base+'_1" autocomplete="off" placeholder="second one" value="'+esc(p[1]||'')+'"></div>';}
+  else if(f.k==='sentence'){h+='<label for="'+base+'">'+md(f.l)+'</label><textarea id="'+base+'" rows="2" placeholder="'+esc(f.ph||'One sentence is enough.')+'">'+esc(v||'')+'</textarea>';}
+  else{h+='<label for="'+base+'">'+md(f.l)+'</label><input id="'+base+'" autocomplete="off" placeholder="'+esc(f.ph||'')+'" value="'+esc(v||'')+'" onkeydown="if(event.key===\'Enter\')checkEnc(\''+e.id+'\')">';}
+  if(f.chips)h+='<div class="chipline">'+f.chips.map(function(c){return '<button type="button" class="pick" onclick="pickChip(\''+base+'\',this.textContent)">'+esc(c)+'</button>';}).join('')+'</div>';
+  var fbv=(S.fb[e.id]||{})[f.id];
+  return h+'<div id="fb_'+base+'" aria-live="polite">'+(fbv?fbHTML(fbv):'')+'</div></div>';}
+function pickChip(base,t){var el=$(base);if(el){el.value=t;el.focus();}}
+function hlSq(base,r,c,on){var a=$(base+'_t'+c),b=$(base+'_s'+r);[a,b].forEach(function(x){if(x)x.classList.toggle('hl',on);});}
+function readField(e,f){var base='in_'+e.id+'_'+f.id;
+  if(f.k==='square'){var q={t:[0,1].map(function(i){return $(base+'_t'+i).value.trim();}),s:[0,1].map(function(i){return $(base+'_s'+i).value.trim();}),b:[0,1,2,3].map(function(i){return $(base+'_b'+i).value.trim();})};return {store:q,send:q.b.every(Boolean)?q.b.join(', '):'',partial:q.b.some(Boolean)};}
+  if(f.k==='two'){var p=[$(base+'_0').value.trim(),$(base+'_1').value.trim()];return {store:p,send:p.filter(Boolean).join(' | ')};}
+  var v=$(base).value;return {store:v,send:String(v).trim()};}
+function openEnc(id){var e=ENC[id];if(!encOpen(e)){lockedMsg(e.sid);return;}S.view=id;save();var s=SES[e.sid];
+  var h='<div class="card parch pop"><div class="sub">'+esc(s.title)+' · '+(e.side?'Side quest (optional)':(U.encWord||'Encounter')+' '+esc(e.n))+'</div><h2>'+esc(e.title)+'</h2>';
+  h+='<div class="scene'+(S.done[id]?' won':'')+'" id="scene">'+scene(e)+'</div>';
+  h+=storyHTML(e.story);
+  h+='<div class="task"><b>📜 Your task:</b> '+md(e.task)+(e.taskList?'<ul>'+e.taskList.map(function(x){return '<li>'+md(x)+'</li>';}).join('')+'</ul>':'')+(e.calc?'<div class="chipline"><span class="chip">🧮 A calculator is welcome</span></div>':'')+'</div>';
+  h+=boxesHTML(e.boxes);
+  h+='<details class="guide" id="g_'+id+'"><summary><b>🧭 How to solve</b> <span class="note">(open any time)</span></summary><ol>'+e.steps.map(function(t){return '<li>'+md(t.replace(/^Step \d+:\s*/,''))+'</li>';}).join('')+'</ol></details>';
+  h+='<div class="fields">'+e.fields.map(function(f){return fieldHTML(e,f);}).join('')+'</div>';
+  h+='<div class="navrow"><button class="btn big" onclick="checkEnc(\''+id+'\')">'+esc(e.checkLabel||U.checkLabel||'🖋️ Write it in the journal')+'</button></div>';
+  h+='<div class="hints" id="hints_'+id+'">'+hintsHTML(e)+'</div><div id="pin_'+id+'"></div><div id="win_'+id+'">'+(S.done[id]?winHTML(e):'')+'</div>';
+  h+='<div class="navrow"><button class="btn alt" onclick="showMap()">← Back to the map</button>'+nextBtn(e)+'</div></div>';
+  $('main').innerHTML=h;drawSide();window.scrollTo(0,0);}
+function hintsHTML(e){var n=S.hints[e.id]||0,h='';for(var i=0;i<n&&i<e.hints.length;i++)h+='<div class="hint">🎲 <b>Re-roll hint '+(i+1)+':</b> '+md(e.hints[i])+'</div>';
+  if(n<e.hints.length)h+='<button class="hintbtn" id="hb_'+e.id+'" onclick="moreHint(\''+e.id+'\')">🎲 '+'Re-roll hint '+(n+1)+(e.hints.length>1?' of '+e.hints.length:'')+'</button>';
+  return h;}
+function moreHint(id){var e=ENC[id];S.hints[id]=Math.min((S.hints[id]||0)+1,e.hints.length);save();$('hints_'+id).innerHTML=hintsHTML(e);}
+function nextBtn(e){var s=SES[e.sid],list=s.encounters,i=list.indexOf(e),nx=list[i+1];if(nx&&encOpen(nx))return '<button class="btn alt" onclick="openEnc(\''+nx.id+'\')">Next: '+esc(nx.title)+' →</button>';return '';}
+function fbHTML(r){
+  if(r.off)return '<div class="fb re">💾 '+esc(OFFLINE)+'</div>';
+  if(r.ro)return '<div class="fb re">👀 '+esc(PREVIEW_NOTE)+'</div>';
+  if(r.blocked)return '<div class="fb re">This page is resting right now. Your answer is kept here.</div>';
+  if(r.m)return '<div class="fb ok">✔ Matches.'+(r.msg?' '+esc(r.msg):'')+'</div>';
+  if(r.lg)return '<div class="fb log">📝 Logged in the journal.'+(r.msg?' '+esc(r.msg):' If you want, roll a hint and compare.')+'</div>';
+  return '<div class="fb re">🎲 Not yet. Re-roll: look at step '+(r.st||1)+' of How to solve.'+(r.msg?' '+esc(r.msg):'')+'</div>';}
+function toFb(r){if(r===null)return {off:1};if(r.readonly)return {ro:1};if(r.blocked)return {blocked:1};if(r.matched)return {m:1,msg:r.msg||''};if(r.logged||r.checked===false)return {lg:1,msg:r.msg||''};return {st:r.step,msg:r.msg||''};}
+function checkEnc(id){var e=ENC[id],a=S.ans[id]||{},sends=[],missing=0;
+  e.fields.forEach(function(f){var r=readField(e,f);a[f.id]=r.store;if(r.send)sends.push([f,r.send]);else missing++;});
+  S.ans[id]=a;save();
+  if(!sends.length){toast('Type an answer first, whenever you are ready.');return;}
+  if(missing)toast('Saved what you wrote. Fill the empty boxes whenever you are ready.');
+  S.fb[id]=S.fb[id]||{};
+  Promise.all(sends.map(function(x){var f=x[0];return hubSave(id,f.id,x[1]).then(function(r){var v=toFb(r);S.fb[id][f.id]=v;var el=$('fb_in_'+id+'_'+f.id);if(el)el.innerHTML=fbHTML(v);return v;});})).then(function(vs){
+    save();var anyRe=vs.some(function(v){return !(v.m||v.lg||v.off||v.ro||v.blocked);});
+    if(!missing&&!anyRe&&!vs.some(function(v){return v.blocked;})){win(e);return;}
+    if(anyRe){var g=$('g_'+id);if(g)g.open=true;var hb=$('hb_'+id);if(hb){hb.classList.remove('nudge');void hb.offsetWidth;hb.classList.add('nudge');}
+      if((S.hints[id]||0)>=e.hints.length&&!S.done[id]&&!S.pinned[id]&&!e.side)$('pin_'+id).innerHTML='<div class="note" style="margin-top:10px">Want a break from this one? You can set it aside and keep going. It stays on the map.</div><button class="btn alt" onclick="pinEnc(\''+id+'\')">📌 Set this page aside for now</button>';}});}
+function win(e){var sc=$('scene');if(sc)sc.classList.add('won');chime();
+  var first=!S.done[e.id];S.done[e.id]=true;delete S.pinned[e.id];save();
+  var w=$('win_'+e.id);if(w)w.innerHTML=winHTML(e);if(first)setTimeout(function(){giveLoot(e);checkMilestones(e);},900);drawSide();
+  var nb=$('main').querySelector('.navrow:last-child');if(nb&&first)nb.innerHTML='<button class="btn alt" onclick="showMap()">← Back to the map</button>'+nextBtn(e);}
+function winHTML(e){return '<div class="winbox pop">🌟 '+esc(e.winLine||U.winLine||'The page is written in the journal.')+' You found '+esc((e.loot||{name:'📄 Page: '+e.title}).name)+'.</div>'+(e.after_win?storyHTML(e.after_win):'');}
+function pinEnc(id){S.pinned[id]=true;save();hubSave(id,'pinned','set aside for now');toast('Set aside. It stays on the map for later.');showMap();}
+function checkMilestones(e){var s=SES[e.sid];if(sessionComplete(s)){var nm='🧩 Map piece: '+s.title;if(S.loot.indexOf(nm)<0){S.loot.push(nm);save();drawSide();toast(nm);}}
+  if(U.chambers&&s.chamber){var c=chamberOf(s.chamber);if(c.complete&&chamberComplete(c)&&!S['ch_'+c.id]){S['ch_'+c.id]=true;save();setTimeout(function(){showChamberDone(c.id);},600);return;}}
+  if(allComplete()&&!S.finished){S.finished=true;save();setTimeout(showComplete,600);}}
+
+/* ---- ask a question (saved with the answers; nobody is notified) ---- */
+function askQ(){var t=$('askT');if(!t)return;var v=String(t.value||'').trim();if(!v){toast('Type your question first, whenever you are ready.');return;}
+  hubSave(S.view&&ENC[S.view]?S.view:'MAP','question',v).then(function(r){t.value='';toast(r?(r.readonly||r.preview?'Preview mode: questions are not saved here.':'Question saved with your answers.'):'Saved on this device for now.');});}
+function saveLeave(){save();toast('Saved. Come back anytime.');
+  try{if(window.QUEST_HOST&&typeof QUEST_HOST.leave==='function')setTimeout(QUEST_HOST.leave,800);}catch(e){}
+  setTimeout(function(){$('main').innerHTML='<div class="card parch pop"><h2>Saved</h2>'+say('Calciber','Good place to rest. The map will be right here when you come back.')+say('Ribs',U.ribsBye||'Snack break! I saved you a (pretend) cookie.')+'<button class="btn" onclick="showMap()">Back to the map</button></div>';},300);}
+
+/* ---- start ---- */
+load();if(PREVIEW)showPv();drawSide();flushPending();
+(function(){var v=S.view;if(v&&ENC[v]&&encOpen(ENC[v]))openEnc(v);else if(v&&v.indexOf('I_')===0&&SES[v.slice(2)])openIntro(v.slice(2));else if(v==='hook')showHook();else showMap();})();
+
+</script>
+</body>
+</html>

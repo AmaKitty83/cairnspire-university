@@ -103,18 +103,38 @@ rules_version = '2';
 //
 // 9. Collection: home_and_garden_parents/{document=**}
 //    Access: Chancellor and University only (hard-denied for Family, Guest, & unauthenticated).
-//    Covers: gift_bought, kid_pins.
+//    Covers: gift_bought, kid_pins, gabe_grades.
 //    Validated for key-count bounds (1..50) and timestamp/field hygiene on create & update.
 //
 // 10. Collection: private_health_owner/{document=**}
 //     Access: Chancellor ONLY (amarette83@gmail.com; hard-denied for University, Family, Guest, & unauthenticated).
-//     Covers: amarette_medical, health_fitness_days, health_fitness_content.
+//     Covers: amarette_medical, health_fitness_days, health_fitness_content, showed_up_log.
 //     Validated for key-count bounds (1..50) and timestamp/field hygiene on create & update.
 //
 // 11. Collections: private_health/{document=**}, private_finance/{document=**}, private_stocks/{document=**}
 //     Access: Chancellor and University only (hard-denied for Guest, Family, & unauthenticated).
 //     private_health covers family_medical card objects and family_medical_cards/images/{person} compressed JPEG data URLs.
 //     Validated for key-count bounds (1..50) and timestamp/field hygiene on create & update.
+//
+// 12. Document: public_gifts/family_wishlist
+//     Access: Public read (`allow read: if true`) for the shareable /gifts wish list page;
+//             Chancellor and University (isCampusOperator) only for create, update, and delete.
+//     Contains ONLY explicitly published, sanitized gift ideas (zero private info).
+//     Validated via isValidVaultDocument with UID and immutable createdAt protections.
+//
+// 13. Collection: public_gifts_claims/{giftId}
+//     Document ID: {giftId} (lowercase slug ^[a-z0-9][a-z0-9_-]{0,63}$)
+//     Access: Public read, create, and update (validated); delete restricted to Chancellor and University (isCampusOperator).
+//     Fields:
+//       - claimed: bool (required)
+//       - claimedBy: string (optional, 0..60 chars)
+//       - updatedAt: timestamp (required)
+//
+// 14. Collection: campus_books/{document=**}
+//     Access: Chancellor, University, and Guest read-only (`isCampusReader`);
+//             Chancellor and University (`isCampusOperator`) only for create, update, and delete.
+//     Covers Children's Books: The Bramblewood Friends & Sparrow & Sprocket Printables.
+//     Validated via isValidVaultDocument with UID and immutable createdAt protections.
 //
 // ===============================================================
 
@@ -398,6 +418,14 @@ service cloud.firestore {
         isValidOptionalString(data, 'updatedBy', 0, 254);
     }
 
+    function isValidPublicGiftClaim(data) {
+      return hasOnlyAllowedFields(data, ['claimed', 'claimedBy', 'updatedAt']) &&
+        hasRequiredFields(data, ['claimed', 'updatedAt']) &&
+        data.claimed is bool &&
+        isValidOptionalString(data, 'claimedBy', 0, 60) &&
+        data.updatedAt is timestamp;
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -510,7 +538,7 @@ service cloud.firestore {
     }
 
     // 9. Home and Garden Parents Vault (Chancellor & University/Ray ONLY — Hard-denied for Family/kids, Guest/Mom, Unauthenticated)
-    // Covers: gift_bought, kid_pins
+    // Covers: gift_bought, kid_pins, gabe_grades
     match /home_and_garden_parents/{document=**} {
       allow read: if isCampusOperator();
       allow create: if isCampusOperator() &&
@@ -524,7 +552,7 @@ service cloud.firestore {
     }
 
     // 10. Owner-Only Private Health Vault (Chancellor ONLY — Hard-denied for University/Ray, Family, Guest, Unauthenticated)
-    // Covers: amarette_medical, health_fitness_days, health_fitness_content
+    // Covers: amarette_medical, health_fitness_days, health_fitness_content, showed_up_log
     match /private_health_owner/{document=**} {
       allow read: if isChancellor();
       allow create: if isChancellor() &&
@@ -575,7 +603,41 @@ service cloud.firestore {
       allow delete: if isCampusOperator();
     }
 
-    // 12. Explicit Default Deny-All Fallback
+    // 12. Public Family Wish List (Shareable /gifts page — explicitly published sanitized items, zero private info)
+    match /public_gifts/family_wishlist {
+      allow read: if true;
+      allow create: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        immutableCreatedAtIfPresent();
+      allow delete: if isCampusOperator();
+    }
+
+    // 13. Public Gift Claims (Public guests can claim/unclaim gift slugs on /gifts)
+    match /public_gifts_claims/{giftId} {
+      allow read: if true;
+      allow create, update: if isValidSlug(giftId) &&
+        isValidPublicGiftClaim(request.resource.data);
+      allow delete: if isCampusOperator();
+    }
+
+    // 14. Campus Books (Children's Books: The Bramblewood Friends & Sparrow & Sprocket Printables)
+    match /campus_books/{document=**} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        immutableCreatedAtIfPresent();
+      allow delete: if isCampusOperator();
+    }
+
+    // 15. Explicit Default Deny-All Fallback
     match /{document=**} {
       allow read, write: if false;
     }

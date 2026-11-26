@@ -21,8 +21,17 @@ import {
 import { AuthGate } from './components/AuthGate';
 import { CampusMap } from './components/CampusMap';
 import { HomeAndGardenView } from './components/HomeAndGardenView';
+import { PublicGiftsPage } from './components/PublicGiftsPage';
 
 export function App() {
+  const isPublicGiftsRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname.replace(/\/+$/, '') === '/gifts' ||
+      new URLSearchParams(window.location.search).get('gifts') === '1');
+
+  if (isPublicGiftsRoute) {
+    return <PublicGiftsPage />;
+  }
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<CampusRole>('unauthorized');
   const [authReady, setAuthReady] = useState(false);
