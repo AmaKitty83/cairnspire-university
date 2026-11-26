@@ -1,3 +1,4 @@
+import { ASSETS } from '../../data/assetMeta';
 import type { FamilyPersonProfile } from '../../services/familyHubService';
 
 export function speakText(text: string, enabled: boolean) {
@@ -14,28 +15,44 @@ export function speakText(text: string, enabled: boolean) {
   }
 }
 
+const CREST_ASSETS: Record<string, string> = {
+  Amarette: ASSETS['crest-amarette']?.src || '/assets/crests/amarette.png',
+  Ray: ASSETS['crest-ray']?.src || '/assets/crests/ray.png',
+  Oliver: ASSETS['crest-oliver']?.src || '/assets/crests/oliver.png',
+  Liam: ASSETS['crest-liam']?.src || '/assets/crests/liam.png',
+  Chase: ASSETS['crest-chase']?.src || '/assets/crests/chase.png',
+  Gabe: ASSETS['crest-gabe']?.src || '/assets/crests/gabe.png',
+  Preston: ASSETS['crest-preston']?.src || '/assets/crests/preston.png',
+};
+
 export function PersonIcon({
   person,
   size = 'md',
 }: {
   person: Pick<FamilyPersonProfile, 'name' | 'emoji'>;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
-  if (person.name === 'Liam') {
-    const dim = size === 'lg' ? 'w-9 h-9' : size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+  const crestSrc = CREST_ASSETS[person.name];
+  if (crestSrc) {
+    const dim =
+      size === 'xl'
+        ? 'w-20 h-20'
+        : size === 'lg'
+          ? 'w-16 h-16'
+          : size === 'sm'
+            ? 'w-5 h-5'
+            : 'w-7 h-7';
     return (
-      <svg viewBox="0 0 32 32" className={`${dim} inline-block shrink-0`} role="img" aria-label="purple splat">
-        <g fill="#8E44AD">
-          <path d="M16 5c2.2 0 3 2.6 4.6 3.2 1.7.6 4-1 5.3.4 1.3 1.4-.6 3.6-.1 5.3.5 1.8 3.4 2.3 3.2 4.3-.2 2-3.2 2-4.2 3.6-1 1.6.5 4.3-1.1 5.5-1.6 1.2-3.7-1-5.6-.8-1.9.2-3.3 2.8-5.2 2.1-1.9-.7-1.2-3.6-2.4-5-1.2-1.4-4.3-1-4.9-2.8-.6-1.8 2-3.1 2.1-5 .1-1.9-2.2-3.5-1.2-5.2 1-1.7 3.8-.6 5.4-1.6C13.5 8.1 13.8 5 16 5z" />
-          <circle cx="4.5" cy="7" r="2" />
-          <circle cx="28" cy="6" r="1.6" />
-          <circle cx="27.5" cy="27" r="1.8" />
-          <circle cx="5" cy="26" r="1.4" />
-        </g>
-      </svg>
+      <img
+        src={crestSrc}
+        alt={person.name}
+        className={`${dim} rounded-full object-contain inline-block shrink-0 drop-shadow-sm select-none`}
+      />
     );
   }
-  const sz = size === 'lg' ? 'text-3xl' : size === 'sm' ? 'text-sm' : 'text-lg';
+
+  const sz =
+    size === 'xl' ? 'text-4xl' : size === 'lg' ? 'text-3xl' : size === 'sm' ? 'text-sm' : 'text-lg';
   return (
     <span className={sz} aria-hidden="true">
       {person.emoji || '🙂'}
@@ -46,11 +63,11 @@ export function PersonIcon({
 export function PersonChip({ person }: { person: FamilyPersonProfile }) {
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border border-black/10"
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border border-black/15 shadow-xs"
       style={{ backgroundColor: person.color, color: person.ink }}
     >
       <PersonIcon person={person} size="sm" />
-      {person.name}
+      <span>{person.name}</span>
     </span>
   );
 }

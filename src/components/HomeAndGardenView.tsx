@@ -4,6 +4,8 @@ import { signOutUser, type CampusRole } from '../firebase';
 import {
   FAMILY_PEOPLE,
   importFamilyHubBundle,
+  isChoreDueOnDate,
+  isoDateLocal,
   publishPublicWishList,
   saveAnnouncementsData,
   saveCalendarData,
@@ -88,6 +90,7 @@ import { FamilyHomeTab } from './family/FamilyHomeTab';
 import { FamilyMealsTab } from './family/FamilyMealsTab';
 import { FamilyQuestsTab } from './family/FamilyQuestsTab';
 import { FamilySchoolTab } from './family/FamilySchoolTab';
+import { HomeGardenMap } from './family/HomeGardenMap';
 import { PersonIcon, speakText } from './family/PersonBadge';
 
 interface HomeAndGardenViewProps {
@@ -192,6 +195,15 @@ export function HomeAndGardenView({
   });
   const [viewAs, setViewAs] = useState<string>('');
   const [activeTab, setActiveTab] = useState<NavPageId>('home');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>(() => {
+    try {
+      return localStorage.getItem('hg_view_mode') === 'list' ? 'list' : 'map';
+    } catch {
+      return 'map';
+    }
+  });
+  const [mapRoomOpen, setMapRoomOpen] = useState(false);
+  const [labelsVisible, setLabelsVisible] = useState(true);
   const [speakEnabled, setSpeakEnabled] = useState(true);
   const [hgDark, setHgDark] = useState<boolean>(() => {
     try {
@@ -200,6 +212,19 @@ export function HomeAndGardenView({
       return false;
     }
   });
+
+  function toggleViewMode() {
+    setViewMode((prev) => {
+      const next = prev === 'map' ? 'list' : 'map';
+      try {
+        localStorage.setItem('hg_view_mode', next);
+      } catch {
+        // ignore
+      }
+      if (next === 'map') setMapRoomOpen(false);
+      return next;
+    });
+  }
 
   function toggleHgDark() {
     setHgDark((prev) => {
@@ -343,6 +368,7 @@ export function HomeAndGardenView({
     setViewAs('');
     setSelectedName(name);
     setActiveTab('home');
+    setMapRoomOpen(false);
     try {
       localStorage.setItem('hg_person', name);
     } catch {
@@ -369,6 +395,7 @@ export function HomeAndGardenView({
       setViewAs('');
       setKidLoginOpen(false);
       setActiveTab('home');
+      setMapRoomOpen(false);
       return;
     }
     setPinTargetKid(kidName);
@@ -408,6 +435,7 @@ export function HomeAndGardenView({
       setPinTargetKid(null);
       setKidLoginOpen(false);
       setActiveTab('home');
+      setMapRoomOpen(false);
     }
   }
 
@@ -448,7 +476,7 @@ export function HomeAndGardenView({
     }
   }
 
-  // Visible nav items
+  // Visible nav items & Set for Cottage Map filtering
   const navItems = useMemo(() => {
     if (!activePerson) return [];
     return NAV_PAGES[activePerson.mode].filter((item) => {
@@ -457,6 +485,25 @@ export function HomeAndGardenView({
       return true;
     });
   }, [activePerson, viewAs, kidLockName]);
+
+  const visiblePageSet = useMemo(() => new Set<string>(navItems.map((i) => i.id)), [navItems]);
+
+  const todayMapStats = useMemo(() => {
+    const td = todayDayKey();
+    const todayKey = isoDateLocal();
+    const myDue = activePerson
+      ? chores.filter(
+          (c) =>
+            (activePerson.mode === 'parent' || c.person === activePerson.name || c.person === 'Everyone') &&
+            isChoreDueOnDate(c, td, todayKey)
+        )
+      : [];
+    const done = myDue.filter((c) => c.checked[td]).length;
+    const upcoming = (calendarData.events || []).filter(
+      (e) => !e.routine && e.start.slice(0, 10) >= todayKey
+    ).length;
+    return { done, total: myDue.length, upcoming };
+  }, [activePerson, chores, calendarData.events]);
 
   // PIN Prompt Modal (used both on initial kid login and unlocking kid tablet mode)
   const pinDialog = pinTargetKid && (
@@ -581,26 +628,26 @@ export function HomeAndGardenView({
   // Person Picker Screen (when nobody picked yet or clicking Switch Person)
   if (!activePerson) {
     return (
-      <section className={`fixed inset-0 z-50 bg-gradient-to-b from-[#e9f5ec] to-[#d4ebd9] text-[#1b4332] flex flex-col overflow-y-auto ${hgDark ? 'hg-dark' : ''}`}>
-        <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#2d6a4f] text-white shadow">
+      <section className={`fixed inset-0 z-50 flex flex-col overflow-y-auto ${hgDark ? 'hg-dark' : 'hg-storybook'}`}>
+        <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#2b1d12] border-b-2 border-[#ad8042] text-[#fbf3df] shadow">
           <div className="min-w-0">
-            <h2 className="font-atlas text-lg font-bold truncate">🏡 Home and Garden</h2>
-            <p className="text-xs text-[#b7e4c7] truncate">
-              Family Sanctuary · Strictly Isolated from University Vaults
+            <h2 className="font-atlas text-lg font-bold truncate">🏡 Home and Garden Sanctuary</h2>
+            <p className="text-xs text-[#e7cfa0] truncate">
+              Cairnspire Family Cottage · Strictly Isolated from University Vaults
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={toggleHgDark}
-              className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
-              title="Toggle Light / Dark Theme"
+              className="ribbon-btn px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+              title="Toggle Daylight Parchment / Candlelight Theme"
             >
-              {hgDark ? '☀️' : '🌙'}
+              {hgDark ? '☀️' : '🕯️'}
             </button>
             {isChancellor && (
               <button
                 onClick={() => setAdminOpen((v) => !v)}
-                className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+                className="ribbon-btn px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
               >
                 ⚙️ Import / PINs
               </button>
@@ -608,14 +655,14 @@ export function HomeAndGardenView({
             {canExitToCampus && onExitToCampus ? (
               <button
                 onClick={onExitToCampus}
-                className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+                className="ribbon-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
               >
                 ← Campus Map
               </button>
             ) : (
               <button
                 onClick={() => void signOutUser()}
-                className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+                className="ribbon-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
               >
                 Sign Out
               </button>
@@ -624,63 +671,63 @@ export function HomeAndGardenView({
         </div>
         {adminDrawer}
 
-        <div className="max-w-lg w-full mx-auto p-5 space-y-5">
-          {ASSETS['crop-home-garden']?.src && (
+        <div className="max-w-xl w-full mx-auto p-5 space-y-5">
+          {ASSETS['home-garden']?.src && (
             <div className="flex justify-center">
               <img
-                src={ASSETS['crop-home-garden'].src}
-                alt="Home and Garden"
-                className="w-40 h-auto rounded-2xl border-2 border-[#74c69d] shadow-md"
+                src={ASSETS['home-garden'].src}
+                alt="Home and Garden Cottage"
+                className="w-44 h-auto drop-shadow-xl select-none"
               />
             </div>
           )}
 
           {!kidLoginOpen ? (
-            <div className="p-5 rounded-3xl bg-white border-2 border-[#74c69d] shadow space-y-4 text-center">
+            <div className="parchment-panel p-5 rounded-3xl space-y-4 text-center">
               <div>
-                <h3 className="font-atlas text-xl font-bold text-[#1b4332]">👋 Who is using the Hub?</h3>
-                <p className="text-xs text-[#40916c]">Tap your name (youngest to oldest for the kids!)</p>
+                <h3 className="font-atlas text-xl font-bold text-[#2e1e0f]">Who is entering the Cottage?</h3>
+                <p className="text-xs text-[#6e4d28]">Choose your family crest (parents first, kids youngest to oldest)</p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {FAMILY_PEOPLE.map((p) => (
                   <button
                     key={p.name}
                     onClick={() => selectPerson(p.name)}
-                    className="p-3 rounded-2xl border border-black/10 shadow-sm hover:shadow-md flex flex-col items-center gap-1.5 cursor-pointer transition"
+                    className="p-3 rounded-2xl border-2 border-[#8a6235]/50 shadow hover:shadow-lg hover:scale-[1.03] flex flex-col items-center gap-1.5 cursor-pointer transition"
                     style={{ backgroundColor: p.color, color: p.ink }}
                   >
                     <PersonIcon person={p} size="lg" />
-                    <span className="font-bold text-sm">{p.name}</span>
+                    <span className="font-atlas font-bold text-sm">{p.name}</span>
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => setKidLoginOpen(true)}
-                className="px-4 py-2 rounded-xl bg-[#edf6f0] hover:bg-[#d8f3dc] text-xs font-bold text-[#1b4332] cursor-pointer"
+                className="ribbon-btn px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
               >
                 🧒 Kid Login (Liam &amp; Oliver Tablet Mode)
               </button>
             </div>
           ) : (
-            <div className="p-5 rounded-3xl bg-white border-2 border-[#74c69d] shadow space-y-4 text-center">
-              <h3 className="font-atlas text-xl font-bold text-[#1b4332]">🧒 Who is playing?</h3>
-              <p className="text-xs text-[#40916c]">Tap your picture!</p>
+            <div className="parchment-panel p-5 rounded-3xl space-y-4 text-center">
+              <h3 className="font-atlas text-xl font-bold text-[#2e1e0f]">🧒 Who is playing?</h3>
+              <p className="text-xs text-[#6e4d28]">Tap your portrait crest!</p>
               <div className="grid grid-cols-2 gap-4">
                 {FAMILY_PEOPLE.filter((p) => p.mode === 'little').map((p) => (
                   <button
                     key={p.name}
                     onClick={() => startKidLogin(p.name)}
-                    className="p-6 rounded-3xl border-2 border-[#74c69d] shadow hover:shadow-md flex flex-col items-center gap-2 cursor-pointer"
+                    className="p-6 rounded-3xl border-2 border-[#8a6235] shadow-md hover:shadow-xl hover:scale-[1.03] flex flex-col items-center gap-2 cursor-pointer transition"
                     style={{ backgroundColor: p.color, color: p.ink }}
                   >
-                    <PersonIcon person={p} size="lg" />
-                    <span className="font-bold text-lg">{p.name}</span>
+                    <PersonIcon person={p} size="xl" />
+                    <span className="font-atlas font-bold text-lg">{p.name}</span>
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => setKidLoginOpen(false)}
-                className="px-4 py-2 rounded-xl bg-[#edf6f0] text-xs font-bold cursor-pointer"
+                className="ribbon-btn px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
               >
                 ← Back
               </button>
@@ -693,9 +740,9 @@ export function HomeAndGardenView({
   }
 
   return (
-    <section className={`fixed inset-0 z-50 bg-gradient-to-b from-[#e9f5ec] to-[#d4ebd9] text-[#1b4332] flex flex-col ${hgDark ? 'hg-dark' : ''}`}>
+    <section className={`fixed inset-0 z-50 flex flex-col ${hgDark ? 'hg-dark' : 'hg-storybook'}`}>
       {/* Top Bar */}
-      <header className="flex items-center justify-between gap-2 px-4 py-2.5 bg-[#2d6a4f] text-white shadow shrink-0">
+      <header className="flex items-center justify-between gap-2 px-4 py-2.5 bg-[#2b1d12] border-b-2 border-[#ad8042] text-[#fbf3df] shadow shrink-0">
         <div className="min-w-0">
           <h2 className="font-atlas text-base sm:text-lg font-bold truncate">🏡 Home and Garden</h2>
           {isReadOnly && (
@@ -704,13 +751,20 @@ export function HomeAndGardenView({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            onClick={toggleViewMode}
+            className="ribbon-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
+            title="Switch between Interactive Cottage Map and Quick List view"
+          >
+            {viewMode === 'map' ? '📋 Quick List' : '🗺️ Cottage Map'}
+          </button>
           <button
             onClick={toggleHgDark}
-            className="px-2 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
-            title="Toggle Light / Dark Theme"
+            className="ribbon-btn px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+            title="Toggle Daylight Parchment / Candlelight Theme"
           >
-            {hgDark ? '☀️' : '🌙'}
+            {hgDark ? '☀️' : '🕯️'}
           </button>
           <button
             onClick={() => {
@@ -723,7 +777,7 @@ export function HomeAndGardenView({
                 setSelectedName('');
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-sm cursor-pointer border border-white/40"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm cursor-pointer border-2 border-[#ad8042]"
             style={{ backgroundColor: activePerson.color, color: activePerson.ink }}
           >
             <PersonIcon person={activePerson} size="sm" />
@@ -733,7 +787,7 @@ export function HomeAndGardenView({
           {isChancellor && (
             <button
               onClick={() => setAdminOpen((v) => !v)}
-              className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+              className="ribbon-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
               title="Parent Import & Kid PINs"
             >
               ⚙️
@@ -743,7 +797,7 @@ export function HomeAndGardenView({
           {!kidLockName && canExitToCampus && onExitToCampus ? (
             <button
               onClick={onExitToCampus}
-              className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+              className="ribbon-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
             >
               ← Campus
             </button>
@@ -751,7 +805,7 @@ export function HomeAndGardenView({
             !kidLockName && (
               <button
                 onClick={() => void signOutUser()}
-                className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold border border-white/30 cursor-pointer"
+                className="ribbon-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
                 title={userEmail || 'Sign Out'}
               >
                 Sign Out
@@ -795,33 +849,82 @@ export function HomeAndGardenView({
         </div>
       )}
 
-      {/* Body Layout: Desktop Left Sidebar + Scrolling Content Area + Mobile Bottom Bar */}
+      {/* Body Layout: Interactive Cottage Map OR Quick List Sidebar + Room Content */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
-        {/* Desktop Sidebar */}
-        <nav className="hidden md:flex md:w-52 shrink-0 flex-col gap-1 p-3 bg-white/90 border-r border-[#95d5b2] overflow-y-auto">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                if (activePerson.mode === 'little') speakText(item.label, speakEnabled);
-              }}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left cursor-pointer transition ${
-                activeTab === item.id
-                  ? 'bg-[#2d6a4f] text-white shadow-sm'
-                  : 'text-[#1b4332] hover:bg-[#e9f5ec]'
-              }`}
-            >
-              <span className="text-base">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
+        {/* Desktop Sidebar (Quick List Mode) */}
+        {viewMode === 'list' && (
+          <nav className="hidden md:flex md:w-52 shrink-0 flex-col gap-1 p-3 bg-white/90 border-r border-[#8a6235] overflow-y-auto">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (activePerson.mode === 'little') speakText(item.label, speakEnabled);
+                }}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left cursor-pointer transition ${
+                  activeTab === item.id
+                    ? 'bg-[#3d5a34] text-white shadow-sm'
+                    : 'text-[#2e1e0f] hover:bg-[#efe0bb]'
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24 md:pb-6">
-          <div className="max-w-4xl mx-auto">
-            {activeTab === 'home' && (
+        <main className={`flex-1 overflow-y-auto p-3 sm:p-5 ${viewMode === 'list' ? 'pb-24 md:pb-6' : 'pb-6'}`}>
+          {viewMode === 'map' && !mapRoomOpen ? (
+            <div className="max-w-5xl mx-auto">
+              <HomeGardenMap
+                activePerson={activePerson}
+                visiblePages={visiblePageSet}
+                speakEnabled={speakEnabled}
+                labelsVisible={labelsVisible}
+                todayChoresDone={todayMapStats.done}
+                todayChoresTotal={todayMapStats.total}
+                upcomingEventsCount={todayMapStats.upcoming}
+                onOpenTab={(tabId) => {
+                  setActiveTab(tabId as NavPageId);
+                  setMapRoomOpen(true);
+                }}
+                onToggleLabels={() => setLabelsVisible((v) => !v)}
+              />
+            </div>
+          ) : (
+            <div className="max-w-4xl mx-auto space-y-3">
+              {viewMode === 'map' && mapRoomOpen && (
+                <div className="parchment-panel rounded-2xl p-2 flex flex-wrap items-center gap-1.5">
+                  <button
+                    onClick={() => setMapRoomOpen(false)}
+                    className="ribbon-btn px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer shrink-0"
+                  >
+                    ← Back to Cottage Map
+                  </button>
+                  <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                    {navItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          if (activePerson.mode === 'little') speakText(item.label, speakEnabled);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer border transition ${
+                          activeTab === item.id
+                            ? 'bg-[#3d5a34] text-white border-[#263b20]'
+                            : 'bg-[#fcf5e3]/75 text-[#2e1e0f] border-[#ad8042]/50 hover:bg-[#f2dda9]'
+                        }`}
+                      >
+                        {item.icon} {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'home' && (
               <FamilyHomeTab
                 activePerson={activePerson}
                 isParentActor={isParentAuth && !isReadOnly}
@@ -835,6 +938,7 @@ export function HomeAndGardenView({
                 onSelectViewAs={(kid) => {
                   setViewAs(kid);
                   setActiveTab('home');
+                  setMapRoomOpen(true);
                 }}
                 onToggleChore={async (choreId) => {
                   if (!canEdit) return;
@@ -865,7 +969,10 @@ export function HomeAndGardenView({
                   if (!canEdit) return;
                   await saveCalendarData({ ...calendarData, events }, actorEmail);
                 }}
-                onNavigateTab={(t) => setActiveTab(t as NavPageId)}
+                onNavigateTab={(t) => {
+                  setActiveTab(t as NavPageId);
+                  setMapRoomOpen(true);
+                }}
               />
             )}
 
@@ -1209,7 +1316,10 @@ export function HomeAndGardenView({
                   };
                   await saveSpellingWords(next, actorEmail);
                 }}
-                onOpenQuests={() => setActiveTab('quests')}
+                onOpenQuests={() => {
+                  setActiveTab('quests');
+                  setMapRoomOpen(true);
+                }}
               />
             )}
 
@@ -1250,28 +1360,31 @@ export function HomeAndGardenView({
                 }}
               />
             )}
-          </div>
+            </div>
+          )}
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#95d5b2] flex overflow-x-auto z-50">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => {
-              setActiveTab(item.id);
-              if (activePerson.mode === 'little') speakText(item.label, speakEnabled);
-            }}
-            className={`flex-1 min-w-[66px] py-2 px-1 text-[10px] font-bold flex flex-col items-center gap-0.5 cursor-pointer ${
-              activeTab === item.id ? 'bg-[#e9f5ec] text-[#1b4332]' : 'text-[#52796f]'
-            }`}
-          >
-            <span className="text-lg leading-none">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
+      {/* Mobile Bottom Nav (Quick List Mode) */}
+      {viewMode === 'list' && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#fbf3df] border-t-2 border-[#8a6235] flex overflow-x-auto z-50">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                if (activePerson.mode === 'little') speakText(item.label, speakEnabled);
+              }}
+              className={`flex-1 min-w-[66px] py-2 px-1 text-[10px] font-bold flex flex-col items-center gap-0.5 cursor-pointer ${
+                activeTab === item.id ? 'bg-[#e7cfa0] text-[#2e1e0f]' : 'text-[#6e4d28]'
+              }`}
+            >
+              <span className="text-lg leading-none">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
 
       {pinDialog}
     </section>

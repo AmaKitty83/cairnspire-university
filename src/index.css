@@ -96,19 +96,58 @@ body,
   scrollbar-width: none;
 }
 
-/* Home & Garden Dark Mode theme */
+/* Home & Garden Daylight Storybook Parchment Theme */
+.hg-storybook {
+  background: radial-gradient(circle at top, #f7edd4 0%, #e7d4ac 100%) !important;
+  color: #2e1e0f !important;
+}
+.hg-storybook .bg-white,
+.hg-storybook .bg-white\/90,
+.hg-storybook .bg-white\/95 {
+  background: linear-gradient(160deg, #fcf5e3 0%, #f3e3be 100%) !important;
+  border-color: #9e733b !important;
+  color: #2e1e0f !important;
+  box-shadow: 0 4px 14px rgba(42, 24, 8, 0.12);
+}
+.hg-storybook .bg-\[\#fbfdfb\],
+.hg-storybook .bg-\[\#f4fbf6\],
+.hg-storybook .bg-\[\#edf6f0\],
+.hg-storybook .bg-\[\#e9f5ec\],
+.hg-storybook .bg-\[\#eef7f1\] {
+  background-color: #f6ead0 !important;
+  border-color: #c8a66e !important;
+  color: #2e1e0f !important;
+}
+.hg-storybook .text-\[\#1b4332\],
+.hg-storybook .text-\[\#14532d\],
+.hg-storybook .text-\[\#26382c\],
+.hg-storybook .text-\[\#355e47\] {
+  color: #2e1e0f !important;
+}
+.hg-storybook .text-\[\#40916c\],
+.hg-storybook .text-\[\#52796f\],
+.hg-storybook .text-\[\#2d6a4f\] {
+  color: #6e4d28 !important;
+}
+.hg-storybook .bg-\[\#2d6a4f\] {
+  background-color: #3d5a34 !important;
+  border-color: #263b20 !important;
+}
+
+/* Home & Garden Candlelight Dark Mode */
 .hg-dark {
-  background: linear-gradient(to bottom, #0f1b16, #0a1410) !important;
-  color: #e6f4ec !important;
+  background: linear-gradient(to bottom, #17110c, #0f0b07) !important;
+  color: #f4ead5 !important;
 }
 .hg-dark header {
-  background-color: #132a1f !important;
-  border-bottom: 1px solid #2d5443;
+  background-color: #1f160f !important;
+  border-bottom: 2px solid #8a6235 !important;
 }
 .hg-dark nav {
-  background-color: #13221c !important;
-  border-color: #2d5443 !important;
+  background-color: #1d150e !important;
+  border-color: #7a5b32 !important;
 }
+.hg-dark .parchment-panel,
 .hg-dark .bg-white,
 .hg-dark .bg-white\/90,
 .hg-dark .bg-white\/95,
@@ -117,9 +156,14 @@ body,
 .hg-dark .bg-\[\#edf6f0\],
 .hg-dark .bg-\[\#e9f5ec\],
 .hg-dark .bg-\[\#eef7f1\] {
-  background-color: #16261f !important;
-  color: #e6f4ec !important;
-  border-color: #2d5443 !important;
+  background: #231a13 !important;
+  color: #f4ead5 !important;
+  border-color: #7a5b32 !important;
+}
+.hg-dark .ribbon-btn {
+  background: linear-gradient(180deg, #3b2c1d 0%, #2a1e13 100%) !important;
+  color: #f7e6bf !important;
+  border-color: #9e733b !important;
 }
 .hg-dark .text-\[\#1b4332\],
 .hg-dark .text-\[\#14532d\],
@@ -127,18 +171,20 @@ body,
 .hg-dark .text-\[\#355e47\],
 .hg-dark .text-\[\#374151\],
 .hg-dark .text-\[\#1e293b\],
-.hg-dark .text-\[\#0f172a\] {
-  color: #e6f4ec !important;
+.hg-dark .text-\[\#0f172a\],
+.hg-dark .text-\[\#2e1e0f\] {
+  color: #f4ead5 !important;
 }
 .hg-dark .text-\[\#40916c\],
 .hg-dark .text-\[\#52796f\],
-.hg-dark .text-\[\#2d6a4f\] {
-  color: #9dd4b5 !important;
+.hg-dark .text-\[\#2d6a4f\],
+.hg-dark .text-\[\#6e4d28\] {
+  color: #d8ba88 !important;
 }
 .hg-dark input:not([type="checkbox"]):not([type="range"]),
 .hg-dark select,
 .hg-dark textarea {
-  background-color: #0f1b16 !important;
-  color: #e6f4ec !important;
-  border-color: #3a6b55 !important;
+  background-color: #17110c !important;
+  color: #f4ead5 !important;
+  border-color: #7a5b32 !important;
 }

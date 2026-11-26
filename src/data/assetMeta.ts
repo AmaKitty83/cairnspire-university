@@ -38,6 +38,46 @@ export const ASSETS: Record<string, AssetEntry> = {
     "w": 380,
     "h": 321
   },
+  "home-garden-map": {
+    "src": "/assets/home-garden-map.jpg",
+    "w": 1376,
+    "h": 768
+  },
+  "crest-amarette": {
+    "src": "/assets/crests/amarette.png",
+    "w": 256,
+    "h": 256
+  },
+  "crest-ray": {
+    "src": "/assets/crests/ray.png",
+    "w": 256,
+    "h": 256
+  },
+  "crest-oliver": {
+    "src": "/assets/crests/oliver.png",
+    "w": 256,
+    "h": 256
+  },
+  "crest-liam": {
+    "src": "/assets/crests/liam.png",
+    "w": 256,
+    "h": 256
+  },
+  "crest-chase": {
+    "src": "/assets/crests/chase.png",
+    "w": 256,
+    "h": 256
+  },
+  "crest-gabe": {
+    "src": "/assets/crests/gabe.png",
+    "w": 256,
+    "h": 256
+  },
+  "crest-preston": {
+    "src": "/assets/crests/preston.png",
+    "w": 256,
+    "h": 256
+  },
   "crop-stocks": {
     "src": "/assets/crops/crop-stocks.webp"
   },
