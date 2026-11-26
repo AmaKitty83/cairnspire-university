@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #211710;
+  color: #2c1d10;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.font-atlas {
+  font-family: Georgia, "Palatino Linotype", "Book Antiqua", Palatino, serif;
+}
+
+.parchment-panel {
+  background: linear-gradient(160deg, #fbf3df 0%, #f0deb4 100%);
+  border: 2px solid #8a6235;
+  box-shadow: 0 14px 36px rgba(24, 14, 6, 0.52), inset 0 0 30px rgba(173, 128, 66, 0.22);
+}
+
+.ribbon-btn {
+  background: linear-gradient(180deg, #fcf5e3 0%, #e7cfa0 100%);
+  border: 1.5px solid #6e4d28;
+  color: #3a2410;
+  box-shadow: 0 2px 6px rgba(38, 22, 8, 0.3);
+}
+
+.ribbon-btn:hover {
+  background: linear-gradient(180deg, #fffaf0 0%, #f2dda9 100%);
+}
+
+.hotspot-group {
+  cursor: pointer;
+}
+
+.hotspot-group .hover-aura {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.hotspot-group:hover .hover-aura {
+  opacity: 0.34;
+}
+
+.hotspot-group .ribbon-tag {
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.hotspot-group:hover .ribbon-tag {
+  filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.95));
+}
+
+.sprite-group {
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.sprite-group:hover {
+  filter: drop-shadow(0 0 7px rgba(255, 220, 120, 0.98));
+}
+
+@keyframes pulseShimmer {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.shimmer-a {
+  animation: pulseShimmer 2.4s ease-in-out infinite;
+}
+
+.shimmer-b {
+  animation: pulseShimmer 2.4s ease-in-out 1.2s infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
