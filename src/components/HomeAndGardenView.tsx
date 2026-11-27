@@ -6,7 +6,8 @@ import {
   importFamilyHubBundle,
   isChoreDueOnDate,
   isoDateLocal,
-  publishPublicWishList,
+  publishSecretWishList,
+  resolveHouseholdPersonName,
   saveAnnouncementsData,
   saveCalendarData,
   saveChatRooms,
@@ -26,18 +27,20 @@ import {
   subscribeChatRooms,
   subscribeChores,
   subscribeGifts,
+  subscribeGiftShareConfig,
   subscribeGoals,
   subscribeGrocery,
+  subscribeHouseholdGiftClaims,
   subscribeKidPins,
   subscribeLinks,
   subscribeMeals,
   subscribePantry,
   subscribeParentGiftBought,
-  subscribePublicGiftClaims,
-  subscribePublicWishList,
   subscribeRecipes,
+  subscribeSecretPublicClaims,
   todayDayKey,
-  unpublishPublicWishList,
+  toggleHouseholdGiftClaim,
+  unpublishSecretWishList,
   type AnchorMealRow,
   type CalendarEventItem,
   type ChatMessage,
@@ -50,6 +53,7 @@ import {
   type FamilyMode,
   type GiftItem,
   type GiftSection,
+  type GiftShareConfig,
   type GoalItem,
   type GroceryItem,
   type HouseholdAnnouncementsDoc,
@@ -287,7 +291,9 @@ export function HomeAndGardenView({
   });
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [publicPublished, setPublicPublished] = useState(false);
+  const [loggedInPerson, setLoggedInPerson] = useState<string>('');
+  const [householdClaims, setHouseholdClaims] = useState<Record<string, PublicGiftClaim>>({});
+  const [giftShareConfig, setGiftShareConfig] = useState<GiftShareConfig | null>(null);
   const [publicClaims, setPublicClaims] = useState<Record<string, PublicGiftClaim>>({});
   const [gabeConfig, setGabeConfig] = useState<GabeConfigDoc>({
     activeScienceUnitId: '',
@@ -303,6 +309,19 @@ export function HomeAndGardenView({
   const gabeResultsRef = useRef<QuestResultEntry[]>([]);
   const gabeAssessmentRef = useRef<AssessmentResultEntry[]>([]);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!actorEmail || isReadOnly) {
+      setLoggedInPerson('');
+      return;
+    }
+    void resolveHouseholdPersonName(actorEmail, role).then((resolved) => {
+      setLoggedInPerson(resolved);
+      if (resolved && !kidLockName && !selectedName) {
+        setSelectedName(resolved);
+      }
+    });
+  }, [actorEmail, role, isReadOnly]);
 
   useEffect(() => {
     const onErr = (err: Error) => setSyncError(err.message);
@@ -341,13 +360,62 @@ export function HomeAndGardenView({
           setLiamPinDraft(p.Liam || '');
           setOliverPinDraft(p.Oliver || '');
         }, onErr),
-        subscribePublicWishList((sections) => setPublicPublished(sections.length > 0), onErr),
-        subscribePublicGiftClaims(setPublicClaims, onErr),
+        subscribeGiftShareConfig(setGiftShareConfig, onErr),
         subscribeParentGabeGrades(setParentGabeGrades, onErr)
       );
     }
     return () => unsubs.forEach((u) => u());
   }, [isParentAuth]);
+
+  // Server-enforced No-Peeking subscription: everyone inside the house sees claims for everyone EXCEPT themselves
+  useEffect(() => {
+    if (isReadOnly || !loggedInPerson) {
+      setHouseholdClaims({});
+      return;
+    }
+    return subscribeHouseholdGiftClaims(loggedInPerson, setHouseholdClaims, (err) =>
+      setSyncError(err.message)
+    );
+  }, [isReadOnly, loggedInPerson]);
+
+  // Parents also subscribe to their active secret relatives link claims and mirror them into household claims
+  useEffect(() => {
+    if (!isParentAuth || !giftShareConfig?.active || !giftShareConfig.token) {
+      setPublicClaims({});
+      return;
+    }
+    return subscribeSecretPublicClaims(giftShareConfig.token, setPublicClaims, (err) =>
+      setSyncError(err.message)
+    );
+  }, [isParentAuth, giftShareConfig?.active, giftShareConfig?.token]);
+
+  useEffect(() => {
+    if (!isParentAuth || !loggedInPerson) return;
+    for (const [id, pubCl] of Object.entries(publicClaims)) {
+      if (!pubCl.forPerson || pubCl.forPerson === loggedInPerson) continue;
+      const localCl = householdClaims[id];
+      if (!localCl && pubCl.claimed) {
+        void toggleHouseholdGiftClaim(id, pubCl.forPerson, true, pubCl.claimedBy);
+      } else if (
+        localCl &&
+        (localCl.claimed !== pubCl.claimed || localCl.claimedBy !== pubCl.claimedBy)
+      ) {
+        void toggleHouseholdGiftClaim(id, pubCl.forPerson, pubCl.claimed, pubCl.claimedBy);
+      }
+    }
+  }, [isParentAuth, loggedInPerson, publicClaims, householdClaims]);
+
+  const mergedGiftClaims = useMemo(() => {
+    const out: Record<string, PublicGiftClaim> = {};
+    for (const [id, cl] of Object.entries(householdClaims)) {
+      if (!loggedInPerson || cl.forPerson !== loggedInPerson) out[id] = cl;
+    }
+    for (const [id, cl] of Object.entries(publicClaims)) {
+      if (loggedInPerson && cl.forPerson === loggedInPerson) continue;
+      if (!out[id] || (!out[id].claimed && cl.claimed)) out[id] = cl;
+    }
+    return out;
+  }, [householdClaims, publicClaims, loggedInPerson]);
 
   const effectiveName = viewAs || selectedName;
   const activePerson = useMemo(
@@ -1223,14 +1291,15 @@ export function HomeAndGardenView({
             {activeTab === 'gifts' && (
               <FamilyGiftsTab
                 activePerson={activePerson}
+                loggedInPerson={loggedInPerson}
                 isParentActor={isParentAuth}
                 canEdit={canEdit}
                 readOnly={isReadOnly}
                 viewAs={viewAs}
                 sections={giftSections}
                 parentBoughtMap={parentGiftBought}
-                publicPublished={publicPublished}
-                publicClaims={publicClaims}
+                giftShareConfig={giftShareConfig}
+                claims={mergedGiftClaims}
                 onAddGift={async (forPerson, item: Omit<GiftItem, 'id'>) => {
                   if (!canEdit) return;
                   const newItem: GiftItem = { ...item, id: `gf_${Date.now().toString(36)}` };
@@ -1265,13 +1334,35 @@ export function HomeAndGardenView({
                   else delete next[giftId];
                   await saveParentGiftBought(next, actorEmail);
                 }}
-                onPublishPublic={async () => {
+                onToggleReserve={async (giftId, forPerson, claimed) => {
+                  if (isReadOnly || viewAs || !loggedInPerson || forPerson === loggedInPerson) return;
+                  await toggleHouseholdGiftClaim(
+                    giftId,
+                    forPerson,
+                    claimed,
+                    loggedInPerson,
+                    giftShareConfig?.active ? giftShareConfig.token : undefined
+                  );
+                }}
+                onPublishPublic={async (passcode) => {
                   if (!isParentAuth || isReadOnly || viewAs) return;
-                  await publishPublicWishList(giftSections, actorEmail);
+                  await publishSecretWishList(giftSections, actorEmail, {
+                    token: giftShareConfig?.token || undefined,
+                    passcode,
+                    householdClaims: mergedGiftClaims,
+                  });
+                }}
+                onRotatePublicLink={async (passcode) => {
+                  if (!isParentAuth || isReadOnly || viewAs) return;
+                  await publishSecretWishList(giftSections, actorEmail, {
+                    previousToken: giftShareConfig?.token || undefined,
+                    passcode,
+                    householdClaims: mergedGiftClaims,
+                  });
                 }}
                 onUnpublishPublic={async () => {
                   if (!isParentAuth || isReadOnly || viewAs) return;
-                  await unpublishPublicWishList();
+                  await unpublishSecretWishList(giftShareConfig?.token || '', actorEmail);
                 }}
               />
             )}

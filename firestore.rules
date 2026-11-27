@@ -116,21 +116,36 @@ rules_version = '2';
 //     private_health covers family_medical card objects and family_medical_cards/images/{person} compressed JPEG data URLs.
 //     Validated for key-count bounds (1..50) and timestamp/field hygiene on create & update.
 //
-// 12. Document: public_gifts/family_wishlist
-//     Access: Public read (`allow read: if true`) for the shareable /gifts wish list page;
-//             Chancellor and University (isCampusOperator) only for create, update, and delete.
-//     Contains ONLY explicitly published, sanitized gift ideas (zero private info).
-//     Validated via isValidVaultDocument with UID and immutable createdAt protections.
+// 12. Retired Public Gift Collections: public_gifts/family_wishlist & public_gifts_claims/{giftId}
+//     Access: Chancellor and University (`isCampusOperator`) ONLY (read & write).
+//     Retired so bare /gifts can no longer be read or written by the public or family.
 //
-// 13. Collection: public_gifts_claims/{giftId}
+// 13. Collection: public_gifts_shared/{shareToken} & subcollection claims/{giftId}
+//     Document ID ({shareToken}): high-entropy secret token ^[a-zA-Z0-9_-]{16,64}$ (16..64 chars).
+//     Parent (public_gifts_shared/{shareToken}):
+//       Access: Public `get` by valid shareToken (`allow list: if false;` prevents enumeration);
+//               Chancellor and University (`isCampusOperator`) only for create, update, and delete.
+//       Validated via isValidVaultDocument with UID and immutable createdAt protections.
+//     Subcollection (public_gifts_shared/{shareToken}/claims/{giftId}):
+//       Document ID ({giftId}): lowercase slug ^[a-z0-9][a-z0-9_-]{0,63}$.
+//       Access: Public read, create, and update when shareToken is valid AND parent doc exists;
+//               delete restricted to Chancellor and University (`isCampusOperator`).
+//       Fields (isValidGiftClaim):
+//         - forPerson: string (required, enum: 'Amarette' | 'Ray' | 'Preston' | 'Chase' | 'Gabe' | 'Liam' | 'Oliver')
+//         - claimed: bool (required)
+//         - claimedBy: string (optional, 0..60 chars)
+//         - updatedAt: timestamp (required)
+//
+// 14. Collection: home_and_garden_claims/{giftId} (Server-Enforced Household "No-Peeking" Gift Claims)
 //     Document ID: {giftId} (lowercase slug ^[a-z0-9][a-z0-9_-]{0,63}$)
-//     Access: Public read, create, and update (validated); delete restricted to Chancellor and University (isCampusOperator).
-//     Fields:
-//       - claimed: bool (required)
-//       - claimedBy: string (optional, 0..60 chars)
-//       - updatedAt: timestamp (required)
+//     Access: Sanctuary members (`isSanctuaryMember`) with a non-empty `callerPersonName()` ONLY when
+//             `forPerson != callerPersonName()` (prevents household members from reading, creating,
+//             updating, or deleting gift claims for themselves).
+//             Delete restricted to `isCampusOperator()` with `resource.data.forPerson != callerPersonName()`.
+//     Update: `forPerson` is immutable (`resource.data.forPerson == request.resource.data.forPerson`).
+//     Fields: validated via `isValidGiftClaim` (`forPerson`, `claimed`, `claimedBy`, `updatedAt`).
 //
-// 14. Collection: campus_books/{document=**}
+// 15. Collection: campus_books/{document=**}
 //     Access: Chancellor, University, and Guest read-only (`isCampusReader`);
 //             Chancellor and University (`isCampusOperator`) only for create, update, and delete.
 //     Covers Children's Books: The Bramblewood Friends & Sparrow & Sprocket Printables.
@@ -216,6 +231,12 @@ service cloud.firestore {
       return isChancellor() || hasAnyRole(['university', 'family']);
     }
 
+    function callerPersonName() {
+      return isChancellor() ? 'Amarette' :
+        (isAuthenticated() && exists(roleDocPath()) && ('displayName' in get(roleDocPath()).data)
+          ? get(roleDocPath()).data.displayName : '');
+    }
+
     // ===============================================================
     // Helper Functions — Schema & Data Validation
     // ===============================================================
@@ -254,6 +275,13 @@ service cloud.firestore {
         val.size() >= 1 &&
         val.size() <= 64 &&
         val.matches('^[a-z0-9][a-z0-9_-]{0,63}$');
+    }
+
+    function isValidShareToken(token) {
+      return token is string &&
+        token.size() >= 16 &&
+        token.size() <= 64 &&
+        token.matches('^[a-zA-Z0-9_-]{16,64}$');
     }
 
     function isCallerEmail(val) {
@@ -421,6 +449,15 @@ service cloud.firestore {
     function isValidPublicGiftClaim(data) {
       return hasOnlyAllowedFields(data, ['claimed', 'claimedBy', 'updatedAt']) &&
         hasRequiredFields(data, ['claimed', 'updatedAt']) &&
+        data.claimed is bool &&
+        isValidOptionalString(data, 'claimedBy', 0, 60) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidGiftClaim(data) {
+      return hasOnlyAllowedFields(data, ['forPerson', 'claimed', 'claimedBy', 'updatedAt']) &&
+        hasRequiredFields(data, ['forPerson', 'claimed', 'updatedAt']) &&
+        data.forPerson in ['Amarette', 'Ray', 'Preston', 'Chase', 'Gabe', 'Liam', 'Oliver'] &&
         data.claimed is bool &&
         isValidOptionalString(data, 'claimedBy', 0, 60) &&
         data.updatedAt is timestamp;
@@ -603,28 +640,62 @@ service cloud.firestore {
       allow delete: if isCampusOperator();
     }
 
-    // 12. Public Family Wish List (Shareable /gifts page — explicitly published sanitized items, zero private info)
+    // 12. Retired Public Gift Collections (Locked to Chancellor & University ONLY; bare /gifts disabled)
     match /public_gifts/family_wishlist {
-      allow read: if true;
+      allow read, write: if isCampusOperator();
+    }
+
+    match /public_gifts_claims/{giftId} {
+      allow read, write: if isCampusOperator();
+    }
+
+    // 13. Secret Rotatable Relatives Wish List & Claims (Token-gated; list disabled)
+    match /public_gifts_shared/{shareToken} {
+      allow get: if isValidShareToken(shareToken);
+      allow list: if false;
       allow create: if isCampusOperator() &&
+        isValidShareToken(shareToken) &&
         isValidVaultDocument(request.resource.data) &&
         uidUnchanged();
       allow update: if isCampusOperator() &&
+        isValidShareToken(shareToken) &&
         isValidVaultDocument(request.resource.data) &&
         uidNotModified() &&
         immutableCreatedAtIfPresent();
       allow delete: if isCampusOperator();
+
+      match /claims/{giftId} {
+        allow read: if isValidShareToken(shareToken) &&
+          exists(/databases/$(database)/documents/public_gifts_shared/$(shareToken));
+        allow create, update: if isValidShareToken(shareToken) &&
+          exists(/databases/$(database)/documents/public_gifts_shared/$(shareToken)) &&
+          isValidSlug(giftId) &&
+          isValidGiftClaim(request.resource.data);
+        allow delete: if isCampusOperator();
+      }
     }
 
-    // 13. Public Gift Claims (Public guests can claim/unclaim gift slugs on /gifts)
-    match /public_gifts_claims/{giftId} {
-      allow read: if true;
-      allow create, update: if isValidSlug(giftId) &&
-        isValidPublicGiftClaim(request.resource.data);
-      allow delete: if isCampusOperator();
+    // 14. Household "No-Peeking" Gift Claims (Server-enforced: cannot read/create/update/delete claims for oneself)
+    match /home_and_garden_claims/{giftId} {
+      allow read: if isSanctuaryMember() &&
+        callerPersonName().size() > 0 &&
+        resource.data.forPerson != callerPersonName();
+      allow create: if isSanctuaryMember() &&
+        callerPersonName().size() > 0 &&
+        isValidSlug(giftId) &&
+        isValidGiftClaim(request.resource.data) &&
+        request.resource.data.forPerson != callerPersonName();
+      allow update: if isSanctuaryMember() &&
+        callerPersonName().size() > 0 &&
+        isValidSlug(giftId) &&
+        isValidGiftClaim(request.resource.data) &&
+        request.resource.data.forPerson != callerPersonName() &&
+        resource.data.forPerson == request.resource.data.forPerson;
+      allow delete: if isCampusOperator() &&
+        resource.data.forPerson != callerPersonName();
     }
 
-    // 14. Campus Books (Children's Books: The Bramblewood Friends & Sparrow & Sprocket Printables)
+    // 15. Campus Books (Children's Books: The Bramblewood Friends & Sparrow & Sprocket Printables)
     match /campus_books/{document=**} {
       allow read: if isCampusReader();
       allow create: if isCampusOperator() &&
@@ -637,7 +708,7 @@ service cloud.firestore {
       allow delete: if isCampusOperator();
     }
 
-    // 15. Explicit Default Deny-All Fallback
+    // 16. Explicit Default Deny-All Fallback
     match /{document=**} {
       allow read, write: if false;
     }

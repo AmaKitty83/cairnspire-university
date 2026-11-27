@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FAMILY_PEOPLE,
+  sanitizeGiftId,
   type FamilyPersonProfile,
   type GiftItem,
   type GiftSection,
+  type GiftShareConfig,
   type GoalItem,
   type HouseholdAnnouncementsDoc,
   type LinkGroup,
@@ -198,38 +200,44 @@ export function FamilyGoalsTab({
   );
 }
 
-// 2. GIFT LISTS TAB (parents-only bought status + shareable /gifts link)
+// 2. GIFT LISTS TAB (parents-only bought status + household No-Peeking shopping + secret relatives link)
 export function FamilyGiftsTab({
   activePerson,
+  loggedInPerson,
   isParentActor,
   canEdit,
   readOnly,
   viewAs,
   sections,
   parentBoughtMap,
-  publicPublished,
-  publicClaims,
+  giftShareConfig,
+  claims,
   onAddGift,
   onUpdateGift,
   onDeleteGift,
   onToggleBought,
+  onToggleReserve,
   onPublishPublic,
+  onRotatePublicLink,
   onUnpublishPublic,
 }: {
   activePerson: FamilyPersonProfile;
+  loggedInPerson: string;
   isParentActor: boolean;
   canEdit: boolean;
   readOnly: boolean;
   viewAs: string;
   sections: GiftSection[];
   parentBoughtMap: Record<string, string>;
-  publicPublished: boolean;
-  publicClaims: Record<string, PublicGiftClaim>;
+  giftShareConfig: GiftShareConfig | null;
+  claims: Record<string, PublicGiftClaim>;
   onAddGift: (forPerson: string, item: Omit<GiftItem, 'id'>) => Promise<void>;
   onUpdateGift: (forPerson: string, item: GiftItem) => Promise<void>;
   onDeleteGift: (forPerson: string, giftId: string) => Promise<void>;
   onToggleBought: (giftId: string, bought: boolean) => Promise<void>;
-  onPublishPublic: () => Promise<void>;
+  onToggleReserve: (giftId: string, forPerson: string, claimed: boolean) => Promise<void>;
+  onPublishPublic: (passcode: string) => Promise<void>;
+  onRotatePublicLink: (passcode: string) => Promise<void>;
   onUnpublishPublic: () => Promise<void>;
 }) {
   const showParentBought = isParentActor && !viewAs && !readOnly;
@@ -241,91 +249,135 @@ export function FamilyGiftsTab({
   const [editingGift, setEditingGift] = useState<{ person: string; item: GiftItem } | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [passcodeDraft, setPasscodeDraft] = useState(giftShareConfig?.passcode || '');
+  const [reservingId, setReservingId] = useState<string | null>(null);
 
-  const shareUrl =
-    typeof window !== 'undefined' ? `${window.location.origin}/gifts` : 'https://cairnspire-university.web.app/gifts';
+  useEffect(() => {
+    setPasscodeDraft(giftShareConfig?.passcode || '');
+  }, [giftShareConfig?.passcode]);
+
+  const publicPublished = Boolean(giftShareConfig?.active && giftShareConfig?.token);
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin : 'https://cairnspire-university.web.app';
+  const shareUrl = publicPublished ? `${origin}/gifts?k=${giftShareConfig?.token}` : '';
 
   return (
     <div className="space-y-4">
       <div className="p-4 rounded-2xl bg-white border border-[#95d5b2] space-y-3">
         <h2 className="font-atlas text-lg font-bold text-[#1b4332]">🎁 Family Gift Lists</h2>
-        {showParentBought && (
-          <p className="text-[11px] text-[#40916c]">
-            Parents-only Bought &amp; Public Reserve status stays completely hidden on kids’ own lists and
-            View-As so surprises stay secret!
-          </p>
-        )}
+        <p className="text-[11px] text-[#40916c]">
+          {loggedInPerson
+            ? `No-Peeking active for ${loggedInPerson}: you can see & reserve gifts for others in the house, while surprises on your own wish list stay locked & hidden!`
+            : 'Surprises stay hidden while shopping inside Home & Garden!'}
+        </p>
 
-        {/* Shareable Extended-Family Link Panel (Parents Only) */}
+        {/* Secret Shareable Extended-Family Link Panel (Parents Only) */}
         {showParentBought && (
-          <div className="p-3 rounded-xl bg-[#eef6ff] border border-[#93c5fd] space-y-2 text-xs">
+          <div className="p-3 rounded-xl bg-[#eef6ff] border border-[#93c5fd] space-y-2.5 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-bold text-[#1e3a8a]">
-                🔗 Shareable Wish List Link for Extended Family
+                🔒 Secret Wish List Link for Outside Relatives
               </div>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   publicPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
                 }`}
               >
-                {publicPublished ? 'Live & Shareable' : 'Currently Paused'}
+                {publicPublished ? 'Secret Link Active' : 'Paused (Bare /gifts Retired)'}
               </span>
             </div>
             <p className="text-[11px] text-[#1e40af]">
-              Anyone with this link can view gift ideas (no login needed) and tap “I’ve got this!” to prevent
-              duplicate gifts. Kids cannot see reserved/bought items.
+              Bare <code>/gifts</code> is retired so nobody in the house can peek. Share this private link
+              (with an optional passcode) only with outside relatives. You can reset the link anytime!
             </p>
+
             <div className="flex flex-wrap items-center gap-2">
-              <code className="px-2 py-1 rounded bg-white border border-[#bfdbfe] text-[11px] select-all">
-                {shareUrl}
-              </code>
-              <button
-                onClick={() => {
-                  void navigator.clipboard?.writeText(shareUrl);
-                  setCopiedLink(true);
-                  setTimeout(() => setCopiedLink(false), 1800);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] font-bold text-[#1e3a8a] cursor-pointer"
-              >
-                {copiedLink ? 'Copied ✔' : '📋 Copy Link'}
-              </button>
-              <a
-                href="/gifts"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] font-bold text-[#1e3a8a] underline"
-              >
-                Preview ↗
-              </a>
+              <label className="font-bold text-[#1e3a8a]">Passcode (optional):</label>
+              <input
+                type="text"
+                value={passcodeDraft}
+                onChange={(e) => setPasscodeDraft(e.target.value)}
+                placeholder="e.g., family2026 (leave blank for link-only)"
+                className="flex-1 min-w-[180px] px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] text-xs"
+              />
+            </div>
+
+            {publicPublished && (
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="px-2 py-1 rounded bg-white border border-[#bfdbfe] text-[11px] select-all break-all">
+                  {shareUrl}
+                </code>
+                <button
+                  onClick={() => {
+                    const msg = passcodeDraft.trim()
+                      ? `${shareUrl}\nPasscode: ${passcodeDraft.trim()}`
+                      : shareUrl;
+                    void navigator.clipboard?.writeText(msg);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 1800);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] font-bold text-[#1e3a8a] cursor-pointer"
+                >
+                  {copiedLink ? 'Copied ✔' : '📋 Copy Secret Link'}
+                </button>
+                <a
+                  href={`/gifts?k=${giftShareConfig?.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-[#93c5fd] font-bold text-[#1e3a8a] underline"
+                >
+                  Preview ↗
+                </a>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 disabled={shareBusy}
                 onClick={async () => {
                   setShareBusy(true);
                   try {
-                    await onPublishPublic();
+                    await onPublishPublic(passcodeDraft);
                   } finally {
                     setShareBusy(false);
                   }
                 }}
                 className="px-2.5 py-1 rounded-lg bg-[#2563eb] text-white font-bold cursor-pointer disabled:opacity-50"
               >
-                {publicPublished ? '🔄 Sync Updates to Public Link' : '🚀 Turn On Public Link'}
+                {publicPublished ? '🔄 Save / Sync Secret Link' : '🚀 Turn On Secret Link'}
               </button>
               {publicPublished && (
-                <button
-                  disabled={shareBusy}
-                  onClick={async () => {
-                    setShareBusy(true);
-                    try {
-                      await onUnpublishPublic();
-                    } finally {
-                      setShareBusy(false);
-                    }
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-red-100 text-red-800 font-bold cursor-pointer"
-                >
-                  Pause Link
-                </button>
+                <>
+                  <button
+                    disabled={shareBusy}
+                    onClick={async () => {
+                      setShareBusy(true);
+                      try {
+                        await onRotatePublicLink(passcodeDraft);
+                      } finally {
+                        setShareBusy(false);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-amber-100 border border-amber-400 text-amber-950 font-bold cursor-pointer"
+                    title="Immediately kills the old link and generates a brand-new secret link"
+                  >
+                    🔑 Reset Link
+                  </button>
+                  <button
+                    disabled={shareBusy}
+                    onClick={async () => {
+                      setShareBusy(true);
+                      try {
+                        await onUnpublishPublic();
+                      } finally {
+                        setShareBusy(false);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-red-100 text-red-800 font-bold cursor-pointer"
+                  >
+                    Pause Link
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -401,19 +453,31 @@ export function FamilyGiftsTab({
       <div className="space-y-3">
         {sections.map((sec) => {
           const pObj = FAMILY_PEOPLE.find((p) => p.name === sec.person);
-          const isOwnList = sec.person === activePerson.name;
+          const isOwnList =
+            sec.person === activePerson.name || (Boolean(loggedInPerson) && sec.person === loggedInPerson);
+          const canShopThisSection =
+            !readOnly && !viewAs && activePerson.mode !== 'little' && Boolean(loggedInPerson) && !isOwnList;
+          const canSeeParentBought = showParentBought && !isOwnList;
+
           return (
             <div key={sec.person} className="p-4 rounded-2xl bg-white border border-[#95d5b2] space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 {pObj ? <PersonChip person={pObj} /> : <strong>{sec.person}</strong>}
-                <span className="text-xs text-[#52796f]">{sec.items.length} ideas</span>
+                <div className="flex items-center gap-2">
+                  {isOwnList && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
+                      🤫 Surprises hidden — no peeking!
+                    </span>
+                  )}
+                  <span className="text-xs text-[#52796f]">{sec.items.length} ideas</span>
+                </div>
               </div>
               <div className="space-y-1.5 text-xs">
                 {sec.items.map((it) => {
                   const isBought = Boolean(parentBoughtMap[it.id]);
-                  const pubClaim = publicClaims[it.id.toLowerCase()];
+                  const pubClaim = claims[sanitizeGiftId(it.id)];
                   const isPublicClaimed = Boolean(pubClaim?.claimed);
-                  const canSeeStatus = showParentBought && !isOwnList;
+                  const canSeeStatus = canShopThisSection || canSeeParentBought;
                   const isEditingThis =
                     editingGift?.person === sec.person && editingGift.item.id === it.id;
 
@@ -520,13 +584,32 @@ export function FamilyGiftsTab({
                         {it.occasion && <div className="text-[10px] text-[#52796f]">{it.occasion}</div>}
                         {canSeeStatus && isPublicClaimed && (
                           <div className="text-[10px] font-bold text-[#1d4ed8]">
-                            🌐 Reserved via Public Link
-                            {pubClaim.claimedBy ? ` by ${pubClaim.claimedBy}` : ''}
+                            ✔ Reserved{pubClaim?.claimedBy ? ` (${pubClaim.claimedBy})` : ''}
                           </div>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {canSeeStatus && (
+                        {canShopThisSection && (
+                          <button
+                            disabled={reservingId === it.id}
+                            onClick={async () => {
+                              setReservingId(it.id);
+                              try {
+                                await onToggleReserve(it.id, sec.person, !isPublicClaimed);
+                              } finally {
+                                setReservingId(null);
+                              }
+                            }}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
+                              isPublicClaimed
+                                ? 'bg-[#16a34a] text-white'
+                                : 'bg-[#eef6ff] border border-[#93c5fd] text-[#1e3a8a]'
+                            }`}
+                          >
+                            {isPublicClaimed ? '✔ Reserved (Undo)' : '🎁 I’ve got this!'}
+                          </button>
+                        )}
+                        {canSeeParentBought && (
                           <button
                             onClick={() => void onToggleBought(it.id, !isBought)}
                             className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${

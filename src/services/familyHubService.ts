@@ -3,12 +3,14 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  where,
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -744,37 +746,146 @@ export async function sendFamilyChatMessage(
 
 export interface PublicGiftClaim {
   giftId: string;
+  forPerson: string;
   claimed: boolean;
   claimedBy: string;
 }
 
-export function subscribePublicWishList(
-  cb: (sections: GiftSection[]) => void,
+export interface GiftShareConfig {
+  token: string;
+  passcode: string;
+  active: boolean;
+}
+
+export function sanitizeGiftId(giftId: string): string {
+  return giftId.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 64);
+}
+
+export function generateGiftShareToken(): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-';
+  const bytes = new Uint8Array(24);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  let out = 'gw_';
+  for (let i = 0; i < bytes.length; i++) {
+    out += alphabet[bytes[i] % alphabet.length];
+  }
+  return out;
+}
+
+export async function hashPasscode(passcode: string): Promise<string> {
+  const clean = passcode.trim().toLowerCase();
+  if (!clean) return '';
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const buf = new TextEncoder().encode(clean);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  return clean;
+}
+
+export async function resolveHouseholdPersonName(
+  userEmail: string,
+  role: string
+): Promise<string> {
+  const email = (userEmail || '').trim().toLowerCase();
+  if (!email) return '';
+  if (role === 'chancellor') return 'Amarette';
+  try {
+    const snap = await getDoc(doc(db, 'access_roles', email));
+    if (snap.exists()) {
+      const disp = String(snap.data()?.displayName || '').trim();
+      if (FAMILY_PEOPLE.some((p) => p.name === disp)) {
+        return disp;
+      }
+    }
+  } catch {
+    // ignore lookup failure
+  }
+  if (role === 'university') return 'Ray';
+  return '';
+}
+
+export function subscribeGiftShareConfig(
+  cb: (cfg: GiftShareConfig | null) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
   return onSnapshot(
-    doc(db, 'public_gifts', 'family_wishlist'),
+    doc(db, 'home_and_garden_parents', 'gift_share_config'),
     (snap) => {
-      if (!snap.exists()) return cb([]);
-      const d = snap.data() as { sections?: GiftSection[] };
-      cb(Array.isArray(d.sections) ? d.sections : []);
+      if (!snap.exists()) return cb(null);
+      const d = snap.data() as Partial<GiftShareConfig>;
+      cb({
+        token: String(d.token || ''),
+        passcode: String(d.passcode || ''),
+        active: Boolean(d.active),
+      });
     },
     (err) => onError?.(err)
   );
 }
 
-export function subscribePublicGiftClaims(
+export function subscribeSecretPublicWishList(
+  token: string,
+  cb: (data: {
+    exists: boolean;
+    sections: GiftSection[];
+    hasPasscode: boolean;
+    passcodeHash: string;
+  }) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  if (!token) {
+    cb({ exists: false, sections: [], hasPasscode: false, passcodeHash: '' });
+    return () => undefined;
+  }
+  return onSnapshot(
+    doc(db, 'public_gifts_shared', token),
+    (snap) => {
+      if (!snap.exists()) {
+        return cb({ exists: false, sections: [], hasPasscode: false, passcodeHash: '' });
+      }
+      const d = snap.data() as {
+        sections?: GiftSection[];
+        hasPasscode?: boolean;
+        passcodeHash?: string;
+      };
+      cb({
+        exists: true,
+        sections: Array.isArray(d.sections) ? d.sections : [],
+        hasPasscode: Boolean(d.hasPasscode && d.passcodeHash),
+        passcodeHash: String(d.passcodeHash || ''),
+      });
+    },
+    (err) => onError?.(err)
+  );
+}
+
+export function subscribeSecretPublicClaims(
+  token: string,
   cb: (claims: Record<string, PublicGiftClaim>) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
+  if (!token) {
+    cb({});
+    return () => undefined;
+  }
   return onSnapshot(
-    collection(db, 'public_gifts_claims'),
+    collection(db, 'public_gifts_shared', token, 'claims'),
     (snap) => {
       const map: Record<string, PublicGiftClaim> = {};
       snap.forEach((d) => {
-        const data = d.data() as { claimed?: boolean; claimedBy?: string };
+        const data = d.data() as { forPerson?: string; claimed?: boolean; claimedBy?: string };
         map[d.id] = {
           giftId: d.id,
+          forPerson: String(data.forPerson || ''),
           claimed: Boolean(data.claimed),
           claimedBy: data.claimedBy || '',
         };
@@ -785,16 +896,26 @@ export function subscribePublicGiftClaims(
   );
 }
 
-export async function publishPublicWishList(
+export async function publishSecretWishList(
   sections: GiftSection[],
-  actorEmail: string
-): Promise<void> {
+  actorEmail: string,
+  opts: {
+    token?: string;
+    previousToken?: string;
+    passcode?: string;
+    householdClaims?: Record<string, PublicGiftClaim>;
+  } = {}
+): Promise<GiftShareConfig> {
   const email = (actorEmail || auth.currentUser?.email || '').trim().toLowerCase();
+  const token = (opts.token || '').trim() || generateGiftShareToken();
+  const passcode = (opts.passcode || '').trim();
+  const passcodeHash = await hashPasscode(passcode);
+
   const sanitized = sections.map((s) => ({
     person: s.person,
     title: s.title,
     items: s.items.map((it) => ({
-      id: it.id.toLowerCase().replace(/[^a-z0-9_-]/g, '_'),
+      id: sanitizeGiftId(it.id),
       idea: it.idea,
       link: it.link || '',
       price: it.price || '',
@@ -802,28 +923,158 @@ export async function publishPublicWishList(
       occasion: it.occasion || '',
     })),
   }));
-  await setDoc(doc(db, 'public_gifts', 'family_wishlist'), {
+
+  await setDoc(doc(db, 'public_gifts_shared', token), {
     sections: sanitized,
+    hasPasscode: Boolean(passcodeHash),
+    passcodeHash,
     updatedAt: serverTimestamp(),
     updatedBy: email,
   });
+
+  if (opts.householdClaims) {
+    for (const cl of Object.values(opts.householdClaims)) {
+      if (cl.claimed && cl.forPerson) {
+        await setDoc(doc(db, 'public_gifts_shared', token, 'claims', sanitizeGiftId(cl.giftId)), {
+          forPerson: cl.forPerson,
+          claimed: true,
+          claimedBy: (cl.claimedBy || 'Family').trim().slice(0, 60),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+  }
+
+  if (opts.previousToken && opts.previousToken !== token) {
+    try {
+      await deleteDoc(doc(db, 'public_gifts_shared', opts.previousToken));
+    } catch {
+      // ignore if old token was already removed
+    }
+  }
+
+  // Retire legacy predictable public_gifts/family_wishlist doc
+  try {
+    await deleteDoc(doc(db, 'public_gifts', 'family_wishlist'));
+  } catch {
+    // ignore if absent
+  }
+
+  const cfg: GiftShareConfig = { token, passcode, active: true };
+  await setDoc(doc(db, 'home_and_garden_parents', 'gift_share_config'), {
+    ...cfg,
+    updatedAt: serverTimestamp(),
+    updatedBy: email,
+  });
+  return cfg;
 }
 
-export async function unpublishPublicWishList(): Promise<void> {
-  await deleteDoc(doc(db, 'public_gifts', 'family_wishlist'));
+export async function unpublishSecretWishList(
+  token: string,
+  actorEmail: string
+): Promise<void> {
+  const email = (actorEmail || auth.currentUser?.email || '').trim().toLowerCase();
+  if (token) {
+    try {
+      await deleteDoc(doc(db, 'public_gifts_shared', token));
+    } catch {
+      // ignore if absent
+    }
+  }
+  try {
+    await deleteDoc(doc(db, 'public_gifts', 'family_wishlist'));
+  } catch {
+    // ignore if absent
+  }
+  await setDoc(
+    doc(db, 'home_and_garden_parents', 'gift_share_config'),
+    {
+      token: token || '',
+      active: false,
+      updatedAt: serverTimestamp(),
+      updatedBy: email,
+    },
+    { merge: true }
+  );
 }
 
-export async function togglePublicGiftClaim(
+export async function toggleSecretPublicClaim(
+  token: string,
   giftId: string,
+  forPerson: string,
   claimed: boolean,
   claimedBy: string
 ): Promise<void> {
-  const cleanId = giftId.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 64);
-  await setDoc(doc(db, 'public_gifts_claims', cleanId), {
+  const cleanId = sanitizeGiftId(giftId);
+  await setDoc(doc(db, 'public_gifts_shared', token, 'claims', cleanId), {
+    forPerson,
     claimed,
     claimedBy: claimed ? claimedBy.trim().slice(0, 60) : '',
     updatedAt: serverTimestamp(),
   });
+}
+
+export function subscribeHouseholdGiftClaims(
+  excludePersonName: string,
+  cb: (claims: Record<string, PublicGiftClaim>) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  if (!excludePersonName) {
+    cb({});
+    return () => undefined;
+  }
+  const otherPeople = FAMILY_PEOPLE.map((p) => p.name).filter((n) => n !== excludePersonName);
+  if (!otherPeople.length) {
+    cb({});
+    return () => undefined;
+  }
+  const q = query(collection(db, 'home_and_garden_claims'), where('forPerson', 'in', otherPeople));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const map: Record<string, PublicGiftClaim> = {};
+      snap.forEach((d) => {
+        const data = d.data() as { forPerson?: string; claimed?: boolean; claimedBy?: string };
+        map[d.id] = {
+          giftId: d.id,
+          forPerson: String(data.forPerson || ''),
+          claimed: Boolean(data.claimed),
+          claimedBy: data.claimedBy || '',
+        };
+      });
+      cb(map);
+    },
+    (err) => onError?.(err)
+  );
+}
+
+export async function toggleHouseholdGiftClaim(
+  giftId: string,
+  forPerson: string,
+  claimed: boolean,
+  claimedBy: string,
+  activeShareToken?: string
+): Promise<void> {
+  const cleanId = sanitizeGiftId(giftId);
+  const payload = {
+    forPerson,
+    claimed,
+    claimedBy: claimed ? claimedBy.trim().slice(0, 60) : '',
+    updatedAt: serverTimestamp(),
+  };
+  await setDoc(doc(db, 'home_and_garden_claims', cleanId), payload);
+  if (activeShareToken) {
+    try {
+      await setDoc(doc(db, 'public_gifts_shared', activeShareToken, 'claims', cleanId), {
+        forPerson,
+        claimed,
+        claimedBy: claimed ? (claimedBy.trim().slice(0, 60) || 'Family') : '',
+        updatedAt: serverTimestamp(),
+      });
+    } catch {
+      // ignore if token missing or paused
+    }
+  }
 }
 
 export async function deleteChatMessage(messageId: string): Promise<void> {
