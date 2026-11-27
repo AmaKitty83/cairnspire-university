@@ -14,6 +14,10 @@ import {
   INITIAL_BRAMBLEWOOD_SPREADS,
   type BramblewoodSpreadItem,
 } from '../data/bramblewoodSpreads';
+import {
+  INITIAL_BOOK_FILES,
+  type BookDriveFile,
+} from '../data/bramblewoodFiles';
 
 function cleanActor(actorEmail: string): string {
   return (actorEmail || auth.currentUser?.email || '').trim().toLowerCase();
@@ -170,6 +174,38 @@ export async function saveAgentTasks(
 ): Promise<void> {
   await setDoc(doc(db, 'campus_books', 'agent_tasks'), {
     tasks,
+    updatedAt: serverTimestamp(),
+    updatedBy: cleanActor(actorEmail),
+  });
+}
+
+export function subscribeBookFiles(
+  cb: (files: BookDriveFile[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'campus_books', 'book_files'),
+    (snap) => {
+      if (!snap.exists()) return cb(INITIAL_BOOK_FILES);
+      const d = snap.data() as { files?: BookDriveFile[] };
+      if (!Array.isArray(d.files) || !d.files.length) return cb(INITIAL_BOOK_FILES);
+      const byId = new Map<string, BookDriveFile>();
+      for (const f of INITIAL_BOOK_FILES) byId.set(f.id, f);
+      for (const f of d.files) {
+        if (f?.id) byId.set(f.id, f);
+      }
+      cb(Array.from(byId.values()));
+    },
+    (err) => onError?.(err)
+  );
+}
+
+export async function saveBookFiles(
+  files: BookDriveFile[],
+  actorEmail: string
+): Promise<void> {
+  await setDoc(doc(db, 'campus_books', 'book_files'), {
+    files,
     updatedAt: serverTimestamp(),
     updatedBy: cleanActor(actorEmail),
   });

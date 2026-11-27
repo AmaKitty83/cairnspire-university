@@ -5,15 +5,18 @@ import {
   type BramblewoodBook,
 } from '../../data/bramblewoodData';
 import type { BramblewoodSpreadItem } from '../../data/bramblewoodSpreads';
+import { getBookFileIcon, type BookDriveFile } from '../../data/bramblewoodFiles';
 
 interface SpreadsWorkbenchTabProps {
   canEdit: boolean;
   books: BramblewoodBook[];
   spreadsByBook: Record<number, BramblewoodSpreadItem[]>;
   selectedBookNum: number;
+  bookFiles?: BookDriveFile[];
   onSelectBook: (num: number) => void;
   onSaveBookSpreads: (bookNum: number, items: BramblewoodSpreadItem[]) => Promise<void>;
   onDispatchTask: (task: Omit<BramblewoodAgentTask, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onOpenFile?: (file: BookDriveFile, siblings: BookDriveFile[]) => void;
 }
 
 type SpreadFilter = 'all' | 'redo' | 'artPending' | 'enPending' | 'esPending' | 'approved' | 'notes';
@@ -33,9 +36,11 @@ export function SpreadsWorkbenchTab({
   books,
   spreadsByBook,
   selectedBookNum,
+  bookFiles = [],
   onSelectBook,
   onSaveBookSpreads,
   onDispatchTask,
+  onOpenFile,
 }: SpreadsWorkbenchTabProps) {
   const [filter, setFilter] = useState<SpreadFilter>('all');
   const [searchQ, setSearchQ] = useState('');
@@ -195,6 +200,27 @@ export function SpreadsWorkbenchTab({
               )}
             </div>
           </div>
+
+          {onOpenFile && (() => {
+            const curFiles = bookFiles.filter((f) => f.bookNum === selectedBookNum);
+            if (!curFiles.length) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#e7d4ac]">
+                <span className="font-bold text-[#6e4d28]">📂 Open Book Files:</span>
+                {curFiles.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => onOpenFile(f, curFiles)}
+                    className="px-2 py-1 rounded-lg bg-[#fdf2f8] hover:bg-[#fce7f3] border border-[#f472b6] text-[11px] font-bold text-[#831843] cursor-pointer"
+                  >
+                    {getBookFileIcon(f.kind)} {f.label}
+                    {f.language === 'ES' ? ' (ES)' : ''}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           <div className="flex flex-wrap items-center gap-1.5">
             <input

@@ -8,19 +8,24 @@ import {
   type PrintableProduct,
 } from '../data/bramblewoodData';
 import type { BramblewoodSpreadItem } from '../data/bramblewoodSpreads';
+import type { BookDriveFile } from '../data/bramblewoodFiles';
 import {
   saveAgentTasks,
+  saveBookFiles,
   saveBramblewoodBooks,
   saveBramblewoodSpreads,
   saveCharacterBible,
   savePrintablesCatalog,
   subscribeAgentTasks,
+  subscribeBookFiles,
   subscribeBramblewoodBooks,
   subscribeBramblewoodSpreads,
   subscribeCharacterBible,
   subscribePrintablesCatalog,
 } from '../services/booksService';
 import { AgentCompanyTab } from './bramblewood/AgentCompanyTab';
+import { BookFilesLibraryTab } from './bramblewood/BookFilesLibraryTab';
+import { BookFileViewerModal } from './bramblewood/BookFileViewerModal';
 import { CharacterBibleTab } from './bramblewood/CharacterBibleTab';
 import { PrintablesStudioTab } from './bramblewood/PrintablesStudioTab';
 import { SpreadsWorkbenchTab } from './bramblewood/SpreadsWorkbenchTab';
@@ -31,7 +36,7 @@ interface BramblewoodSuiteViewProps {
   onExitToCampus: () => void;
 }
 
-type SuiteTab = 'overview' | 'spreads' | 'agents' | 'bible' | 'printables';
+type SuiteTab = 'overview' | 'library' | 'spreads' | 'agents' | 'bible' | 'printables';
 
 export function BramblewoodSuiteView({
   role,
@@ -55,6 +60,8 @@ export function BramblewoodSuiteView({
   const [characters, setCharacters] = useState<BramblewoodCharacter[]>([]);
   const [tasks, setTasks] = useState<BramblewoodAgentTask[]>([]);
   const [printables, setPrintables] = useState<PrintableProduct[]>([]);
+  const [bookFiles, setBookFiles] = useState<BookDriveFile[]>([]);
+  const [viewerState, setViewerState] = useState<{ file: BookDriveFile; siblings: BookDriveFile[] } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -65,14 +72,24 @@ export function BramblewoodSuiteView({
     const u3 = subscribeCharacterBible(setCharacters, onErr);
     const u4 = subscribeAgentTasks(setTasks, onErr);
     const u5 = subscribePrintablesCatalog(setPrintables, onErr);
+    const u6 = subscribeBookFiles(setBookFiles, onErr);
     return () => {
       u1();
       u2();
       u3();
       u4();
       u5();
+      u6();
     };
   }, []);
+
+  function openViewer(file: BookDriveFile, siblings?: BookDriveFile[]) {
+    const fallbackSiblings = bookFiles.filter((f) => f.bookNum === file.bookNum);
+    setViewerState({
+      file,
+      siblings: siblings && siblings.length ? siblings : fallbackSiblings.length ? fallbackSiblings : [file],
+    });
+  }
 
   function flash(msg: string) {
     setToastMsg(msg);
@@ -250,6 +267,7 @@ export function BramblewoodSuiteView({
         {(
           [
             ['overview', '📊 Series Overview'],
+            ['library', `📂 Book Library & Reader (${bookFiles.length})`],
             ['spreads', `📖 Spreads Workbench (${seriesTotals.totalItems})`],
             [
               'agents',
@@ -390,17 +408,49 @@ export function BramblewoodSuiteView({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => openBookSpreads(book.num)}
-                        className="ribbon-btn w-full py-1.5 rounded-xl font-bold cursor-pointer"
-                      >
-                        Open Spreads &amp; Approve →
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const thisBookFiles = bookFiles.filter((f) => f.bookNum === book.num);
+                          const primary =
+                            thisBookFiles.find((f) => f.kind === 'ebook-pdf') || thisBookFiles[0];
+                          return primary ? (
+                            <button
+                              type="button"
+                              onClick={() => openViewer(primary, thisBookFiles)}
+                              className="flex-1 py-1.5 px-2.5 rounded-xl bg-[#831843] text-white font-bold cursor-pointer hover:bg-[#6b1135]"
+                            >
+                              📖 Read Book
+                            </button>
+                          ) : null;
+                        })()}
+                        <button
+                          onClick={() => openBookSpreads(book.num)}
+                          className="ribbon-btn flex-1 py-1.5 px-2.5 rounded-xl font-bold cursor-pointer"
+                        >
+                          ✏️ Spreads →
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
+          )}
+
+          {tab === 'library' && (
+            <BookFilesLibraryTab
+              canEdit={canEdit}
+              books={books}
+              files={bookFiles}
+              onOpenFile={openViewer}
+              onSaveFiles={async (next) => {
+                if (!canEdit) return;
+                setBookFiles(next);
+                await saveBookFiles(next, userEmail);
+                flash('Book library saved ✔');
+              }}
+              onOpenSpreads={openBookSpreads}
+            />
           )}
 
           {tab === 'spreads' && (
@@ -409,9 +459,11 @@ export function BramblewoodSuiteView({
               books={books}
               spreadsByBook={spreadsByBook}
               selectedBookNum={selectedBookNum}
+              bookFiles={bookFiles}
               onSelectBook={setSelectedBookNum}
               onSaveBookSpreads={handleSaveBookSpreads}
               onDispatchTask={handleDispatchTask}
+              onOpenFile={openViewer}
             />
           )}
 
@@ -435,6 +487,8 @@ export function BramblewoodSuiteView({
             <CharacterBibleTab
               canEdit={canEdit}
               characters={characters}
+              bookFiles={bookFiles}
+              onOpenFile={openViewer}
               onSaveCharacters={async (next) => {
                 if (!canEdit) return;
                 setCharacters(next);
@@ -448,6 +502,7 @@ export function BramblewoodSuiteView({
             <PrintablesStudioTab
               canEdit={canEdit}
               printables={printables}
+              onOpenFile={openViewer}
               onSavePrintables={async (next) => {
                 if (!canEdit) return;
                 setPrintables(next);
@@ -458,6 +513,17 @@ export function BramblewoodSuiteView({
           )}
         </div>
       </main>
+
+      {viewerState && (
+        <BookFileViewerModal
+          file={viewerState.file}
+          siblings={viewerState.siblings}
+          onSelectFile={(next) =>
+            setViewerState((prev) => (prev ? { ...prev, file: next } : null))
+          }
+          onClose={() => setViewerState(null)}
+        />
+      )}
     </section>
   );
 }

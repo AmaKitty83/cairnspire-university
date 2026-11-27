@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import type { BramblewoodCharacter } from '../../data/bramblewoodData';
+import { getBookFileIcon, type BookDriveFile } from '../../data/bramblewoodFiles';
 
 interface CharacterBibleTabProps {
   canEdit: boolean;
   characters: BramblewoodCharacter[];
+  bookFiles?: BookDriveFile[];
+  onOpenFile?: (file: BookDriveFile, siblings: BookDriveFile[]) => void;
   onSaveCharacters: (next: BramblewoodCharacter[]) => Promise<void>;
 }
 
 export function CharacterBibleTab({
   canEdit,
   characters,
+  bookFiles = [],
+  onOpenFile,
   onSaveCharacters,
 }: CharacterBibleTabProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,14 +41,34 @@ export function CharacterBibleTab({
             Locked visual specs for all 9 Friends + Ms. Hazel so Rowan Brush &amp; ComfyUI keep outfits, proportions, and props consistent across every book.
           </p>
         </div>
-        {canEdit && (
-          <button
-            onClick={() => setAdding((v) => !v)}
-            className="px-3 py-1.5 rounded-xl bg-[#831843] text-white font-bold cursor-pointer"
-          >
-            ＋ Add Character
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {onOpenFile &&
+            ['s-bible-v5', 's-turnarounds-v2', 's-lineup'].map((refId) => {
+              const f = bookFiles.find((x) => x.id === refId);
+              if (!f) return null;
+              const refs = bookFiles.filter((x) =>
+                ['s-bible-v5', 's-turnarounds-v2', 's-lineup'].includes(x.id)
+              );
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => onOpenFile(f, refs)}
+                  className="ribbon-btn px-2.5 py-1.5 rounded-xl font-bold cursor-pointer"
+                >
+                  {getBookFileIcon(f.kind)} {f.label}
+                </button>
+              );
+            })}
+          {canEdit && (
+            <button
+              onClick={() => setAdding((v) => !v)}
+              className="px-3 py-1.5 rounded-xl bg-[#831843] text-white font-bold cursor-pointer"
+            >
+              ＋ Add Character
+            </button>
+          )}
+        </div>
       </div>
 
       {adding && canEdit && (
@@ -119,7 +144,22 @@ export function CharacterBibleTab({
                   </div>
                   <div className="text-[11px] font-bold text-[#6e4d28]">{c.role}</div>
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {onOpenFile &&
+                    c.id === 'char-milo' &&
+                    (() => {
+                      const miloRef = bookFiles.find((x) => x.id === 'b1-ref');
+                      if (!miloRef) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => onOpenFile(miloRef, [miloRef])}
+                          className="ribbon-btn px-2 py-1 rounded-lg font-bold cursor-pointer"
+                        >
+                          🖼️ View Milo Turnaround
+                        </button>
+                      );
+                    })()}
                   <button
                     onClick={() => {
                       const spec = `Bramblewood Character Spec — ${c.name} (Book ${c.bookNum}): ${c.role}. Outfit & Props: ${c.outfitProps}. Palette: ${c.palette}. Consistency Rules: ${c.consistencyRules}. Child-safe warm watercolor picture-book style.`;

@@ -487,6 +487,10 @@ export const INITIAL_AGENT_TASKS: BramblewoodAgentTask[] = [
 
 export const DRIVE_BOOK_RESOURCES = [
   {
+    label: 'The Bramblewood Friends (Storybooks Folder)',
+    url: 'https://drive.google.com/drive/folders/1w8uC_46l6jApqMwpYrnRxGIdrX2nxo-H',
+  },
+  {
     label: 'Bramblewood Friends: Book Approval Tracker',
     url: 'https://docs.google.com/spreadsheets/d/186NIe3QarbCq4HPstQ6UDc1JCG6B39vnuPqjE9qQsKs/edit',
   },

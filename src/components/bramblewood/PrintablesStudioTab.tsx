@@ -5,10 +5,16 @@ import {
   type PrintableChecklist,
   type PrintableProduct,
 } from '../../data/bramblewoodData';
+import {
+  getBookFileIcon,
+  PRINTABLE_DRIVE_FILES,
+  type BookDriveFile,
+} from '../../data/bramblewoodFiles';
 
 interface PrintablesStudioTabProps {
   canEdit: boolean;
   printables: PrintableProduct[];
+  onOpenFile?: (file: BookDriveFile, siblings: BookDriveFile[]) => void;
   onSavePrintables: (next: PrintableProduct[]) => Promise<void>;
 }
 
@@ -22,6 +28,7 @@ const DEFAULT_CHECKLIST: PrintableChecklist = {
 export function PrintablesStudioTab({
   canEdit,
   printables,
+  onOpenFile,
   onSavePrintables,
 }: PrintablesStudioTabProps) {
   const [expandedCopyId, setExpandedCopyId] = useState<string | null>(null);
@@ -167,6 +174,21 @@ export function PrintablesStudioTab({
                 </div>
 
                 <p className="text-[#374151]">{pr.summary}</p>
+
+                {onOpenFile && PRINTABLE_DRIVE_FILES[pr.id]?.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRINTABLE_DRIVE_FILES[pr.id].map((pf) => (
+                      <button
+                        key={pf.id}
+                        type="button"
+                        onClick={() => onOpenFile(pf, PRINTABLE_DRIVE_FILES[pr.id])}
+                        className="px-2 py-1 rounded-lg bg-[#fdf2f8] hover:bg-[#fce7f3] border border-[#f472b6] text-[11px] font-bold text-[#831843] cursor-pointer"
+                      >
+                        {getBookFileIcon(pf.kind)} {pf.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
 
                 {/* 4-Step Physical & Governance Readiness Checklist */}
                 <div className="p-2.5 rounded-xl bg-white/85 border border-[#cfa96e] grid grid-cols-2 gap-1.5 text-[11px]">
