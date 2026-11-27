@@ -10,6 +10,10 @@ import {
 import type { BramblewoodSpreadItem } from '../data/bramblewoodSpreads';
 import type { BookDriveFile } from '../data/bramblewoodFiles';
 import {
+  isCampusConstitutionRatified,
+  type GovernanceProposal,
+} from '../services/firestoreService';
+import {
   saveAgentTasks,
   saveBookFiles,
   saveBramblewoodBooks,
@@ -33,6 +37,7 @@ import { SpreadsWorkbenchTab } from './bramblewood/SpreadsWorkbenchTab';
 interface BramblewoodSuiteViewProps {
   role: CampusRole;
   userEmail: string;
+  proposals?: GovernanceProposal[];
   onExitToCampus: () => void;
 }
 
@@ -41,9 +46,11 @@ type SuiteTab = 'overview' | 'library' | 'spreads' | 'agents' | 'bible' | 'print
 export function BramblewoodSuiteView({
   role,
   userEmail,
+  proposals = [],
   onExitToCampus,
 }: BramblewoodSuiteViewProps) {
   const canEdit = role === 'chancellor' || role === 'university';
+  const constitutionActive = useMemo(() => isCampusConstitutionRatified(proposals), [proposals]);
 
   const [tab, setTab] = useState<SuiteTab>('overview');
   const [selectedBookNum, setSelectedBookNum] = useState<number>(1);
@@ -193,7 +200,7 @@ export function BramblewoodSuiteView({
   async function handleDispatchTask(
     inp: Omit<BramblewoodAgentTask, 'id' | 'createdAt' | 'updatedAt'>
   ) {
-    if (!canEdit) return;
+    if (!canEdit || !constitutionActive) return;
     const today = new Date().toISOString().slice(0, 10);
     const nextTask: BramblewoodAgentTask = {
       ...inp,
@@ -229,7 +236,9 @@ export function BramblewoodSuiteView({
               📚 The Bramblewood Publishing Suite &amp; Agent Studio
             </h1>
             <p className="text-[11px] text-[#f9a8d4] truncate">
-              Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · 6 Specialist Agents
+              {constitutionActive
+                ? 'Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · 6 Specialist Agents'
+                : 'Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · ⏸️ Agents Offline (Pending Constitution)'}
             </p>
           </div>
         </div>
@@ -271,7 +280,9 @@ export function BramblewoodSuiteView({
             ['spreads', `📖 Spreads Workbench (${seriesTotals.totalItems})`],
             [
               'agents',
-              `🤖 Agent Company (${seriesTotals.needsApprovalTasks ? `${seriesTotals.needsApprovalTasks} need review` : `${seriesTotals.openTasks} open`})`,
+              constitutionActive
+                ? `🤖 Agent Company (${seriesTotals.needsApprovalTasks ? `${seriesTotals.needsApprovalTasks} need review` : `${seriesTotals.openTasks} open`})`
+                : '⏸️ Agents (Offline · Draft Roster)',
             ],
             ['bible', `🦊 Character Bible (${characters.length})`],
             ['printables', `🖨️ Printables & Launch (${printables.length})`],
@@ -323,10 +334,21 @@ export function BramblewoodSuiteView({
                   </div>
                 </div>
                 <div className="parchment-panel p-3 rounded-2xl">
-                  <div className="text-[10px] font-bold uppercase text-[#6e4d28]">Awaiting Amarette</div>
-                  <div className="font-atlas font-bold text-lg text-[#9d174d]">
-                    {seriesTotals.needsApprovalTasks} tasks
+                  <div className="text-[10px] font-bold uppercase text-[#6e4d28]">
+                    {constitutionActive ? 'Awaiting Amarette' : 'Agent Fleet'}
                   </div>
+                  {constitutionActive ? (
+                    <div className="font-atlas font-bold text-lg text-[#9d174d]">
+                      {seriesTotals.needsApprovalTasks} tasks
+                    </div>
+                  ) : (
+                    <>
+                      <div className="font-atlas font-bold text-lg text-slate-700">⏸️ Offline</div>
+                      <div className="text-[10px] font-semibold text-amber-800">
+                        Pending Constitution
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="parchment-panel p-3 rounded-2xl">
                   <div className="text-[10px] font-bold uppercase text-[#6e4d28]">Printables Ready</div>
@@ -348,10 +370,12 @@ export function BramblewoodSuiteView({
                     </p>
                   </div>
                   <button
-                    onClick={() => setTab('agents')}
+                    onClick={() => setTab(constitutionActive ? 'agents' : 'library')}
                     className="px-3 py-1.5 rounded-xl bg-[#831843] text-white text-xs font-bold cursor-pointer"
                   >
-                    🤖 Open Agent Approval Inbox ({seriesTotals.needsApprovalTasks})
+                    {constitutionActive
+                      ? `🤖 Open Agent Approval Inbox (${seriesTotals.needsApprovalTasks})`
+                      : '📂 Open Book Library & Reader'}
                   </button>
                 </div>
 
@@ -456,6 +480,7 @@ export function BramblewoodSuiteView({
           {tab === 'spreads' && (
             <SpreadsWorkbenchTab
               canEdit={canEdit}
+              constitutionActive={constitutionActive}
               books={books}
               spreadsByBook={spreadsByBook}
               selectedBookNum={selectedBookNum}
@@ -470,6 +495,7 @@ export function BramblewoodSuiteView({
           {tab === 'agents' && (
             <AgentCompanyTab
               canEdit={canEdit}
+              constitutionActive={constitutionActive}
               books={books}
               spreadsByBook={spreadsByBook}
               characters={characters}

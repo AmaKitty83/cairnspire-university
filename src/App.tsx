@@ -130,6 +130,7 @@ export function App() {
       <BramblewoodSuiteView
         role={role}
         userEmail={user.email || ''}
+        proposals={proposals}
         onExitToCampus={() => setBramblewoodOpen(false)}
       />
     );

@@ -147,6 +147,16 @@ export function formatTimestamp(ts?: Timestamp | null): string {
   });
 }
 
+export function isCampusConstitutionRatified(proposals: GovernanceProposal[]): boolean {
+  return proposals.some((p) => {
+    const gate1Ok = p.gate1Status === 'passed' || p.gate1Status === 'approved';
+    const gate2Ok = p.gate2Status === 'ratified';
+    const isConstitutionDoc =
+      /campus constitution/i.test(p.title) || /^constitution\b/i.test(p.articleRef.trim());
+    return gate1Ok && gate2Ok && isConstitutionDoc;
+  });
+}
+
 // ============================================================================
 // REALTIME SUBSCRIPTIONS
 // ============================================================================

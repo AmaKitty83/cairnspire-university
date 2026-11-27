@@ -9,6 +9,7 @@ import { getBookFileIcon, type BookDriveFile } from '../../data/bramblewoodFiles
 
 interface SpreadsWorkbenchTabProps {
   canEdit: boolean;
+  constitutionActive?: boolean;
   books: BramblewoodBook[];
   spreadsByBook: Record<number, BramblewoodSpreadItem[]>;
   selectedBookNum: number;
@@ -33,6 +34,7 @@ function resolvePreviewImageUrl(raw: string): string {
 
 export function SpreadsWorkbenchTab({
   canEdit,
+  constitutionActive = false,
   books,
   spreadsByBook,
   selectedBookNum,
@@ -502,30 +504,38 @@ export function SpreadsWorkbenchTab({
 
                   {canEdit && (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#e7d4ac]">
-                      <span className="font-bold text-[#6e4d28]">🤖 Send to Agent:</span>
-                      {BRAMBLEWOOD_AGENTS.filter((a) =>
-                        ['art-director', 'story-editor', 'spanish-editor', 'safety-qa'].includes(a.id)
-                      ).map((ag) => (
-                        <button
-                          key={ag.id}
-                          onClick={async () => {
-                            await onDispatchTask({
-                              agentId: ag.id,
-                              title: `[Book ${selectedBookNum} · ${s.item}] ${ag.id === 'art-director' ? 'ComfyUI Art Pass' : ag.id === 'spanish-editor' ? 'Spanish Translation' : ag.id === 'story-editor' ? 'English Copy Polish' : 'Article VII QA'}`,
-                              bookNum: selectedBookNum,
-                              spreadId: s.id,
-                              priority: s.needsComfyRedo ? 'High' : 'Normal',
-                              status: 'Queued',
-                              brief: `Book ${selectedBookNum} (${curBook?.title}), ${s.item} (p.${s.pages}). Current English: "${s.englishText}". Notes: "${s.notes || 'None'}".`,
-                              deliverable: '',
-                            });
-                            flash(`Task queued for ${ag.name} ✔`);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-[#fdf2f8] hover:bg-[#fce7f3] border border-[#f472b6] font-bold text-[#831843] cursor-pointer"
-                        >
-                          {ag.emoji} {ag.name}
-                        </button>
-                      ))}
+                      {constitutionActive ? (
+                        <>
+                          <span className="font-bold text-[#6e4d28]">🤖 Send to Agent:</span>
+                          {BRAMBLEWOOD_AGENTS.filter((a) =>
+                            ['art-director', 'story-editor', 'spanish-editor', 'safety-qa'].includes(a.id)
+                          ).map((ag) => (
+                            <button
+                              key={ag.id}
+                              onClick={async () => {
+                                await onDispatchTask({
+                                  agentId: ag.id,
+                                  title: `[Book ${selectedBookNum} · ${s.item}] ${ag.id === 'art-director' ? 'ComfyUI Art Pass' : ag.id === 'spanish-editor' ? 'Spanish Translation' : ag.id === 'story-editor' ? 'English Copy Polish' : 'Article VII QA'}`,
+                                  bookNum: selectedBookNum,
+                                  spreadId: s.id,
+                                  priority: s.needsComfyRedo ? 'High' : 'Normal',
+                                  status: 'Queued',
+                                  brief: `Book ${selectedBookNum} (${curBook?.title}), ${s.item} (p.${s.pages}). Current English: "${s.englishText}". Notes: "${s.notes || 'None'}".`,
+                                  deliverable: '',
+                                });
+                                flash(`Task queued for ${ag.name} ✔`);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-[#fdf2f8] hover:bg-[#fce7f3] border border-[#f472b6] font-bold text-[#831843] cursor-pointer"
+                            >
+                              {ag.emoji} {ag.name}
+                            </button>
+                          ))}
+                        </>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full bg-slate-100 border border-slate-300 text-slate-700 text-[11px] font-semibold">
+                          ⏸️ Agent dispatching is offline until the Campus Constitution is ratified in Town Hall.
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

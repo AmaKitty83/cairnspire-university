@@ -10,6 +10,7 @@ import type { BramblewoodSpreadItem } from '../../data/bramblewoodSpreads';
 
 interface AgentCompanyTabProps {
   canEdit: boolean;
+  constitutionActive: boolean;
   books: BramblewoodBook[];
   spreadsByBook: Record<number, BramblewoodSpreadItem[]>;
   characters: BramblewoodCharacter[];
@@ -27,6 +28,7 @@ const STATUS_BADGES: Record<AgentTaskStatus, string> = {
 
 export function AgentCompanyTab({
   canEdit,
+  constitutionActive,
   books,
   spreadsByBook,
   characters,
@@ -115,14 +117,30 @@ export function AgentCompanyTab({
     <div className="space-y-4">
       {/* Org Chart Header & 6 Specialized Agents */}
       <div className="parchment-panel p-4 rounded-2xl space-y-3">
+        {!constitutionActive && (
+          <div className="p-3.5 rounded-2xl bg-slate-900 text-amber-100 border-2 border-amber-400 space-y-1 text-xs">
+            <div className="font-atlas font-bold text-sm text-amber-300">
+              ⏸️ Agents Offline — Pending Campus Constitution
+            </div>
+            <p className="leading-relaxed">
+              Per Chancellor Amarette’s directive, all 6 Bramblewood publishing agents are{' '}
+              <strong>OFFLINE / STANDBY</strong> — zero background jobs, zero ComfyUI runs, and
+              zero external actions are active. Agents will remain locked until the full{' '}
+              <strong>Campus Constitution</strong> passes <strong>Gate 1 (Antigravity Audit)</strong>{' '}
+              and <strong>Gate 2 (Chancellor Ratification)</strong> in <strong>Town Hall</strong>.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="font-atlas text-base sm:text-lg font-bold text-[#2e1e0f]">
               🤖 The Bramblewood Publishing Company (6 Specialist Agents)
             </h2>
             <p className="text-xs text-[#6e4d28]">
-              Assign spreads, track deliverables awaiting your approval, or copy any brief straight to run with your{' '}
-              <code>bramblewood-publishing-co</code> agent skill or local Agent Zero.
+              {constitutionActive
+                ? 'Assign spreads, track deliverables awaiting your approval, or copy any brief straight to run with your bramblewood-publishing-co agent skill or local Agent Zero.'
+                : 'Roster & pre-launch planning backlog only — execution, brief dispatch, and live agent runs are paused until Campus Constitution ratification.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -131,7 +149,7 @@ export function AgentCompanyTab({
                 {toastMsg}
               </span>
             )}
-            {canEdit && (
+            {canEdit && constitutionActive && (
               <button
                 onClick={() => setShowNewForm((v) => !v)}
                 className="px-3 py-1.5 rounded-xl bg-[#831843] text-white text-xs font-bold cursor-pointer"
@@ -157,14 +175,22 @@ export function AgentCompanyTab({
                       {ag.emoji} {ag.name}
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {approvalCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-950 text-[10px] font-bold">
-                          {approvalCount} review
+                      {!constitutionActive ? (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[10px] font-bold">
+                          ⏸️ Offline
                         </span>
+                      ) : (
+                        <>
+                          {approvalCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-950 text-[10px] font-bold">
+                              {approvalCount} review
+                            </span>
+                          )}
+                          <span className="px-1.5 py-0.5 rounded-full bg-[#fdf2f8] text-[#831843] text-[10px] font-bold">
+                            {openCount} open
+                          </span>
+                        </>
                       )}
-                      <span className="px-1.5 py-0.5 rounded-full bg-[#fdf2f8] text-[#831843] text-[10px] font-bold">
-                        {openCount} open
-                      </span>
                     </div>
                   </div>
                   <div className="text-[11px] font-bold" style={{ color: ag.accent }}>
@@ -179,9 +205,9 @@ export function AgentCompanyTab({
                       agentFilter === ag.id ? 'bg-[#2e1e0f] text-white border-[#2e1e0f]' : 'bg-[#fdf7ea] border-[#cfa96e]'
                     }`}
                   >
-                    {agentFilter === ag.id ? 'Show All Agents' : 'Filter Tasks'}
+                    {agentFilter === ag.id ? 'Show All Agents' : 'Filter Backlog'}
                   </button>
-                  {canEdit && (
+                  {canEdit && constitutionActive && (
                     <button
                       onClick={() => {
                         setNewAgentId(ag.id);
@@ -199,7 +225,7 @@ export function AgentCompanyTab({
         </div>
 
         {/* New Task Form */}
-        {showNewForm && canEdit && (
+        {showNewForm && canEdit && constitutionActive && (
           <div className="p-3 rounded-2xl bg-white border-2 border-[#f472b6] space-y-2 text-xs">
             <div className="font-bold text-[#831843]">Assign New Publishing Agent Task</div>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -292,7 +318,9 @@ export function AgentCompanyTab({
       <div className="parchment-panel p-4 rounded-2xl space-y-3 text-xs">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="font-atlas font-bold text-sm text-[#2e1e0f]">
-            📥 Live Agent Work Queue &amp; Amarette Approval Gate ({filteredTasks.length})
+            {constitutionActive
+              ? `📥 Live Agent Work Queue & Amarette Approval Gate (${filteredTasks.length})`
+              : `📝 Pre-Launch Draft Backlog (Paused — Agents Offline · ${filteredTasks.length})`}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {(['all', 'Needs Approval', 'Queued', 'In Progress', 'Approved'] as const).map((st) => (
@@ -320,8 +348,14 @@ export function AgentCompanyTab({
                   <div className="space-y-0.5 min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="font-bold text-sm text-[#2e1e0f]">{t.title}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGES[t.status]}`}>
-                        {t.status}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          constitutionActive
+                            ? STATUS_BADGES[t.status]
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        {constitutionActive ? t.status : 'Paused · Offline'}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-black/5 text-[10px] font-bold">
                         {t.priority}
@@ -332,16 +366,18 @@ export function AgentCompanyTab({
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 shrink-0">
-                    <button
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(buildCopyableBrief(t));
-                        flash('Agent brief + Character Bible copied ✔');
-                      }}
-                      className="ribbon-btn px-2 py-1 rounded-lg font-bold cursor-pointer"
-                      title="Copy full prompt bundle to run in Antigravity or Agent Zero"
-                    >
-                      📋 Copy Brief
-                    </button>
+                    {constitutionActive && (
+                      <button
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(buildCopyableBrief(t));
+                          flash('Agent brief + Character Bible copied ✔');
+                        }}
+                        className="ribbon-btn px-2 py-1 rounded-lg font-bold cursor-pointer"
+                        title="Copy full prompt bundle to run in Antigravity or Agent Zero"
+                      >
+                        📋 Copy Brief
+                      </button>
+                    )}
                     {t.bookNum && (
                       <button
                         onClick={() => onOpenSpread(t.bookNum!)}
@@ -350,7 +386,7 @@ export function AgentCompanyTab({
                         Open Book #{t.bookNum}
                       </button>
                     )}
-                    {canEdit && (
+                    {canEdit && constitutionActive && (
                       <button
                         onClick={() => void deleteTask(t.id)}
                         className="px-2 py-1 rounded-lg bg-red-50 text-red-700 font-bold cursor-pointer"
@@ -369,15 +405,19 @@ export function AgentCompanyTab({
                   </label>
                   <textarea
                     rows={2}
-                    disabled={!canEdit}
+                    disabled={!canEdit || !constitutionActive}
                     value={t.deliverable}
                     onChange={(e) => void updateTask(t.id, { deliverable: e.target.value })}
-                    placeholder="Paste draft text, Spanish lines, QA findings, or ComfyUI seed info here..."
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#cfa96e] bg-[#fdfaf2]"
+                    placeholder={
+                      constitutionActive
+                        ? 'Paste draft text, Spanish lines, QA findings, or ComfyUI seed info here...'
+                        : 'Locked until Campus Constitution is ratified in Town Hall.'
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#cfa96e] bg-[#fdfaf2] disabled:opacity-70"
                   />
                 </div>
 
-                {canEdit && (
+                {canEdit && constitutionActive && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {(['Queued', 'In Progress', 'Needs Approval', 'Approved'] as const).map((st) => (
                       <button

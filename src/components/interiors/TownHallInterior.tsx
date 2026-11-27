@@ -5,6 +5,7 @@ import {
   createProposal,
   decideProposalGate2,
   formatTimestamp,
+  isCampusConstitutionRatified,
   saveSkillRecord,
   type GovernanceProposal,
   type SkillRegistryRecord,
@@ -49,6 +50,7 @@ export function TownHallInterior({
 
   const canWrite = role === 'chancellor' || role === 'university';
   const isChancellor = role === 'chancellor';
+  const constitutionActive = isCampusConstitutionRatified(proposals);
 
   async function handleCreateProposal(e: React.FormEvent) {
     e.preventDefault();
@@ -161,6 +163,19 @@ export function TownHallInterior({
             Gate 2 (Chancellor Amarette):{' '}
             <span className="font-bold text-emerald-700">Ratified &amp; Active</span>
           </p>
+          <div>
+            <span
+              className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                constitutionActive
+                  ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                  : 'bg-slate-900 border-amber-400 text-amber-200'
+              }`}
+            >
+              {constitutionActive
+                ? '✅ Campus Constitution Ratified · Agents Authorized'
+                : '⏸️ Autonomous Agents: OFFLINE (Awaiting Ratified Campus Constitution)'}
+            </span>
+          </div>
           <button
             onClick={() => setShowFullCharter((s) => !s)}
             className="px-3 py-1.5 rounded-lg bg-[#6b4423] hover:bg-[#7e512a] text-[#fbe8b5] text-xs font-semibold cursor-pointer"
@@ -175,10 +190,25 @@ export function TownHallInterior({
 
       {tab === 'proposals' && (
         <div className="space-y-3">
-          <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] text-xs text-[#54371b]">
-            <strong>Two-Gate Lawmaking (Article I.2):</strong> Every Campus Constitution article
-            and amendment requires <strong>Gate 1 (Antigravity Audit)</strong> followed by{' '}
-            <strong>Gate 2 (Chancellor Amarette Ratification)</strong>.
+          <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] space-y-2 text-xs text-[#54371b]">
+            <div>
+              <strong>Two-Gate Lawmaking (Article I.2):</strong> Every Campus Constitution article
+              and amendment requires <strong>Gate 1 (Antigravity Audit)</strong> followed by{' '}
+              <strong>Gate 2 (Chancellor Amarette Ratification)</strong>.
+            </div>
+            <div>
+              <span
+                className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                  constitutionActive
+                    ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                    : 'bg-slate-900 border-amber-400 text-amber-200'
+                }`}
+              >
+                {constitutionActive
+                  ? '✅ Campus Constitution Ratified · Agents Authorized'
+                  : '⏸️ Autonomous Agents: OFFLINE (Awaiting Ratified Campus Constitution)'}
+              </span>
+            </div>
           </div>
 
           {propMsg && (
