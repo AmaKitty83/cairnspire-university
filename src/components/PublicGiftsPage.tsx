@@ -20,6 +20,18 @@ export function PublicGiftsPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
+    const targets = [
+      document.documentElement,
+      document.body,
+      document.getElementById('root'),
+    ].filter((el): el is HTMLElement => Boolean(el));
+    targets.forEach((el) => el.classList.add('public-gifts-scroll'));
+    return () => {
+      targets.forEach((el) => el.classList.remove('public-gifts-scroll'));
+    };
+  }, []);
+
+  useEffect(() => {
     const onErr = (e: Error) => {
       setErrMsg(e.message);
       setLoaded(true);
@@ -61,7 +73,7 @@ export function PublicGiftsPage() {
       : orderedSections.filter((s) => s.person === selectedPerson);
 
   return (
-    <div className="fixed inset-0 overflow-y-auto bg-gradient-to-b from-[#f5fbf7] via-[#fffdf7] to-[#eff6ff] text-[#1b4332] pb-12">
+    <div className="min-h-screen w-full bg-gradient-to-b from-[#f5fbf7] via-[#fffdf7] to-[#eff6ff] text-[#1b4332] pb-12">
       <header className="bg-[#2d6a4f] text-white px-4 py-5 shadow-md">
         <div className="max-w-3xl mx-auto text-center space-y-1">
           <h1 className="font-atlas text-2xl sm:text-3xl font-bold">🎁 Family Wish Lists</h1>
