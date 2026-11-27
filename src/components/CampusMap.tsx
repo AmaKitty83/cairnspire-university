@@ -103,6 +103,18 @@ export function CampusMap({
     applyTransform();
   }
 
+  function enterBuilding(b: BuildingDef, mode: 'zone' | 'dashboard') {
+    setActiveSpriteToast(null);
+    if (b.id === 'home-garden') {
+      setZonedBuilding(null);
+      setDashboardBuilding(null);
+      onOpenFamilyPreview();
+      return;
+    }
+    if (mode === 'zone') setZonedBuilding(b);
+    else setDashboardBuilding(b);
+  }
+
   function adjustZoom(factor: number) {
     const t = transformRef.current;
     t.scale = Math.min(2.6, Math.max(0.7, t.scale * factor));
@@ -505,8 +517,7 @@ export function CampusMap({
                       className="hotspot-group"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveSpriteToast(null);
-                        setZonedBuilding(b);
+                        enterBuilding(b, 'zone');
                       }}
                     >
                       <title>Enter {b.name} (Zone Inside)</title>
@@ -529,7 +540,7 @@ export function CampusMap({
                         transform={`translate(${b.lx}, ${b.ly})`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDashboardBuilding(b);
+                          enterBuilding(b, 'dashboard');
                         }}
                       >
                         <title>Open {b.name} Dashboard</title>
@@ -644,7 +655,7 @@ export function CampusMap({
                 key={b.id}
                 onClick={() => {
                   focusBuilding(b);
-                  setZonedBuilding(b);
+                  enterBuilding(b, 'zone');
                 }}
                 className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#402c1e] hover:bg-[#5b3f2b] text-[#f8e6bd] border border-[#a57b42]/50 whitespace-nowrap shrink-0 cursor-pointer"
               >
@@ -683,7 +694,7 @@ export function CampusMap({
         onSelectBuilding={(b) => {
           setDashboardBuilding(null);
           focusBuilding(b);
-          setZonedBuilding(b);
+          enterBuilding(b, 'zone');
         }}
         onOpenFamilyPreview={onOpenFamilyPreview}
       />
