@@ -19,6 +19,7 @@ import {
   type SkillRegistryRecord,
 } from './services/firestoreService';
 import { AuthGate } from './components/AuthGate';
+import { BramblewoodSuiteView } from './components/BramblewoodSuiteView';
 import { CampusMap } from './components/CampusMap';
 import { HomeAndGardenView } from './components/HomeAndGardenView';
 import { PublicGiftsPage } from './components/PublicGiftsPage';
@@ -36,6 +37,7 @@ export function App() {
   const [role, setRole] = useState<CampusRole>('unauthorized');
   const [authReady, setAuthReady] = useState(false);
   const [familyPreviewOpen, setFamilyPreviewOpen] = useState(false);
+  const [bramblewoodOpen, setBramblewoodOpen] = useState(false);
 
   // Live Firestore collections
   const [departments, setDepartments] = useState<Record<string, DepartmentRecord>>({});
@@ -123,6 +125,16 @@ export function App() {
     );
   }
 
+  if (bramblewoodOpen && (role === 'chancellor' || role === 'university' || role === 'guest')) {
+    return (
+      <BramblewoodSuiteView
+        role={role}
+        userEmail={user.email || ''}
+        onExitToCampus={() => setBramblewoodOpen(false)}
+      />
+    );
+  }
+
   return (
     <CampusMap
       role={role}
@@ -136,6 +148,7 @@ export function App() {
       accessRoles={accessRoles}
       syncError={syncError}
       onOpenFamilyPreview={() => setFamilyPreviewOpen(true)}
+      onOpenBramblewood={() => setBramblewoodOpen(true)}
     />
   );
 }

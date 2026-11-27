@@ -33,6 +33,7 @@ interface CampusMapProps {
   accessRoles: AccessRoleRecord[];
   syncError: string | null;
   onOpenFamilyPreview: () => void;
+  onOpenBramblewood: () => void;
 }
 
 interface ActiveSprite extends SpriteDef {
@@ -59,6 +60,7 @@ export function CampusMap({
   accessRoles,
   syncError,
   onOpenFamilyPreview,
+  onOpenBramblewood,
 }: CampusMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [spritesEnabled, setSpritesEnabled] = useState(true);
@@ -109,6 +111,12 @@ export function CampusMap({
       setZonedBuilding(null);
       setDashboardBuilding(null);
       onOpenFamilyPreview();
+      return;
+    }
+    if (b.id === 'childrens-books') {
+      setZonedBuilding(null);
+      setDashboardBuilding(null);
+      onOpenBramblewood();
       return;
     }
     if (mode === 'zone') setZonedBuilding(b);
