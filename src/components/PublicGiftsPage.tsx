@@ -61,7 +61,7 @@ export function PublicGiftsPage() {
       : orderedSections.filter((s) => s.person === selectedPerson);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f5fbf7] via-[#fffdf7] to-[#eff6ff] text-[#1b4332] pb-12">
+    <div className="fixed inset-0 overflow-y-auto bg-gradient-to-b from-[#f5fbf7] via-[#fffdf7] to-[#eff6ff] text-[#1b4332] pb-12">
       <header className="bg-[#2d6a4f] text-white px-4 py-5 shadow-md">
         <div className="max-w-3xl mx-auto text-center space-y-1">
           <h1 className="font-atlas text-2xl sm:text-3xl font-bold">🎁 Family Wish Lists</h1>
