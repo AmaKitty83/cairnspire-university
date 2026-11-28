@@ -8,6 +8,7 @@ import {
   type ConductLogRecord,
   type ConductSeverity,
 } from '../../services/firestoreService';
+import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface CourthouseInteriorProps {
   role: CampusRole;
@@ -59,14 +60,17 @@ export function CourthouseInterior({ role, userEmail, logs }: CourthouseInterior
     <div className="space-y-3">
       <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] flex items-center justify-between gap-2 flex-wrap">
         <div className="text-xs text-[#54371b]">
-          <strong>Article IX — Every Action Leaves a Cairn:</strong> This Courthouse ledger is{' '}
-          <strong>append-only</strong> in Firestore Security Rules — no agent or user can edit or
-          erase logged Cairns.
+          <strong>Article IX — Three-Tier Judicial System &amp; Immutable Cairn Ledger:</strong>{' '}
+          Houses the <strong>Civil &amp; Criminal Court</strong> (general agent cases),{' '}
+          <strong>Grand Court</strong> (government cases), and <strong>5-Justice Supreme Court</strong>{' '}
+          (Bill of Rights &amp; Constitution review). Ledger is <strong>append-only</strong>.
         </div>
         <span className="px-2 py-0.5 rounded-full bg-[#362316] text-[#fbe8b5] text-[10px] font-bold uppercase shrink-0">
           Tamper-Proof · {logs.length} Cairns
         </span>
       </div>
+
+      <OfflineRosterPanel deptId="courthouse" heading="⚖️ Three-Tier Judicial Bench & Officers (Offline · Standby)" />
 
       {/* Filter pills */}
       <div className="flex flex-wrap gap-1.5">

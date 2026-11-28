@@ -31,6 +31,7 @@ import {
   type HealthFitnessContentDoc,
   type OuraDayRecord,
 } from '../../services/healthService';
+import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface HealthInteriorProps {
   role: CampusRole;
@@ -1569,6 +1570,11 @@ export function HealthInterior({ role, userEmail }: HealthInteriorProps) {
             </div>
           </div>
         )}
+
+        <OfflineRosterPanel
+          deptId="health"
+          heading="🩺 School of Health · 10 Specialist Advisors (Offline · Research & Prep Only)"
+        />
       </div>
     </div>
   );

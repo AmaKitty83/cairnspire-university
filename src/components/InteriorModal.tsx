@@ -3,6 +3,7 @@ import type { BuildingDef } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
 import type { CampusRole } from '../firebase';
 import {
+  isCampusConstitutionRatified,
   saveDepartmentRecord,
   type AccessRoleRecord,
   type AirBridgeRecord,
@@ -20,6 +21,13 @@ import { CommonsSquareInterior } from './interiors/CommonsSquareInterior';
 import { AirInterior } from './interiors/AirInterior';
 import { HealthInterior } from './interiors/HealthInterior';
 import { ChildrensBooksInterior } from './interiors/ChildrensBooksInterior';
+import { GeologyInterior } from './interiors/GeologyInterior';
+import { StocksInterior } from './interiors/StocksInterior';
+import { FinanceInterior } from './interiors/FinanceInterior';
+import { CommunicationsInterior } from './interiors/CommunicationsInterior';
+import { SocialMediaInterior } from './interiors/SocialMediaInterior';
+import { RdWorkshopInterior } from './interiors/RdWorkshopInterior';
+import { OfflineRosterPanel } from './interiors/OfflineRosterPanel';
 
 interface InteriorModalProps {
   building: BuildingDef | null;
@@ -37,7 +45,21 @@ interface InteriorModalProps {
   onOpenFamilyPreview: () => void;
 }
 
-const DEEP_V2_IDS = new Set(['town-hall', 'executive', 'courthouse', 'commons', 'air', 'health', 'childrens-books']);
+const DEEP_V2_IDS = new Set([
+  'town-hall',
+  'executive',
+  'courthouse',
+  'commons',
+  'air',
+  'health',
+  'childrens-books',
+  'geology',
+  'stocks',
+  'finance',
+  'communications',
+  'social-media',
+  'rd',
+]);
 
 export function InteriorModal({
   building,
@@ -75,6 +97,7 @@ export function InteriorModal({
   if (!building) return null;
 
   const canWrite = role === 'chancellor' || role === 'university';
+  const constitutionActive = isCampusConstitutionRatified(proposals);
   const isDeepV2 = DEEP_V2_IDS.has(building.id);
   const cropSrc = ASSETS['crop-' + building.id]?.src || ASSETS['world-map']?.src || '';
   const repSrc = ASSETS[building.repSprite]?.src || '';
@@ -192,8 +215,10 @@ export function InteriorModal({
                         className="px-2 py-1.5 rounded-lg bg-white/90 border border-[#a87e45] text-xs text-[#2b1a0c]"
                       >
                         <option value="recruiting">Recruiting</option>
-                        <option value="seated">Seated</option>
-                        <option value="active">Active</option>
+                        <option value="seated">Seated (Standby)</option>
+                        <option value="active" disabled={!constitutionActive}>
+                          {constitutionActive ? 'Active' : 'Active (Locked Until Constitution)'}
+                        </option>
                       </select>
                       <button
                         disabled={saving}
@@ -243,6 +268,8 @@ export function InteriorModal({
 
           {building.special === 'commons' && (
             <CommonsSquareInterior
+              role={role}
+              userEmail={userEmail}
               departments={departments}
               proposals={proposals}
               onSelectBuilding={onSelectBuilding}
@@ -267,42 +294,54 @@ export function InteriorModal({
             <ChildrensBooksInterior role={role} userEmail={userEmail} />
           )}
 
+          {building.id === 'geology' && (
+            <GeologyInterior role={role} userEmail={userEmail} />
+          )}
+
           {building.special === 'stocks' && (
-            <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] space-y-1.5">
-              <div className="font-atlas font-bold text-sm text-[#4a2b0f]">
-                📈 Article VIII Scoped Trading Charter
-              </div>
-              <p className="text-xs text-[#54371b]">
-                Live trades are strictly walled to a single designated agent (currently GrokBot, or
-                a future Chancellor-authorized upgraded agent) operating inside its dedicated{' '}
-                <strong>Robinhood MCP agent account</strong> under explicit hard rules &amp;
-                Courthouse audit logging. All other Stocks roles are strictly research and
-                human-defined jobs.
-              </p>
-            </div>
+            <StocksInterior role={role} userEmail={userEmail} />
+          )}
+
+          {building.id === 'finance' && (
+            <FinanceInterior role={role} userEmail={userEmail} />
+          )}
+
+          {building.id === 'communications' && (
+            <CommunicationsInterior role={role} userEmail={userEmail} />
+          )}
+
+          {building.id === 'social-media' && (
+            <SocialMediaInterior role={role} userEmail={userEmail} />
+          )}
+
+          {building.id === 'rd' && (
+            <RdWorkshopInterior role={role} userEmail={userEmail} />
           )}
 
           {building.special === 'home-garden' && (
-            <div className="p-3 rounded-xl bg-[#e9f5ec] border border-[#2d6a4f] space-y-2">
-              <div className="font-atlas font-bold text-sm text-[#1b4332]">
-                🏡 Family-Locked Wing (App-Within-the-App)
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-[#e9f5ec] border border-[#2d6a4f] space-y-2">
+                <div className="font-atlas font-bold text-sm text-[#1b4332]">
+                  🏡 Family-Locked Wing (App-Within-the-App)
+                </div>
+                <p className="text-xs text-[#2d6a4f]">
+                  Amarette and Ray have full University access; other family logins (and Liam &amp;
+                  Oliver’s Parent-Paired Kid Mode) open <strong>strictly inside Home and Garden</strong>.
+                  Server-side Firestore rules enforce this boundary.
+                </p>
+                {(canWrite || role === 'guest') && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenFamilyPreview();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs font-semibold cursor-pointer"
+                  >
+                    Open Home &amp; Garden Family Hub →
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-[#2d6a4f]">
-                Amarette and Ray have full University access; other family logins (and Liam &amp;
-                Oliver’s Parent-Paired Kid Mode) open <strong>strictly inside Home and Garden</strong>.
-                Server-side Firestore rules enforce this boundary.
-              </p>
-              {(canWrite || role === 'guest') && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenFamilyPreview();
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs font-semibold cursor-pointer"
-                >
-                  Open Home &amp; Garden Family Hub →
-                </button>
-              )}
+              <OfflineRosterPanel deptId="home-garden" heading="🌿 Home & Garden Personal Assistant (Offline · Standby)" />
             </div>
           )}
 

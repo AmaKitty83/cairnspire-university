@@ -407,6 +407,33 @@ export const BRAMBLEWOOD_AGENTS: BramblewoodAgent[] = [
     mandate: 'Maintains Etsy 13-tag SEO, fees/profit math, mockups, and drafts — never creates accounts or publishes without ! Permit.',
     accent: '#0f766e',
   },
+  {
+    id: 'literary-agent',
+    name: 'Avery Finch',
+    title: 'Literary Agent & Series Strategist',
+    emoji: '📚',
+    specialty: 'Box-Set Positioning, KDP Categories & Series Arcs',
+    mandate: 'Positions The Bramblewood Friends for neurodivergent families, counselors, and bilingual educators across print & digital markets.',
+    accent: '#7c2d12',
+  },
+  {
+    id: 'book-designer',
+    name: 'Rowan Press',
+    title: 'Book Designer & KDP Layout Specialist',
+    emoji: '📐',
+    specialty: '8.5×8.5 Trim, Bleed PDFs & Dyslexia-Friendly Type',
+    mandate: 'Assembles print-ready interiors with 0.125" bleed, Atkinson Hyperlegible text layout, and clean Spanish/English edition parity.',
+    accent: '#4338ca',
+  },
+  {
+    id: 'book-publicist',
+    name: 'Cora Lark',
+    title: 'Book Launch Publicist',
+    emoji: '📣',
+    specialty: 'Educator Kits, Launch Calendars & Outreach Drafts',
+    mandate: 'Prepares launch calendars and outreach copy for schools and parents — strictly draft-only until ! Permit.',
+    accent: '#be185d',
+  },
 ];
 
 export const INITIAL_AGENT_TASKS: BramblewoodAgentTask[] = [

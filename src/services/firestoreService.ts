@@ -15,6 +15,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db, getSeedAllowlistEntries } from '../firebase';
+import { CONVENTION_BRIEFS } from '../data/departmentRosters';
 
 export type DepartmentStatus = 'recruiting' | 'seated' | 'active';
 export type Gate1Status =
@@ -509,12 +510,59 @@ export async function removeAccessRole(emailLower: string): Promise<void> {
   await deleteDoc(doc(db, 'access_roles', emailLower.trim().toLowerCase()));
 }
 
+export async function seatAllConventionReps(
+  existing: Record<string, DepartmentRecord>,
+  actorEmail: string
+): Promise<number> {
+  const email = actorEmail.trim().toLowerCase();
+  let seatedNow = 0;
+
+  for (const [deptId, brief] of Object.entries(CONVENTION_BRIEFS)) {
+    const cur = existing[deptId];
+    if (!cur || cur.status === 'recruiting' || !cur.repName?.trim()) {
+      const cleanName = cur?.repName?.trim() || brief.repDefaultName;
+      const notes =
+        cur?.notes?.trim() ||
+        'Seated for the Constitutional Convention (Offline / Standby until Constitution ratification).';
+      await setDoc(doc(db, 'campus_departments', deptId), {
+        repName: cleanName.slice(0, 120),
+        status: 'seated' as DepartmentStatus,
+        notes: notes.slice(0, 2000),
+        updatedAt: serverTimestamp(),
+        updatedBy: email,
+      });
+      seatedNow += 1;
+    }
+  }
+
+  if (seatedNow > 0) {
+    await appendConductLog({
+      category: 'governance',
+      severity: 'info',
+      departmentId: 'commons',
+      actor: email,
+      summary: `Seated ${seatedNow} Department Representative(s) in Commons Square for the Constitutional Convention (all agents remain Offline / Standby pending Constitution ratification).`,
+      remediationOrder: '',
+    });
+  }
+
+  return seatedNow;
+}
+
 // ============================================================================
 // ONE-TIME STARTER SEED (CALLED AUTOMATICALLY FOR CHANCELLOR WHEN EMPTY)
 // ============================================================================
 
 export async function ensureStarterGovernanceSeeded(chancellorEmail: string): Promise<void> {
   const email = chancellorEmail.trim().toLowerCase();
+
+  // Seat all 13 Convention Representatives as 'seated' (Offline / Standby) if missing or still 'recruiting'
+  const deptsSnap = await getDocs(collection(db, 'campus_departments'));
+  const existingDepts: Record<string, DepartmentRecord> = {};
+  deptsSnap.forEach((d) => {
+    existingDepts[d.id] = { id: d.id, ...(d.data() as Omit<DepartmentRecord, 'id'>) };
+  });
+  await seatAllConventionReps(existingDepts, email);
 
   // 1. Seed access_roles from local env if empty
   const rolesSnap = await getDocs(collection(db, 'access_roles'));

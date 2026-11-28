@@ -8,6 +8,7 @@ import {
   type PermitRecord,
   type RiskLevel,
 } from '../../services/firestoreService';
+import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface CampusWatchInteriorProps {
   role: CampusRole;
@@ -86,14 +87,16 @@ export function CampusWatchInterior({
     <div className="space-y-3">
       <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] flex items-center justify-between gap-2 flex-wrap">
         <div className="text-xs text-[#54371b]">
-          <strong>Article II — Executive Permit Gate:</strong> High-impact actions (spending,
-          external posts, sharing, software installs) require Chancellor sign-off. Every decision
-          writes an immutable Cairn to the Courthouse.
+          <strong>Police Station — Executive Enforcement (Article II):</strong> Enforces the Bill of
+          Rights and Campus Constitution; high-impact actions require Chancellor <code>! Permit</code>{' '}
+          sign-off and write an immutable Cairn to the Courthouse.
         </div>
         <span className="px-2.5 py-1 rounded-full bg-amber-100 border border-amber-400 text-amber-950 text-xs font-bold shrink-0">
           ! {pending.length} Pending
         </span>
       </div>
+
+      <OfflineRosterPanel deptId="executive" heading="🚔 Police Station 5-Role Force (Offline · Standby)" />
 
       {feedback && (
         <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs text-emerald-900">

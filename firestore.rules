@@ -151,6 +151,12 @@ rules_version = '2';
 //     Covers Children's Books: The Bramblewood Friends & Sparrow & Sprocket Printables.
 //     Validated via isValidVaultDocument with UID and immutable createdAt protections.
 //
+// 16. Collection: campus_workspaces/{document=**}
+//     Access: Chancellor, University, and Guest read-only (`isCampusReader`);
+//             Chancellor and University (`isCampusOperator`) only for create, update, and delete.
+//     Covers Campus Workspaces: Geology, Communications, Social Media, Research & Development.
+//     Validated via isValidVaultDocument with UID and immutable createdAt protections.
+//
 // ===============================================================
 
 service cloud.firestore {
@@ -708,7 +714,20 @@ service cloud.firestore {
       allow delete: if isCampusOperator();
     }
 
-    // 16. Explicit Default Deny-All Fallback
+    // 16. Campus Workspaces (Geology, Communications, Social Media, Research & Development)
+    match /campus_workspaces/{document=**} {
+      allow read: if isCampusReader();
+      allow create: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isCampusOperator() &&
+        isValidVaultDocument(request.resource.data) &&
+        uidNotModified() &&
+        immutableCreatedAtIfPresent();
+      allow delete: if isCampusOperator();
+    }
+
+    // 17. Explicit Default Deny-All Fallback
     match /{document=**} {
       allow read, write: if false;
     }

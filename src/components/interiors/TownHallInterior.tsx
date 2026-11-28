@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CampusRole } from '../../firebase';
 import { BUILDINGS } from '../../data/campusData';
+import { TOWN_HALL_COMMITTEES } from '../../data/departmentRosters';
 import {
   createProposal,
   decideProposalGate2,
@@ -13,6 +14,7 @@ import {
   type SkillStatus,
 } from '../../services/firestoreService';
 import { BillOfRightsReader } from '../BillOfRightsReader';
+import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface TownHallInteriorProps {
   role: CampusRole;
@@ -27,7 +29,7 @@ export function TownHallInterior({
   proposals,
   skills,
 }: TownHallInteriorProps) {
-  const [tab, setTab] = useState<'charter' | 'proposals' | 'skills'>('charter');
+  const [tab, setTab] = useState<'charter' | 'committees' | 'proposals' | 'skills'>('charter');
   const [showFullCharter, setShowFullCharter] = useState(false);
 
   // Proposal form state
@@ -130,6 +132,7 @@ export function TownHallInterior({
         {(
           [
             ['charter', '📜 Bill of Rights'],
+            ['committees', `🏛️ Committees (${TOWN_HALL_COMMITTEES.length})`],
             ['proposals', `⚖️ Constitution & Amendments (${proposals.length})`],
             ['skills', `📚 Skills Registry (${skills.length})`],
           ] as const
@@ -185,6 +188,33 @@ export function TownHallInterior({
               : 'Read Full Ratified Bill of Rights (All 10 Articles & Subpoints) ▼'}
           </button>
           {showFullCharter && <BillOfRightsReader />}
+        </div>
+      )}
+
+      {tab === 'committees' && (
+        <div className="space-y-3 text-xs">
+          <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] space-y-2">
+            <div className="font-atlas font-bold text-sm text-[#4a2b0f]">
+              🏛️ Congressional Committees (Town Hall Legislative Arm)
+            </div>
+            <p className="text-[#54371b]">
+              Standing committees meet inside Town Hall to draft, review, and refine policies across
+              all 13 departments before presenting bills to Congress and submitting them for Two-Gate
+              Lawmaking.
+            </p>
+            <div className="space-y-1.5">
+              {TOWN_HALL_COMMITTEES.map((c) => (
+                <div
+                  key={c.id}
+                  className="p-2.5 rounded-lg bg-white/85 border border-[#cfa96e] space-y-0.5"
+                >
+                  <div className="font-bold text-[#331d0b]">{c.name}</div>
+                  <div className="text-[11px] text-[#54371b]">{c.focus}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <OfflineRosterPanel deptId="town-hall" heading="📜 Town Hall Legislative Staff (Offline · Standby)" />
         </div>
       )}
 
