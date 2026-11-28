@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BuildingDef } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
 import { getRoomConfig, type RoomWorker, type WorkstationStyle } from '../data/interiorConfigs';
+import { LIVING_ROOMS } from '../data/livingRooms';
 import type { CampusRole } from '../firebase';
 import type { DepartmentRecord } from '../services/firestoreService';
+import { LivingRoomView } from './room/LivingRoomView';
 
 interface InteriorRoomViewProps {
   building: BuildingDef;
@@ -255,7 +257,26 @@ function WorkstationProp({
   }
 }
 
-export function InteriorRoomView({
+export function InteriorRoomView(props: InteriorRoomViewProps) {
+  const livingRoom = LIVING_ROOMS[props.building.id];
+  if (livingRoom) {
+    return (
+      <LivingRoomView
+        room={livingRoom}
+        building={props.building}
+        role={props.role}
+        departmentRecord={props.departmentRecord}
+        pendingPermitCount={props.pendingPermitCount}
+        constitutionActive={props.constitutionActive}
+        onExitToCampus={props.onExitToCampus}
+        onOpenDashboard={props.onOpenDashboard}
+      />
+    );
+  }
+  return <StaticInteriorRoomView {...props} />;
+}
+
+function StaticInteriorRoomView({
   building,
   role,
   departmentRecord,
