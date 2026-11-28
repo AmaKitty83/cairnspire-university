@@ -8,6 +8,11 @@ import {
   type ConductLogRecord,
   type ConductSeverity,
 } from '../../services/firestoreService';
+import {
+  BRANCH_PREP_REPORTS,
+  SUPREME_COURT_AUDIT_CHECKLIST,
+} from '../../data/governmentConventionPrep';
+import { BranchPrepPanel } from './BranchPrepPanel';
 import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface CourthouseInteriorProps {
@@ -70,7 +75,17 @@ export function CourthouseInterior({ role, userEmail, logs }: CourthouseInterior
         </span>
       </div>
 
-      <OfflineRosterPanel deptId="courthouse" heading="⚖️ Three-Tier Judicial Bench & Officers (Offline · Standby)" />
+      <OfflineRosterPanel
+        deptId="courthouse"
+        heading="⚖️ Three-Tier Judicial Bench & Officers (Online · Convention Prep)"
+        isOnline={true}
+      />
+
+      <BranchPrepPanel
+        report={BRANCH_PREP_REPORTS.courthouse}
+        extraTitle="⚖️ Supreme Court 9-Point Constitutional Audit Checklist (Art. X.3)"
+        extraItems={SUPREME_COURT_AUDIT_CHECKLIST}
+      />
 
       {/* Filter pills */}
       <div className="flex flex-wrap gap-1.5">
@@ -80,8 +95,11 @@ export function CourthouseInterior({ role, userEmail, logs }: CourthouseInterior
             ['governance', 'Governance'],
             ['permit_audit', 'Permits'],
             ['audit', 'Audits'],
+            ['policy_violation', 'Violations'],
+            ['incident', 'Incidents'],
             ['watchdog_alert', 'Watchdog'],
             ['remediation', 'Remediations'],
+            ['commendation', 'Commendations'],
           ] as const
         ).map(([val, label]) => (
           <button
@@ -152,6 +170,7 @@ export function CourthouseInterior({ role, userEmail, logs }: CourthouseInterior
               className="px-2 py-1.5 rounded-lg bg-white border border-[#b89259]"
             >
               <option value="audit">Audit</option>
+              <option value="incident">Incident Report</option>
               <option value="watchdog_alert">Watchdog Alert</option>
               <option value="remediation">Remediation Order</option>
               <option value="policy_violation">Policy Violation</option>

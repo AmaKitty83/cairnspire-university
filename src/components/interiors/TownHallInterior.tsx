@@ -3,6 +3,11 @@ import type { CampusRole } from '../../firebase';
 import { BUILDINGS } from '../../data/campusData';
 import { TOWN_HALL_COMMITTEES } from '../../data/departmentRosters';
 import {
+  BRANCH_PREP_REPORTS,
+  CONSTITUTION_WORKING_OUTLINE,
+  CONVENTION_RULES_OF_ORDER,
+} from '../../data/governmentConventionPrep';
+import {
   createProposal,
   decideProposalGate2,
   formatTimestamp,
@@ -14,6 +19,7 @@ import {
   type SkillStatus,
 } from '../../services/firestoreService';
 import { BillOfRightsReader } from '../BillOfRightsReader';
+import { BranchPrepPanel } from './BranchPrepPanel';
 import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface TownHallInteriorProps {
@@ -29,7 +35,7 @@ export function TownHallInterior({
   proposals,
   skills,
 }: TownHallInteriorProps) {
-  const [tab, setTab] = useState<'charter' | 'committees' | 'proposals' | 'skills'>('charter');
+  const [tab, setTab] = useState<'convention' | 'charter' | 'committees' | 'proposals' | 'skills'>('convention');
   const [showFullCharter, setShowFullCharter] = useState(false);
 
   // Proposal form state
@@ -131,6 +137,7 @@ export function TownHallInterior({
       <div className="flex flex-wrap gap-1.5 border-b border-[#cfa96e] pb-2">
         {(
           [
+            ['convention', '🏛️ Convention Prep'],
             ['charter', '📜 Bill of Rights'],
             ['committees', `🏛️ Committees (${TOWN_HALL_COMMITTEES.length})`],
             ['proposals', `⚖️ Constitution & Amendments (${proposals.length})`],
@@ -150,6 +157,45 @@ export function TownHallInterior({
           </button>
         ))}
       </div>
+
+      {tab === 'convention' && (
+        <div className="space-y-3 text-xs">
+          <BranchPrepPanel
+            report={BRANCH_PREP_REPORTS['town-hall']}
+            extraTitle="⚖️ Proposed Constitutional Convention Rules of Order"
+            extraItems={CONVENTION_RULES_OF_ORDER}
+          />
+
+          <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] space-y-2">
+            <div className="font-atlas font-bold text-sm text-[#3c230f]">
+              📜 Working Outline — Full Campus Constitution (Articles I–XII)
+            </div>
+            <div className="space-y-1.5">
+              {CONSTITUTION_WORKING_OUTLINE.map((art) => (
+                <div
+                  key={art.article}
+                  className="p-2.5 rounded-lg bg-white/90 border border-[#cfa96e] space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-bold text-[#2e1e0f]">
+                      {art.article} — {art.title}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#efe0bc] text-[#4a2b0f] text-[10px] font-semibold">
+                      {art.sponsors}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-emerald-900">
+                    <strong>✅ IN:</strong> {art.mustIncludeSummary}
+                  </div>
+                  <div className="text-[11px] text-red-900">
+                    <strong>🚫 OUT:</strong> {art.mustExcludeSummary}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === 'charter' && (
         <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] space-y-2">
@@ -171,12 +217,12 @@ export function TownHallInterior({
               className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                 constitutionActive
                   ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
-                  : 'bg-slate-900 border-amber-400 text-amber-200'
+                  : 'bg-emerald-950 border-emerald-400 text-emerald-100'
               }`}
             >
               {constitutionActive
                 ? '✅ Campus Constitution Ratified · Agents Authorized'
-                : '⏸️ Autonomous Agents: OFFLINE (Awaiting Ratified Campus Constitution)'}
+                : '🟢 Stage 1: 3 Government Branches Online (18 Agents) · Non-Government Depts Standby'}
             </span>
           </div>
           <button
@@ -214,7 +260,11 @@ export function TownHallInterior({
               ))}
             </div>
           </div>
-          <OfflineRosterPanel deptId="town-hall" heading="📜 Town Hall Legislative Staff (Offline · Standby)" />
+          <OfflineRosterPanel
+            deptId="town-hall"
+            heading="📜 Town Hall Legislative Staff (Online · Convention Prep)"
+            isOnline={true}
+          />
         </div>
       )}
 
@@ -231,12 +281,12 @@ export function TownHallInterior({
                 className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                   constitutionActive
                     ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
-                    : 'bg-slate-900 border-amber-400 text-amber-200'
+                    : 'bg-emerald-950 border-emerald-400 text-emerald-100'
                 }`}
               >
                 {constitutionActive
                   ? '✅ Campus Constitution Ratified · Agents Authorized'
-                  : '⏸️ Autonomous Agents: OFFLINE (Awaiting Ratified Campus Constitution)'}
+                  : '🟢 Stage 1: 3 Government Branches Online (18 Agents) · Non-Government Depts Standby'}
               </span>
             </div>
           </div>
@@ -288,24 +338,42 @@ export function TownHallInterior({
                   <p className="text-[#54371b] whitespace-pre-wrap leading-relaxed bg-[#fbf5e6] p-2.5 rounded-lg border border-[#dfC697]">
                     {p.body}
                   </p>
-                  {isChancellor && p.gate2Status === 'pending' && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        disabled={propBusy}
-                        onClick={() => void handleGate2(p, 'ratified')}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
-                      >
-                        ✓ Ratify (Gate 2)
-                      </button>
-                      <button
-                        disabled={propBusy}
-                        onClick={() => void handleGate2(p, 'rejected')}
-                        className="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
-                      >
-                        ✕ Reject
-                      </button>
+                  {p.gate1Notes && (
+                    <div className="text-[11px] text-[#6b4b28] bg-[#f7ead0]/70 px-2.5 py-1.5 rounded-lg border border-[#d6b880]">
+                      <strong>Gate 1 Audit Note:</strong> {p.gate1Notes}
                     </div>
                   )}
+                  {isChancellor && p.gate2Status === 'pending' && (() => {
+                    const gate1Ready = p.gate1Status === 'passed' || p.gate1Status === 'approved';
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          disabled={propBusy || !gate1Ready}
+                          onClick={() => void handleGate2(p, 'ratified')}
+                          title={
+                            gate1Ready
+                              ? 'Sign and ratify into Campus Governance'
+                              : 'Gate 1 Antigravity Audit must pass before Gate 2 Ratification'
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                        >
+                          ✓ Ratify (Gate 2)
+                        </button>
+                        <button
+                          disabled={propBusy}
+                          onClick={() => void handleGate2(p, 'rejected')}
+                          className="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                        >
+                          ✕ Reject
+                        </button>
+                        {!gate1Ready && (
+                          <span className="text-[11px] text-amber-900 font-medium">
+                            Gate 1 Antigravity Audit must pass before Gate 2 Ratification.
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -340,7 +408,7 @@ export function TownHallInterior({
                   onChange={(e) => setPropDept(e.target.value)}
                   className="px-2.5 py-1.5 rounded-lg bg-white border border-[#b89259]"
                 >
-                  {BUILDINGS.map((b) => (
+                  {BUILDINGS.filter((b) => b.id !== 'commons').map((b) => (
                     <option key={b.id} value={b.id}>
                       Sponsor: {b.name}
                     </option>

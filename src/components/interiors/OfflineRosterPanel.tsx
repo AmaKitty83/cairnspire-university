@@ -3,9 +3,16 @@ import { DEPARTMENT_ROSTERS } from '../../data/departmentRosters';
 interface OfflineRosterPanelProps {
   deptId: string;
   heading?: string;
+  isOnline?: boolean;
+  statusBadgeText?: string;
 }
 
-export function OfflineRosterPanel({ deptId, heading }: OfflineRosterPanelProps) {
+export function OfflineRosterPanel({
+  deptId,
+  heading,
+  isOnline = false,
+  statusBadgeText,
+}: OfflineRosterPanelProps) {
   const slots = DEPARTMENT_ROSTERS[deptId];
   if (!slots?.length) return null;
 
@@ -24,8 +31,16 @@ export function OfflineRosterPanel({ deptId, heading }: OfflineRosterPanelProps)
         <div className="font-atlas font-bold text-sm text-[#3c230f]">
           {heading || `⏸️ ${slots.length}-Agent Department Roster (Offline · Standby)`}
         </div>
-        <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-amber-400 text-amber-200 text-[10px] font-bold">
-          Paused Until Constitution Ratified
+        <span
+          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            isOnline
+              ? 'bg-emerald-900 border-emerald-400 text-emerald-100'
+              : 'bg-slate-900 border-amber-400 text-amber-200'
+          }`}
+        >
+          {isOnline
+            ? statusBadgeText || '🟢 Online · Convention Prep'
+            : 'Paused Until Constitution Ratified'}
         </span>
       </div>
 
@@ -55,8 +70,14 @@ export function OfflineRosterPanel({ deptId, heading }: OfflineRosterPanelProps)
                         Convention Rep
                       </span>
                     )}
-                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[9px] font-bold">
-                      ⏸️ Offline
+                    <span
+                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                        isOnline
+                          ? 'bg-emerald-100 text-emerald-900'
+                          : 'bg-slate-200 text-slate-800'
+                      }`}
+                    >
+                      {isOnline ? '🟢 Online' : '⏸️ Offline'}
                     </span>
                   </div>
                 </div>

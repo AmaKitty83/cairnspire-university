@@ -91,16 +91,19 @@ export const DEPARTMENT_ROSTERS: Record<string, DepartmentAgentSlot[]> = {
     {
       id: 'ps-detective',
       roleTitle: 'Detective',
+      defaultName: 'Marlowe',
       mandate: 'Investigates anomalous tool calls, cross-department boundary slips, or suspected rule violations for Courthouse review.',
     },
     {
       id: 'ps-officer',
       roleTitle: 'Law Enforcement Officer',
+      defaultName: 'Kira',
       mandate: 'Intercepts restricted high-impact actions (spending, sharing, publishing, installs) and holds them for Chancellor ! Permit.',
     },
     {
       id: 'ps-detainment',
       roleTitle: 'Detainment Force',
+      defaultName: 'Briggs',
       mandate: 'Pauses/quarantines misbehaving agents or runaway compute loops immediately pending Courthouse due process.',
     },
   ],
@@ -116,18 +119,21 @@ export const DEPARTMENT_ROSTERS: Record<string, DepartmentAgentSlot[]> = {
     {
       id: 'ct-sc-1',
       roleTitle: 'Associate Supreme Justice I',
+      defaultName: 'Vesper',
       tier: 'Supreme Court & Judicial Head (5-Justice Panel)',
       mandate: 'Reviews procedural fairness and Article I separation of powers on appealed rulings.',
     },
     {
       id: 'ct-sc-2',
       roleTitle: 'Associate Supreme Justice II',
+      defaultName: 'Nora',
       tier: 'Supreme Court & Judicial Head (5-Justice Panel)',
       mandate: 'Audits Article III privacy and Article VII child-safety compliance across judicial proceedings.',
     },
     {
       id: 'ct-sc-3',
       roleTitle: 'Associate Supreme Justice III',
+      defaultName: 'Cassian',
       tier: 'Supreme Court & Judicial Head (5-Justice Panel)',
       mandate: 'Evaluates Article II & VIII permit and scoped-exception adherence.',
     },
@@ -141,30 +147,35 @@ export const DEPARTMENT_ROSTERS: Record<string, DepartmentAgentSlot[]> = {
     {
       id: 'ct-cc-judge',
       roleTitle: 'Civil & Criminal Court Judge',
+      defaultName: 'Soren',
       tier: 'Civil & Criminal Court (General Agent Cases)',
       mandate: 'Presides over general agent conduct cases, honest-error reviews, and prompt/skill remediation orders.',
     },
     {
       id: 'ct-cc-prosecutor',
       roleTitle: 'Prosecutor',
+      defaultName: 'Valen',
       tier: 'Civil & Criminal Court (General Agent Cases)',
       mandate: 'Presents evidence from Courthouse Cairns and Police Station incident logs against non-compliant agent actions.',
     },
     {
       id: 'ct-cc-defense',
       roleTitle: 'Defense Counsel',
+      defaultName: 'Bryn',
       tier: 'Civil & Criminal Court (General Agent Cases)',
       mandate: 'Advocates fair context, surfaces ambiguity or missing instructions per Article IV, and proposes constructive skill fixes.',
     },
     {
       id: 'ct-gc-judge',
       roleTitle: 'Grand Court Presiding Judge',
+      defaultName: 'Lyris',
       tier: 'Grand Court (Government & Inter-Branch Cases)',
       mandate: 'Presides over disputes between Town Hall, Police Station, or Department Heads involving constitutional authority.',
     },
     {
       id: 'ct-gc-panel',
       roleTitle: 'Grand Court Panel & Special Counsel',
+      defaultName: 'Corvus',
       tier: 'Grand Court (Government & Inter-Branch Cases)',
       mandate: 'Campus-scaled Grand Court inquiry panel reviewing executive overreach, legislative conflicts, or branch checks and balances.',
     },
@@ -695,3 +706,12 @@ export const CONVENTION_BRIEFS: Record<string, ConventionBrief> = {
     ],
   },
 };
+
+export const GOVERNMENT_BRANCH_IDS = new Set(['town-hall', 'executive', 'courthouse']);
+
+export function isDepartmentAuthorizedOnline(
+  deptId: string,
+  constitutionActive: boolean
+): boolean {
+  return constitutionActive || GOVERNMENT_BRANCH_IDS.has(deptId);
+}

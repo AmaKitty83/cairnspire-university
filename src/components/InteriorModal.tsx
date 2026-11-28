@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { BuildingDef } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
+import { isDepartmentAuthorizedOnline } from '../data/departmentRosters';
 import type { CampusRole } from '../firebase';
 import {
   isCampusConstitutionRatified,
@@ -98,6 +99,7 @@ export function InteriorModal({
 
   const canWrite = role === 'chancellor' || role === 'university';
   const constitutionActive = isCampusConstitutionRatified(proposals);
+  const deptAuthorizedOnline = isDepartmentAuthorizedOnline(building.id, constitutionActive);
   const isDeepV2 = DEEP_V2_IDS.has(building.id);
   const cropSrc = ASSETS['crop-' + building.id]?.src || ASSETS['world-map']?.src || '';
   const repSrc = ASSETS[building.repSprite]?.src || '';
@@ -216,8 +218,12 @@ export function InteriorModal({
                       >
                         <option value="recruiting">Recruiting</option>
                         <option value="seated">Seated (Standby)</option>
-                        <option value="active" disabled={!constitutionActive}>
-                          {constitutionActive ? 'Active' : 'Active (Locked Until Constitution)'}
+                        <option value="active" disabled={!deptAuthorizedOnline}>
+                          {deptAuthorizedOnline
+                            ? constitutionActive
+                              ? 'Active'
+                              : 'Active (Stage 1 · Convention Prep)'
+                            : 'Active (Locked Until Constitution)'}
                         </option>
                       </select>
                       <button

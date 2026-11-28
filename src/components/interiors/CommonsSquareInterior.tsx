@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BUILDINGS, type BuildingDef } from '../../data/campusData';
-import { CONVENTION_BRIEFS } from '../../data/departmentRosters';
+import { CONVENTION_BRIEFS, GOVERNMENT_BRANCH_IDS } from '../../data/departmentRosters';
 import { ASSETS } from '../../data/assetMeta';
 import type { CampusRole } from '../../firebase';
 import {
@@ -96,12 +96,12 @@ export function CommonsSquareInterior({
             className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
               constitutionActive
                 ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
-                : 'bg-slate-900 border-amber-400 text-amber-200'
+                : 'bg-emerald-950 border-emerald-400 text-emerald-100'
             }`}
           >
             {constitutionActive
               ? '✅ Constitution Ratified · Agents Authorized'
-              : '⏸️ Agents Locked Offline Until Constitution Signed'}
+              : '🟢 Stage 1: Gov Branches Online · Non-Gov Standby'}
           </span>
         </div>
         {seatMsg && (
@@ -121,14 +121,15 @@ export function CommonsSquareInterior({
             const rec = departments[b.id];
             const brief = CONVENTION_BRIEFS[b.id];
             const repSrc = ASSETS[b.repSprite]?.src || '';
-            const status = rec?.status || 'recruiting';
+            const isGovBranch = GOVERNMENT_BRANCH_IDS.has(b.id);
+            const effectiveOnline = constitutionActive || isGovBranch;
+            const status = rec?.status || (isGovBranch ? 'active' : 'recruiting');
             const isOpen = expandedDept === b.id;
-            const badgeStyle =
-              status === 'active' && constitutionActive
-                ? 'bg-emerald-100 text-emerald-900'
-                : status === 'seated'
-                  ? 'bg-amber-100 text-amber-950'
-                  : 'bg-[#efe0bc] text-[#6b4b28]';
+            const badgeStyle = effectiveOnline
+              ? 'bg-emerald-100 text-emerald-900'
+              : status === 'seated'
+                ? 'bg-amber-100 text-amber-950'
+                : 'bg-[#efe0bc] text-[#6b4b28]';
 
             return (
               <div
@@ -153,7 +154,13 @@ export function CommonsSquareInterior({
                       <span
                         className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase shrink-0 ${badgeStyle}`}
                       >
-                        {status === 'seated' ? 'Seated · Standby' : status}
+                        {constitutionActive
+                          ? 'Active'
+                          : isGovBranch
+                            ? '🟢 Online · Convention Prep'
+                            : status === 'seated'
+                              ? 'Seated · Standby'
+                              : status}
                       </span>
                     </div>
                     <div className="text-[11px] text-[#6b4b28] truncate">

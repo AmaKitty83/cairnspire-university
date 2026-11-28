@@ -15,7 +15,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db, getSeedAllowlistEntries } from '../firebase';
-import { CONVENTION_BRIEFS } from '../data/departmentRosters';
+import { CONVENTION_BRIEFS, GOVERNMENT_BRANCH_IDS } from '../data/departmentRosters';
 
 export type DepartmentStatus = 'recruiting' | 'seated' | 'active';
 export type Gate1Status =
@@ -461,6 +461,14 @@ export async function saveSkillRecord(
     updatedAt: serverTimestamp(),
     updatedBy: email,
   });
+  await appendConductLog({
+    category: 'governance',
+    severity: 'info',
+    departmentId: input.departmentId,
+    actor: email,
+    summary: `Registered/updated skill "${input.name.trim()}" (${input.scope} · ${input.status}).`,
+    remediationOrder: '',
+  });
 }
 
 export async function saveAirBridge(
@@ -549,6 +557,45 @@ export async function seatAllConventionReps(
   return seatedNow;
 }
 
+export async function activateGovernmentBranchesForConvention(
+  existing: Record<string, DepartmentRecord>,
+  actorEmail: string
+): Promise<number> {
+  const email = actorEmail.trim().toLowerCase();
+  let activatedNow = 0;
+
+  for (const deptId of GOVERNMENT_BRANCH_IDS) {
+    const cur = existing[deptId];
+    if (cur?.status !== 'active') {
+      const brief = CONVENTION_BRIEFS[deptId];
+      const cleanName = cur?.repName?.trim() || brief?.repDefaultName || deptId;
+      await setDoc(doc(db, 'campus_departments', deptId), {
+        repName: cleanName.slice(0, 120),
+        status: 'active' as DepartmentStatus,
+        notes:
+          'Stage 1 Online — Government Branch active for Job Review & Constitutional Convention Prep (non-government departments remain Standby).',
+        updatedAt: serverTimestamp(),
+        updatedBy: email,
+      });
+      activatedNow += 1;
+    }
+  }
+
+  if (activatedNow > 0) {
+    await appendConductLog({
+      category: 'governance',
+      severity: 'info',
+      departmentId: 'town-hall',
+      actor: email,
+      summary:
+        'Stage 1 Chancellor Authorization: Brought Town Hall (Legislative), Police Station (Executive), and Courthouse (Judicial) online for Job Review & Constitutional Convention Preparation. Non-government departments remain Offline / Standby until Constitution ratification.',
+      remediationOrder: '',
+    });
+  }
+
+  return activatedNow;
+}
+
 // ============================================================================
 // ONE-TIME STARTER SEED (CALLED AUTOMATICALLY FOR CHANCELLOR WHEN EMPTY)
 // ============================================================================
@@ -563,6 +610,7 @@ export async function ensureStarterGovernanceSeeded(chancellorEmail: string): Pr
     existingDepts[d.id] = { id: d.id, ...(d.data() as Omit<DepartmentRecord, 'id'>) };
   });
   await seatAllConventionReps(existingDepts, email);
+  await activateGovernmentBranchesForConvention(existingDepts, email);
 
   // 1. Seed access_roles from local env if empty
   const rolesSnap = await getDocs(collection(db, 'access_roles'));

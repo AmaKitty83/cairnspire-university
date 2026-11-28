@@ -8,6 +8,10 @@ import {
   type PermitRecord,
   type RiskLevel,
 } from '../../services/firestoreService';
+import {
+  BRANCH_PREP_REPORTS,
+} from '../../data/governmentConventionPrep';
+import { BranchPrepPanel } from './BranchPrepPanel';
 import { OfflineRosterPanel } from './OfflineRosterPanel';
 
 interface CampusWatchInteriorProps {
@@ -96,7 +100,13 @@ export function CampusWatchInterior({
         </span>
       </div>
 
-      <OfflineRosterPanel deptId="executive" heading="🚔 Police Station 5-Role Force (Offline · Standby)" />
+      <OfflineRosterPanel
+        deptId="executive"
+        heading="🚔 Police Station 5-Role Force (Online · Convention Prep)"
+        isOnline={true}
+      />
+
+      <BranchPrepPanel report={BRANCH_PREP_REPORTS.executive} />
 
       {feedback && (
         <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs text-emerald-900">

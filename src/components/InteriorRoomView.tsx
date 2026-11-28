@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BuildingDef } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
 import { getRoomConfig, type RoomWorker, type WorkstationStyle } from '../data/interiorConfigs';
+import { isDepartmentAuthorizedOnline } from '../data/departmentRosters';
 import { LIVING_ROOMS } from '../data/livingRooms';
 import type { CampusRole } from '../firebase';
 import type { DepartmentRecord } from '../services/firestoreService';
@@ -369,6 +370,7 @@ function StaticInteriorRoomView({
   }, [room]);
 
   const headDisplayName = departmentRecord?.repName?.trim() || '';
+  const roomOnline = isDepartmentAuthorizedOnline(building.id, constitutionActive);
   const cropFallback = ASSETS['crop-' + building.id]?.src || ASSETS['world-map']?.src || '';
   const showWatchAlert = building.id === 'executive' && pendingPermitCount > 0;
   const openDashboardLabel =
@@ -402,12 +404,16 @@ function StaticInteriorRoomView({
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <span
             className={`hidden md:inline-block px-2 py-1 rounded-md text-[11px] font-bold border ${
-              constitutionActive
+              constitutionActive || roomOnline
                 ? 'bg-emerald-950/70 text-emerald-200 border-emerald-500/40'
                 : 'bg-amber-950/70 text-amber-200 border-amber-500/40'
             }`}
           >
-            {constitutionActive ? '✅ Constitution Active' : '⏸️ Standby · Pending Constitution'}
+            {constitutionActive
+              ? '✅ Constitution Active'
+              : roomOnline
+                ? '🟢 Government Online · Convention Prep'
+                : '⏸️ Standby · Pending Constitution'}
           </span>
           {role === 'guest' && (
             <span className="hidden sm:inline-block px-2 py-1 rounded-md bg-[#eef4f8] text-[#224459] text-[11px] font-bold">

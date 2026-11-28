@@ -12,6 +12,7 @@ import {
   type LivingPose,
   type LivingRoomDef,
 } from '../../data/livingRooms';
+import { isDepartmentAuthorizedOnline } from '../../data/departmentRosters';
 import {
   ArticulatedSprite,
   computeTargetJoints,
@@ -256,6 +257,7 @@ export function LivingRoomView({
   onExitToCampus,
   onOpenDashboard,
 }: LivingRoomViewProps) {
+  const roomOnline = isDepartmentAuthorizedOnline(building.id, constitutionActive);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [rosterOpen, setRosterOpen] = useState(false);
 
@@ -594,12 +596,16 @@ export function LivingRoomView({
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <span
             className={`hidden md:inline-block px-2 py-1 rounded-md text-[11px] font-bold border ${
-              constitutionActive
+              constitutionActive || roomOnline
                 ? 'bg-emerald-950/70 text-emerald-200 border-emerald-500/40'
                 : 'bg-amber-950/70 text-amber-200 border-amber-500/40'
             }`}
           >
-            {constitutionActive ? '✅ Constitution Active' : '⏸️ Standby · Pending Constitution'}
+            {constitutionActive
+              ? '✅ Constitution Active'
+              : roomOnline
+                ? '🟢 Government Online · Convention Prep'
+                : '⏸️ Standby · Pending Constitution'}
           </span>
           {role === 'guest' && (
             <span className="hidden sm:inline-block px-2 py-1 rounded-md bg-[#eef4f8] text-[#224459] text-[11px] font-bold">
@@ -632,7 +638,7 @@ export function LivingRoomView({
         <div className="hidden sm:flex absolute top-3 left-3 z-20 items-center gap-2 px-3 py-1.5 rounded-full ribbon-btn text-xs">
           <span
             className={`w-2 h-2 rounded-full ${
-              constitutionActive ? 'bg-[#2a9d8f]' : 'bg-amber-500'
+              constitutionActive || roomOnline ? 'bg-[#2a9d8f]' : 'bg-amber-500'
             }`}
           />
           <span>
@@ -759,7 +765,7 @@ export function LivingRoomView({
                     isTalking={st.pose === 'talk'}
                     speechText={st.speechText}
                     animTime={st.animTime}
-                    showStandbyBadge={!constitutionActive}
+                    showStandbyBadge={!roomOnline}
                     onClick={() => handleSelectAgent(st.def.id)}
                   />
                 );
@@ -780,7 +786,7 @@ export function LivingRoomView({
                   isBlinking={st.isBlinking}
                   speechText={st.speechText}
                   talkFrame={st.animTime}
-                  showStandbyBadge={!constitutionActive}
+                  showStandbyBadge={!roomOnline}
                   onClick={() => handleSelectAgent(st.def.id)}
                 />
               );
@@ -854,12 +860,16 @@ export function LivingRoomView({
                   </span>
                   <span
                     className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                      constitutionActive
+                      constitutionActive || roomOnline
                         ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                         : 'bg-amber-100 text-amber-900 border-amber-300'
                     }`}
                   >
-                    {constitutionActive ? '✅ Active' : '⏸️ Standby · Pending Constitution'}
+                    {constitutionActive
+                      ? '✅ Active'
+                      : roomOnline
+                        ? '🟢 Online · Convention Prep'
+                        : '⏸️ Standby · Pending Constitution'}
                   </span>
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#f5e1b8] text-[#5b3919] border border-[#c89d58]/60">
                     {describeActivity(selectedAgent, building.name)}
@@ -885,7 +895,7 @@ export function LivingRoomView({
                 )}
 
                 <p className="text-[#3a2614] leading-snug">
-                  “{constitutionActive ? selectedAgent.def.activeQuote : selectedAgent.def.standbyQuote}”
+                  “{roomOnline ? selectedAgent.def.activeQuote : selectedAgent.def.standbyQuote}”
                 </p>
 
                 {/* Live Articulation Controls */}
@@ -950,7 +960,7 @@ export function LivingRoomView({
           <div className="flex items-center gap-2 text-xs text-[#f5dfaf] truncate">
             <span className="font-atlas font-bold text-[#ffd166]">
               {room.agents.length} Living Sprites (
-              {constitutionActive ? 'Active' : 'Standby'})
+              {constitutionActive ? 'Active' : roomOnline ? 'Online · Convention Prep' : 'Standby'})
             </span>
             <span className="hidden sm:inline text-[#d9be8c]">
               · Sit, walk, talk &amp; wave inside {building.name}
