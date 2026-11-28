@@ -4,9 +4,9 @@ export interface SpritePoseSet {
   stand: string;
   walk1?: string;
   walk2?: string;
-  work: string;
-  talk: string;
-  wave: string;
+  work?: string;
+  talk?: string;
+  wave?: string;
 }
 
 interface PaintedLivingSpriteProps {
@@ -18,6 +18,7 @@ interface PaintedLivingSpriteProps {
   nativeFacing?: 1 | -1;
   rankTier: 1 | 2 | 3;
   rankBadgeColor: string;
+  workIcon?: string;
   x: number;
   y: number;
   facing: 1 | -1;
@@ -38,6 +39,7 @@ export function PaintedLivingSprite({
   nativeFacing = 1,
   rankTier,
   rankBadgeColor,
+  workIcon = '✨',
   x,
   y,
   facing,
@@ -56,46 +58,42 @@ export function PaintedLivingSprite({
   let seatOffsetY = 0;
 
   if (pose === 'walk') {
-    activeSrc =
-      spritePoses.walk1 && spritePoses.walk2
-        ? Math.floor(animTime * 5.2) % 2 === 0
-          ? spritePoses.walk1
-          : spritePoses.walk2
-        : spritePoses.stand;
+    activeSrc = spritePoses.stand;
     const step = Math.sin(animTime * 11.2);
     bobY = -Math.abs(step) * 5.0;
     tiltDeg = step * 3.2;
-    scaleY = 1 + Math.abs(step) * 0.025;
-    scaleX = 1 - Math.abs(step) * 0.018;
+    scaleY = 1 + Math.abs(step) * 0.024;
+    scaleX = 1 - Math.abs(step) * 0.016;
   } else if (pose === 'sit-work') {
-    activeSrc = spritePoses.work;
-    seatOffsetY = 3;
+    activeSrc = spritePoses.work || spritePoses.stand;
+    seatOffsetY = 2;
     const sway = Math.sin(animTime * 2.2);
     scaleY = 1 + sway * 0.014;
     tiltDeg = Math.sin(animTime * 1.6) * 1.1;
   } else if (pose === 'stand-work') {
-    activeSrc = spritePoses.work;
+    activeSrc = spritePoses.work || spritePoses.stand;
     const sway = Math.sin(animTime * 2.1);
     scaleY = 1 + sway * 0.013;
     tiltDeg = Math.sin(animTime * 1.8) * 1.2;
   } else if (pose === 'talk') {
-    activeSrc = spritePoses.talk;
+    activeSrc = spritePoses.talk || spritePoses.stand;
     bobY = -Math.abs(Math.sin(animTime * 7.4)) * 2.2;
     tiltDeg = Math.sin(animTime * 4.4) * 2.1;
     scaleY = 1 + Math.sin(animTime * 6) * 0.015;
   } else if (pose === 'wave') {
-    activeSrc = spritePoses.wave;
-    bobY = -Math.abs(Math.sin(animTime * 6.0)) * 3.4;
-    tiltDeg = Math.sin(animTime * 5.0) * 1.8;
+    activeSrc = spritePoses.wave || spritePoses.stand;
+    bobY = -Math.abs(Math.sin(animTime * 6.0)) * 3.6;
+    tiltDeg = Math.sin(animTime * 5.0) * 2.2;
   } else {
     activeSrc = spritePoses.stand;
     scaleY = 1 + Math.sin(animTime * 2.0) * 0.012;
   }
 
-  const h = species === 'Halfling' ? Math.min(spriteHeight, 94) : spriteHeight;
+  const h = species === 'Halfling' ? Math.min(spriteHeight, Math.round(spriteHeight * 0.88)) : spriteHeight;
   const w = h * 0.94;
   const isWaving = pose === 'wave';
-  const nameplateW = Math.max(66, name.length * 6.5 + 24);
+  const isWorking = pose === 'sit-work' || pose === 'stand-work';
+  const nameplateW = Math.max(64, name.length * 6.3 + 22);
   const effectiveFacing = pose === 'wave' ? nativeFacing : facing;
   const flipSign = effectiveFacing === nativeFacing ? 1 : -1;
 
@@ -201,7 +199,14 @@ export function PaintedLivingSprite({
         <g transform={`translate(0, ${(-h + bobY + seatOffsetY - 8).toFixed(1)})`}>
           <circle cx="0" cy="-9" r="11" fill="#fef3c7" stroke="#d97706" strokeWidth="1.8" />
           <text x="0" y="-5" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#78350f">
-            {showStandbyBadge ? '⏸' : '★'}
+            {showStandbyBadge ? '⏸' : workIcon}
+          </text>
+        </g>
+      ) : isWorking ? (
+        <g transform={`translate(0, ${(-h + bobY + seatOffsetY - 5).toFixed(1)})`} opacity="0.88">
+          <circle cx="0" cy="-7" r="9" fill="#fff8e7" stroke="#a57b42" strokeWidth="1.2" />
+          <text x="0" y="-3.5" textAnchor="middle" fontSize="9.5">
+            {workIcon}
           </text>
         </g>
       ) : null}

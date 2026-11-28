@@ -51,12 +51,12 @@ interface SimAgentState {
   animTime: number;
 }
 
-function describeActivity(st: SimAgentState): string {
+function describeActivity(st: SimAgentState, buildingName: string): string {
   if (st.pose === 'wave') return '👋 Waving hello';
   if (st.pose === 'talk') return '💬 Chatting with teammate';
-  if (st.pose === 'walk') return '🚶 Walking across watchtower';
+  if (st.pose === 'walk') return `🚶 Walking in ${buildingName}`;
   if (st.pose === 'sit-work') return '💺 Seated at workstation';
-  if (st.pose === 'stand-work') return '🧍 Standing at post';
+  if (st.pose === 'stand-work') return '🧍 Working at station';
   return '⏸️ Standing by';
 }
 
@@ -100,14 +100,16 @@ function IsometricPropSvg({
             filter="url(#livingGlow)"
           />
         )}
-        <image
-          href={prop.paintedSrc}
-          x={(-w / 2).toFixed(1)}
-          y={(-h + offsetY).toFixed(1)}
-          width={w}
-          height={h}
-          preserveAspectRatio="xMidYMax meet"
-        />
+        <g transform={prop.facing === 1 ? 'scale(-1, 1)' : undefined}>
+          <image
+            href={prop.paintedSrc}
+            x={(-w / 2).toFixed(1)}
+            y={(-h + offsetY).toFixed(1)}
+            width={w}
+            height={h}
+            preserveAspectRatio="xMidYMax meet"
+          />
+        </g>
       </g>
     );
   }
@@ -612,7 +614,11 @@ export function LivingRoomView({
             onClick={onOpenDashboard}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#8a5a24] hover:bg-[#a16b2d] border border-[#f5d393]/60 text-[#fff8e7] shadow cursor-pointer"
           >
-            📋 Open Dashboard
+            {building.id === 'childrens-books'
+              ? '📚 Open Publishing Suite'
+              : building.id === 'home-garden'
+                ? '🏡 Open Family Hub'
+                : '📋 Open Dashboard'}
           </button>
         </div>
       </header>
@@ -741,6 +747,7 @@ export function LivingRoomView({
                     nativeFacing={st.def.nativeFacing ?? 1}
                     rankTier={st.def.rankTier}
                     rankBadgeColor={st.def.rankBadgeColor}
+                    workIcon={st.def.workstationIcon}
                     x={st.x}
                     y={st.y}
                     facing={st.facing}
@@ -820,7 +827,7 @@ export function LivingRoomView({
                       </div>
                     </div>
                     <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ead7b0] text-[#4a2e16]">
-                      {describeActivity(st).split(' ')[0]}
+                      {describeActivity(st, building.name).split(' ')[0]}
                     </span>
                   </button>
                 );
@@ -851,7 +858,7 @@ export function LivingRoomView({
                     {constitutionActive ? '✅ Active' : '⏸️ Standby · Pending Constitution'}
                   </span>
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#f5e1b8] text-[#5b3919] border border-[#c89d58]/60">
-                    {describeActivity(selectedAgent)}
+                    {describeActivity(selectedAgent, building.name)}
                   </span>
                 </div>
 
@@ -867,6 +874,11 @@ export function LivingRoomView({
                     {selectedAgent.def.rankLabel}
                   </span>
                 </div>
+                {selectedAgent.def.tier && (
+                  <div className="inline-block px-2 py-0.5 rounded bg-[#ead7b0] text-[#4a2e16] text-[10px] font-semibold">
+                    ⚖️ {selectedAgent.def.tier}
+                  </div>
+                )}
 
                 <p className="text-[#3a2614] leading-snug">
                   “{constitutionActive ? selectedAgent.def.activeQuote : selectedAgent.def.standbyQuote}”
@@ -902,12 +914,16 @@ export function LivingRoomView({
                     onClick={onOpenDashboard}
                     className="ml-auto px-3 py-1 rounded-lg bg-[#6b4423] hover:bg-[#82542b] text-[#fbe8b5] font-semibold cursor-pointer"
                   >
-                    {building.name} Dashboard →
+                    {building.id === 'childrens-books'
+                      ? 'Publishing Suite →'
+                      : building.id === 'home-garden'
+                        ? 'Family Hub →'
+                        : `${building.name} Dashboard →`}
                   </button>
                 </div>
 
                 <div className="text-[10px] text-[#7a5a33]">
-                  Tip: Tap anywhere on the stone floor to make{' '}
+                  Tip: Tap anywhere on the floor to make{' '}
                   {selectedAgent.def.isDeptHead && headDisplayName
                     ? headDisplayName
                     : selectedAgent.def.defaultName}{' '}
@@ -933,7 +949,7 @@ export function LivingRoomView({
               {constitutionActive ? 'Active' : 'Standby'})
             </span>
             <span className="hidden sm:inline text-[#d9be8c]">
-              · Sit, walk, talk & wave inside the Watchtower floor
+              · Sit, walk, talk &amp; wave inside {building.name}
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -947,7 +963,11 @@ export function LivingRoomView({
               onClick={onOpenDashboard}
               className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#6b4423] hover:bg-[#83542b] text-[#fbe8b5] border border-[#c89d58]/60 cursor-pointer"
             >
-              📋 Dashboard
+              {building.id === 'childrens-books'
+                ? '📚 Suite'
+                : building.id === 'home-garden'
+                  ? '🏡 Hub'
+                  : '📋 Dashboard'}
             </button>
             <button
               onClick={onExitToCampus}
