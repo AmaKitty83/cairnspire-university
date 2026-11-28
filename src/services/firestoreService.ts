@@ -564,16 +564,21 @@ export async function activateGovernmentBranchesForConvention(
   const email = actorEmail.trim().toLowerCase();
   let activatedNow = 0;
 
-  for (const deptId of GOVERNMENT_BRANCH_IDS) {
+  const stage1Ids = [...GOVERNMENT_BRANCH_IDS, 'commons'];
+  for (const deptId of stage1Ids) {
     const cur = existing[deptId];
     if (cur?.status !== 'active') {
       const brief = CONVENTION_BRIEFS[deptId];
-      const cleanName = cur?.repName?.trim() || brief?.repDefaultName || deptId;
+      const cleanName =
+        cur?.repName?.trim() || brief?.repDefaultName || (deptId === 'commons' ? 'Lark' : deptId);
+      const notes =
+        deptId === 'commons'
+          ? 'Stage 1 Online — Commons Square active as neutral Constitutional Convention assembly plaza & clerk (no vote).'
+          : 'Stage 1 Online — Government Branch active for Job Review & Constitutional Convention Prep (non-government departments remain Standby).';
       await setDoc(doc(db, 'campus_departments', deptId), {
         repName: cleanName.slice(0, 120),
         status: 'active' as DepartmentStatus,
-        notes:
-          'Stage 1 Online — Government Branch active for Job Review & Constitutional Convention Prep (non-government departments remain Standby).',
+        notes,
         updatedAt: serverTimestamp(),
         updatedBy: email,
       });
@@ -585,10 +590,10 @@ export async function activateGovernmentBranchesForConvention(
     await appendConductLog({
       category: 'governance',
       severity: 'info',
-      departmentId: 'town-hall',
+      departmentId: 'commons',
       actor: email,
       summary:
-        'Stage 1 Chancellor Authorization: Brought Town Hall (Legislative), Police Station (Executive), and Courthouse (Judicial) online for Job Review & Constitutional Convention Preparation. Non-government departments remain Offline / Standby until Constitution ratification.',
+        'Stage 1 Chancellor Authorization: Activated Town Hall (Legislative), Police Station (Executive), Courthouse (Judicial), and Commons Square (Lark · Neutral Host & Convention Clerk) for Constitutional Convention Prep. Non-government departments remain Standby.',
       remediationOrder: '',
     });
   }

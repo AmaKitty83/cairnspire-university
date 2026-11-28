@@ -101,7 +101,7 @@ export function CommonsSquareInterior({
           >
             {constitutionActive
               ? '✅ Constitution Ratified · Agents Authorized'
-              : '🟢 Stage 1: Gov Branches Online · Non-Gov Standby'}
+              : '🟢 Stage 1: Gov Branches & Commons Online · Non-Gov Standby'}
           </span>
         </div>
         {seatMsg && (
@@ -209,7 +209,12 @@ export function CommonsSquareInterior({
       </div>
 
       {/* Commons Neutral Lounge Host */}
-      <OfflineRosterPanel deptId="commons" heading="☕ Commons Plaza Support (Neutral — No Vote)" />
+      <OfflineRosterPanel
+        deptId="commons"
+        heading="☕ Commons Plaza Support — Lark (Online · Neutral Host)"
+        isOnline={true}
+        statusBadgeText="🟢 Online · Neutral Host & Clerk"
+      />
 
       {/* Active Convention Floor Proposals */}
       <div className="p-3 rounded-xl bg-[#f7ead0] border border-[#b08647] space-y-1.5 text-xs">

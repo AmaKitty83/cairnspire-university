@@ -604,7 +604,9 @@ export function LivingRoomView({
             {constitutionActive
               ? '✅ Constitution Active'
               : roomOnline
-                ? '🟢 Government Online · Convention Prep'
+                ? building.id === 'commons'
+                  ? '🟢 Commons Plaza Online · Convention Host'
+                  : '🟢 Government Online · Convention Prep'
                 : '⏸️ Standby · Pending Constitution'}
           </span>
           {role === 'guest' && (

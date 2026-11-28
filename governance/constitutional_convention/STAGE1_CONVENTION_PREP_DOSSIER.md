@@ -1,8 +1,8 @@
 # Cairnspire University — Stage 1 Government Activation & Constitutional Convention Prep Dossier
 
-> **Stage:** `STAGE 1 ACTIVE (GOVERNMENT CONVENTION PREP)` · Authorized by **Chancellor Amarette** on **2026-11-27**  
-> **Online Branches (18 Agents):** **Town Hall** (Legislative · 3), **Police Station / Campus Watch** (Executive · 5), **Courthouse** (Judicial · 10)  
-> **Remaining Standby (11 Buildings):** Commons Square *(neutral host/assembly plaza)* plus all 10 non-government departments remain **Paused · Pending Constitution** under `GEMINI.md` Rule 9.  
+> **Stage:** `STAGE 1 ACTIVE (GOVERNMENT & COMMONS CONVENTION PREP)` · Authorized by **Chancellor Amarette** on **2026-11-27**  
+> **Online Halls (19 Roles Across 4 Buildings):** **Town Hall** (Legislative · 3), **Police Station / Campus Watch** (Executive · 5), **Courthouse** (Judicial · 10), and **Commons Square** (*Lark*, Neutral Host & Convention Clerk · 1 — no vote)  
+> **Remaining Standby (10 Departments):** All 10 non-government departments remain **Paused · Pending Constitution** under `GEMINI.md` Rule 9.  
 > **Integrity Pledge (Article IV & III):** Every finding, code reference, gap, and rule below is verified strictly against the live Cairnspire University codebase (`governance/preliminary_bill_of_rights.md`, `GEMINI.md`, `src/data/departmentRosters.ts`, `src/services/firestoreService.ts`, `firestore.rules`, and interior views). Zero fabrication; zero private personal emails, PINs, or family data.
 
 ---

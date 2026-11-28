@@ -713,5 +713,5 @@ export function isDepartmentAuthorizedOnline(
   deptId: string,
   constitutionActive: boolean
 ): boolean {
-  return constitutionActive || GOVERNMENT_BRANCH_IDS.has(deptId);
+  return constitutionActive || GOVERNMENT_BRANCH_IDS.has(deptId) || deptId === 'commons';
 }
