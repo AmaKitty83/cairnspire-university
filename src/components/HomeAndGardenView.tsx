@@ -100,6 +100,7 @@ import { PersonIcon, speakText } from './family/PersonBadge';
 interface HomeAndGardenViewProps {
   canExitToCampus: boolean;
   onExitToCampus?: () => void;
+  onOpenRoomView?: () => void;
   userEmail?: string | null;
   role: CampusRole;
 }
@@ -170,6 +171,7 @@ const KID_LOCK_PAGES = new Set<NavPageId>(['home', 'chores', 'school', 'gifts', 
 export function HomeAndGardenView({
   canExitToCampus,
   onExitToCampus,
+  onOpenRoomView,
   userEmail,
   role,
 }: HomeAndGardenViewProps) {
@@ -859,6 +861,16 @@ export function HomeAndGardenView({
               title="Parent Import & Kid PINs"
             >
               ⚙️
+            </button>
+          )}
+
+          {!kidLockName && canExitToCampus && onOpenRoomView && (
+            <button
+              onClick={onOpenRoomView}
+              className="ribbon-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
+              title="Inspect Pip the Personal Assistant's RPG Sanctuary Desk"
+            >
+              🌿 PA Room
             </button>
           )}
 

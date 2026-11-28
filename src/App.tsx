@@ -38,6 +38,7 @@ export function App() {
   const [authReady, setAuthReady] = useState(false);
   const [familyPreviewOpen, setFamilyPreviewOpen] = useState(false);
   const [bramblewoodOpen, setBramblewoodOpen] = useState(false);
+  const [initialZonedBuildingId, setInitialZonedBuildingId] = useState<string | null>(null);
 
   // Live Firestore collections
   const [departments, setDepartments] = useState<Record<string, DepartmentRecord>>({});
@@ -119,6 +120,10 @@ export function App() {
       <HomeAndGardenView
         canExitToCampus={true}
         onExitToCampus={() => setFamilyPreviewOpen(false)}
+        onOpenRoomView={() => {
+          setFamilyPreviewOpen(false);
+          setInitialZonedBuildingId('home-garden');
+        }}
         userEmail={user.email}
         role={role}
       />
@@ -132,6 +137,10 @@ export function App() {
         userEmail={user.email || ''}
         proposals={proposals}
         onExitToCampus={() => setBramblewoodOpen(false)}
+        onOpenRoomView={() => {
+          setBramblewoodOpen(false);
+          setInitialZonedBuildingId('childrens-books');
+        }}
       />
     );
   }
@@ -150,6 +159,8 @@ export function App() {
       syncError={syncError}
       onOpenFamilyPreview={() => setFamilyPreviewOpen(true)}
       onOpenBramblewood={() => setBramblewoodOpen(true)}
+      initialZonedBuildingId={initialZonedBuildingId}
+      onClearInitialZoned={() => setInitialZonedBuildingId(null)}
     />
   );
 }

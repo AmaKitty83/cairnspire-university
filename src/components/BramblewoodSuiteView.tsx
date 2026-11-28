@@ -39,6 +39,7 @@ interface BramblewoodSuiteViewProps {
   userEmail: string;
   proposals?: GovernanceProposal[];
   onExitToCampus: () => void;
+  onOpenRoomView?: () => void;
 }
 
 type SuiteTab = 'overview' | 'library' | 'spreads' | 'agents' | 'bible' | 'printables';
@@ -48,6 +49,7 @@ export function BramblewoodSuiteView({
   userEmail,
   proposals = [],
   onExitToCampus,
+  onOpenRoomView,
 }: BramblewoodSuiteViewProps) {
   const canEdit = role === 'chancellor' || role === 'university';
   const constitutionActive = useMemo(() => isCampusConstitutionRatified(proposals), [proposals]);
@@ -237,8 +239,8 @@ export function BramblewoodSuiteView({
             </h1>
             <p className="text-[11px] text-[#f9a8d4] truncate">
               {constitutionActive
-                ? 'Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · 6 Specialist Agents'
-                : 'Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · ⏸️ Agents Offline (Pending Constitution)'}
+                ? 'Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · 9 Agency Roles'
+                : 'Article VII Child-Safe Storybook Studio · 9 Books · 153 Spreads · ⏸️ 9 Agency Roles Offline (Pending Constitution)'}
             </p>
           </div>
         </div>
@@ -248,6 +250,15 @@ export function BramblewoodSuiteView({
             <span className="hidden sm:inline-block px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-950 text-xs font-bold">
               {toastMsg}
             </span>
+          )}
+          {onOpenRoomView && (
+            <button
+              onClick={onOpenRoomView}
+              className="ribbon-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
+              title="Visit the painted Children's Books RPG Library with all 9 agent sprites & workstations"
+            >
+              🏛️ 9-Agent RPG Room
+            </button>
           )}
           <button
             onClick={toggleDark}

@@ -9,14 +9,15 @@ import {
 } from '../data/campusData';
 import { ASSETS } from '../data/assetMeta';
 import { signOutUser, type CampusRole } from '../firebase';
-import type {
-  AccessRoleRecord,
-  AirBridgeRecord,
-  ConductLogRecord,
-  DepartmentRecord,
-  GovernanceProposal,
-  PermitRecord,
-  SkillRegistryRecord,
+import {
+  isCampusConstitutionRatified,
+  type AccessRoleRecord,
+  type AirBridgeRecord,
+  type ConductLogRecord,
+  type DepartmentRecord,
+  type GovernanceProposal,
+  type PermitRecord,
+  type SkillRegistryRecord,
 } from '../services/firestoreService';
 import { InteriorModal } from './InteriorModal';
 import { InteriorRoomView } from './InteriorRoomView';
@@ -34,6 +35,8 @@ interface CampusMapProps {
   syncError: string | null;
   onOpenFamilyPreview: () => void;
   onOpenBramblewood: () => void;
+  initialZonedBuildingId?: string | null;
+  onClearInitialZoned?: () => void;
 }
 
 interface ActiveSprite extends SpriteDef {
@@ -61,12 +64,25 @@ export function CampusMap({
   syncError,
   onOpenFamilyPreview,
   onOpenBramblewood,
+  initialZonedBuildingId,
+  onClearInitialZoned,
 }: CampusMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [spritesEnabled, setSpritesEnabled] = useState(true);
   const [zonedBuilding, setZonedBuilding] = useState<BuildingDef | null>(null);
   const [dashboardBuilding, setDashboardBuilding] = useState<BuildingDef | null>(null);
   const [activeSpriteToast, setActiveSpriteToast] = useState<SpriteDef | null>(null);
+  const constitutionActive = isCampusConstitutionRatified(proposals);
+
+  useEffect(() => {
+    if (!initialZonedBuildingId) return;
+    const found = BUILDINGS.find((b) => b.id === initialZonedBuildingId);
+    if (found) {
+      setZonedBuilding(found);
+      setDashboardBuilding(null);
+    }
+    onClearInitialZoned?.();
+  }, [initialZonedBuildingId, onClearInitialZoned]);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const viewportRef = useRef<SVGGElement | null>(null);
@@ -114,9 +130,13 @@ export function CampusMap({
       return;
     }
     if (b.id === 'childrens-books') {
-      setZonedBuilding(null);
-      setDashboardBuilding(null);
-      onOpenBramblewood();
+      if (mode === 'zone') {
+        setZonedBuilding(b);
+      } else {
+        setZonedBuilding(null);
+        setDashboardBuilding(null);
+        onOpenBramblewood();
+      }
       return;
     }
     if (mode === 'zone') setZonedBuilding(b);
@@ -681,8 +701,21 @@ export function CampusMap({
           role={role}
           departmentRecord={departments[zonedBuilding.id]}
           pendingPermitCount={pendingPermitCount}
+          constitutionActive={constitutionActive}
           onExitToCampus={() => setZonedBuilding(null)}
-          onOpenDashboard={() => setDashboardBuilding(zonedBuilding)}
+          onOpenDashboard={() => {
+            if (zonedBuilding.id === 'childrens-books') {
+              setZonedBuilding(null);
+              onOpenBramblewood();
+              return;
+            }
+            if (zonedBuilding.id === 'home-garden') {
+              setZonedBuilding(null);
+              onOpenFamilyPreview();
+              return;
+            }
+            setDashboardBuilding(zonedBuilding);
+          }}
         />
       )}
 
