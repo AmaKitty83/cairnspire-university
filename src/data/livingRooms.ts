@@ -28,6 +28,10 @@ export interface IsometricPropDef {
   facing: 1 | -1;
   linkedAgentId?: string;
   label?: string;
+  paintedSrc?: string;
+  width?: number;
+  height?: number;
+  offsetY?: number;
 }
 
 export interface WalkNode {
@@ -37,14 +41,29 @@ export interface WalkNode {
   neighbors: string[];
 }
 
+export interface SpritePosesDef {
+  stand: string;
+  walk1?: string;
+  walk2?: string;
+  work: string;
+  talk: string;
+  wave: string;
+}
+
 export interface LivingAgentDef {
   id: string;
   defaultName: string;
   isDeptHead?: boolean;
   roleTitle: string;
+  rankTier: 1 | 2 | 3;
+  rankLabel: string;
+  rankBadgeColor: string;
   workstationName: string;
   workstationIcon: string;
   appearance: CharacterAppearance;
+  spritePoses?: SpritePosesDef;
+  spriteHeight?: number;
+  nativeFacing?: 1 | -1;
   homeNodeId: string;
   homeX: number;
   homeY: number;
@@ -198,66 +217,86 @@ export const LIVING_ROOMS: Record<string, LivingRoomDef> = {
       { x: 576, y: 384 },
     ],
     walkNodes: [
-      { id: 'bell_desk', x: 494, y: 504, neighbors: ['vex_entry', 'center_north', 'center_hub'] },
+      { id: 'bell_desk', x: 494, y: 502, neighbors: ['vex_entry', 'center_north', 'center_hub'] },
       { id: 'notice_board', x: 756, y: 388, neighbors: ['center_north', 'east_hall'] },
-      { id: 'door_guard', x: 966, y: 480, neighbors: ['east_hall', 'briggs_entry'] },
-      { id: 'vex_entry', x: 502, y: 548, neighbors: ['vex_seat', 'bell_desk', 'center_hub', 'center_south'] },
-      { id: 'vex_seat', x: 532, y: 568, neighbors: ['vex_entry'] },
-      { id: 'briggs_entry', x: 852, y: 548, neighbors: ['briggs_seat', 'east_hall', 'door_guard', 'center_south'] },
-      { id: 'briggs_seat', x: 818, y: 570, neighbors: ['briggs_entry'] },
+      { id: 'door_guard', x: 966, y: 482, neighbors: ['east_hall', 'briggs_entry'] },
+      { id: 'vex_entry', x: 612, y: 544, neighbors: ['vex_seat', 'bell_desk', 'center_hub', 'center_south'] },
+      { id: 'vex_seat', x: 568, y: 562, neighbors: ['vex_entry'] },
+      { id: 'briggs_entry', x: 736, y: 546, neighbors: ['briggs_seat', 'east_hall', 'center_hub', 'center_south'] },
+      { id: 'briggs_seat', x: 786, y: 562, neighbors: ['briggs_entry'] },
       { id: 'center_north', x: 664, y: 428, neighbors: ['bell_desk', 'notice_board', 'center_hub', 'east_hall'] },
-      { id: 'center_hub', x: 664, y: 506, neighbors: ['center_north', 'bell_desk', 'vex_entry', 'center_south', 'east_hall'] },
-      { id: 'center_south', x: 664, y: 608, neighbors: ['center_hub', 'vex_entry', 'briggs_entry'] },
+      { id: 'center_hub', x: 664, y: 506, neighbors: ['center_north', 'bell_desk', 'vex_entry', 'briggs_entry', 'center_south', 'east_hall'] },
+      { id: 'center_south', x: 664, y: 616, neighbors: ['center_hub', 'vex_entry', 'briggs_entry'] },
       { id: 'east_hall', x: 845, y: 482, neighbors: ['notice_board', 'door_guard', 'center_north', 'center_hub', 'briggs_entry'] },
     ],
     props: [
       {
         id: 'vex-chair',
         kind: 'iso-chair',
-        x: 526,
-        y: 564,
-        depthY: 560,
-        facing: 1,
+        x: 574,
+        y: 558,
+        depthY: 550,
+        facing: -1,
         linkedAgentId: 'ps-commissioner',
+        paintedSrc: '/assets/living/executive/prop-iso-chair.png',
+        width: 72,
+        height: 92,
+        offsetY: 16,
       },
       {
         id: 'vex-desk',
         kind: 'iso-command-desk',
-        x: 568,
-        y: 590,
-        depthY: 592,
-        facing: 1,
+        x: 526,
+        y: 594,
+        depthY: 594,
+        facing: -1,
         linkedAgentId: 'ps-commissioner',
         label: 'Commissioner Command Desk',
+        paintedSrc: '/assets/living/executive/prop-iso-command-desk.png',
+        width: 126,
+        height: 150,
+        offsetY: 22,
       },
       {
         id: 'briggs-stool',
         kind: 'iso-stool',
-        x: 824,
-        y: 566,
-        depthY: 562,
-        facing: -1,
+        x: 782,
+        y: 558,
+        depthY: 550,
+        facing: 1,
         linkedAgentId: 'ps-detainment',
+        paintedSrc: '/assets/living/executive/prop-iso-stool.png',
+        width: 60,
+        height: 62,
+        offsetY: 12,
       },
       {
         id: 'briggs-console',
         kind: 'iso-lockout-console',
-        x: 782,
-        y: 592,
+        x: 830,
+        y: 594,
         depthY: 594,
-        facing: -1,
+        facing: 1,
         linkedAgentId: 'ps-detainment',
         label: 'Quarantine & Lockout Console',
+        paintedSrc: '/assets/living/executive/prop-iso-lockout-console.png',
+        width: 122,
+        height: 116,
+        offsetY: 20,
       },
       {
         id: 'kira-checkpoint',
         kind: 'iso-checkpoint',
-        x: 918,
-        y: 492,
-        depthY: 492,
+        x: 912,
+        y: 496,
+        depthY: 496,
         facing: -1,
         linkedAgentId: 'ps-officer',
         label: 'Article II Permit Checkpoint',
+        paintedSrc: '/assets/living/executive/prop-iso-checkpoint.png',
+        width: 68,
+        height: 94,
+        offsetY: 14,
       },
     ],
     doorExit: { x: 1020, y: 440, label: 'Exit Watchtower' },
@@ -268,21 +307,32 @@ export const LIVING_ROOMS: Record<string, LivingRoomDef> = {
         defaultName: 'Vex',
         isDeptHead: true,
         roleTitle: 'Commissioner',
+        rankTier: 1,
+        rankLabel: 'Tier 1 · Department Head',
+        rankBadgeColor: '#7c3aed',
         workstationName: 'Commissioner’s Command Desk',
         workstationIcon: '🛡️',
         appearance: {
           species: 'Catgirl',
           skin: '#f6d8c3',
           hair: '#2b2440',
-          outfit: '#4338ca',
-          outfitDark: '#2e248a',
+          outfit: '#5b21b6',
+          outfitDark: '#3b0764',
           accent: '#f5c451',
           badge: 'commissioner',
         },
+        spriteHeight: 110,
+        nativeFacing: -1,
+        spritePoses: {
+          stand: '/assets/living/executive/vex-stand.png',
+          work: '/assets/living/executive/vex-work.png',
+          talk: '/assets/living/executive/vex-talk.png',
+          wave: '/assets/living/executive/vex-wave.png',
+        },
         homeNodeId: 'vex_seat',
-        homeX: 532,
-        homeY: 568,
-        homeFacing: 1,
+        homeX: 568,
+        homeY: 562,
+        homeFacing: -1,
         homePose: 'sit-work',
         homeProp: 'quill',
         standbyQuote:
@@ -300,16 +350,27 @@ export const LIVING_ROOMS: Record<string, LivingRoomDef> = {
         id: 'ps-chief',
         defaultName: 'Dorian',
         roleTitle: 'Chief of Police',
+        rankTier: 2,
+        rankLabel: 'Tier 2 · Senior Lead',
+        rankBadgeColor: '#0284c7',
         workstationName: '! Permit Dispatch Desk',
         workstationIcon: '!',
         appearance: {
           species: 'Elvaan',
           skin: '#f4d9c6',
           hair: '#c9a66b',
-          outfit: '#1d4ed8',
-          outfitDark: '#17368e',
+          outfit: '#0284c7',
+          outfitDark: '#075985',
           accent: '#fbbf24',
           badge: 'chief',
+        },
+        spriteHeight: 112,
+        nativeFacing: -1,
+        spritePoses: {
+          stand: '/assets/living/executive/dorian-stand.png',
+          work: '/assets/living/executive/dorian-work.png',
+          talk: '/assets/living/executive/dorian-talk.png',
+          wave: '/assets/living/executive/dorian-wave.png',
         },
         homeNodeId: 'bell_desk',
         homeX: 494,
@@ -332,16 +393,27 @@ export const LIVING_ROOMS: Record<string, LivingRoomDef> = {
         id: 'ps-detective',
         defaultName: 'Marlowe',
         roleTitle: 'Detective',
+        rankTier: 3,
+        rankLabel: 'Tier 3 · House Member',
+        rankBadgeColor: '#15803d',
         workstationName: 'Case & Evidence Notice Board',
         workstationIcon: '🔍',
         appearance: {
           species: 'Halfling',
           skin: '#f2ccb3',
           hair: '#6e3f23',
-          outfit: '#8b5a2b',
-          outfitDark: '#5b3919',
-          accent: '#f59e0b',
+          outfit: '#15803d',
+          outfitDark: '#14532d',
+          accent: '#fbbf24',
           badge: 'detective',
+        },
+        spriteHeight: 94,
+        nativeFacing: 1,
+        spritePoses: {
+          stand: '/assets/living/executive/marlowe-stand.png',
+          work: '/assets/living/executive/marlowe-work.png',
+          talk: '/assets/living/executive/marlowe-talk.png',
+          wave: '/assets/living/executive/marlowe-wave.png',
         },
         homeNodeId: 'notice_board',
         homeX: 756,
@@ -364,16 +436,27 @@ export const LIVING_ROOMS: Record<string, LivingRoomDef> = {
         id: 'ps-officer',
         defaultName: 'Kira',
         roleTitle: 'Law Enforcement Officer',
+        rankTier: 3,
+        rankLabel: 'Tier 3 · House Member',
+        rankBadgeColor: '#15803d',
         workstationName: 'Article II Permit Checkpoint',
         workstationIcon: '🚧',
         appearance: {
           species: 'Catgirl',
           skin: '#f7dac7',
-          hair: '#1f6f78',
-          outfit: '#0f766e',
-          outfitDark: '#114d49',
+          hair: '#8a3b22',
+          outfit: '#15803d',
+          outfitDark: '#14532d',
           accent: '#e2e8f0',
           badge: 'officer',
+        },
+        spriteHeight: 108,
+        nativeFacing: 1,
+        spritePoses: {
+          stand: '/assets/living/executive/kira-stand.png',
+          work: '/assets/living/executive/kira-work.png',
+          talk: '/assets/living/executive/kira-talk.png',
+          wave: '/assets/living/executive/kira-wave.png',
         },
         homeNodeId: 'door_guard',
         homeX: 966,
@@ -396,21 +479,32 @@ export const LIVING_ROOMS: Record<string, LivingRoomDef> = {
         id: 'ps-detainment',
         defaultName: 'Briggs',
         roleTitle: 'Detainment Force',
+        rankTier: 3,
+        rankLabel: 'Tier 3 · House Member',
+        rankBadgeColor: '#15803d',
         workstationName: 'Quarantine & Lockout Console',
         workstationIcon: '🔒',
         appearance: {
           species: 'Elvaan',
           skin: '#e8c2a6',
           hair: '#374151',
-          outfit: '#334155',
-          outfitDark: '#1e293b',
+          outfit: '#166534',
+          outfitDark: '#14532d',
           accent: '#38bdf8',
           badge: 'detainment',
         },
+        spriteHeight: 112,
+        nativeFacing: 1,
+        spritePoses: {
+          stand: '/assets/living/executive/briggs-stand.png',
+          work: '/assets/living/executive/briggs-work.png',
+          talk: '/assets/living/executive/briggs-talk.png',
+          wave: '/assets/living/executive/briggs-wave.png',
+        },
         homeNodeId: 'briggs_seat',
-        homeX: 818,
-        homeY: 570,
-        homeFacing: -1,
+        homeX: 786,
+        homeY: 562,
+        homeFacing: 1,
         homePose: 'sit-work',
         homeProp: 'none',
         standbyQuote:

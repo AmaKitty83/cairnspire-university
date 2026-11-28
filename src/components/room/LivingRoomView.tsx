@@ -18,6 +18,7 @@ import {
   lerpJoints,
   type JointAngles,
 } from './ArticulatedSprite';
+import { PaintedLivingSprite } from './PaintedLivingSprite';
 
 interface LivingRoomViewProps {
   room: LivingRoomDef;
@@ -68,6 +69,49 @@ function IsometricPropSvg({
   selected: boolean;
   onClick: () => void;
 }) {
+  if (prop.paintedSrc) {
+    const w = prop.width ?? 100;
+    const h = prop.height ?? 100;
+    const offsetY = prop.offsetY ?? 14;
+    return (
+      <g
+        className="cursor-pointer"
+        transform={`translate(${prop.x}, ${prop.y})`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+      >
+        <ellipse
+          cx="0"
+          cy="6"
+          rx={(w * 0.4).toFixed(1)}
+          ry={(w * 0.14).toFixed(1)}
+          fill={selected ? '#f59e0b' : '#180e06'}
+          opacity={selected ? 0.52 : 0.36}
+        />
+        {selected && (
+          <circle
+            cx="0"
+            cy={(-h * 0.4).toFixed(1)}
+            r={(w * 0.42).toFixed(1)}
+            fill="#ffd166"
+            opacity="0.28"
+            filter="url(#livingGlow)"
+          />
+        )}
+        <image
+          href={prop.paintedSrc}
+          x={(-w / 2).toFixed(1)}
+          y={(-h + offsetY).toFixed(1)}
+          width={w}
+          height={h}
+          preserveAspectRatio="xMidYMax meet"
+        />
+      </g>
+    );
+  }
+
   const stroke = selected ? '#fde68a' : '#24140a';
   const sw = selected ? 2 : 1.4;
 
@@ -685,6 +729,30 @@ export function LivingRoomView({
               const st = entry.agent;
               const displayName =
                 st.def.isDeptHead && headDisplayName ? headDisplayName : st.def.defaultName;
+              if (st.def.spritePoses) {
+                return (
+                  <PaintedLivingSprite
+                    key={st.def.id}
+                    name={displayName}
+                    species={st.def.appearance.species}
+                    pose={st.pose}
+                    spritePoses={st.def.spritePoses}
+                    spriteHeight={st.def.spriteHeight ?? 108}
+                    nativeFacing={st.def.nativeFacing ?? 1}
+                    rankTier={st.def.rankTier}
+                    rankBadgeColor={st.def.rankBadgeColor}
+                    x={st.x}
+                    y={st.y}
+                    facing={st.facing}
+                    isSelected={selectedAgentId === st.def.id}
+                    isTalking={st.pose === 'talk'}
+                    speechText={st.speechText}
+                    animTime={st.animTime}
+                    showStandbyBadge={!constitutionActive}
+                    onClick={() => handleSelectAgent(st.def.id)}
+                  />
+                );
+              }
               return (
                 <ArticulatedSprite
                   key={st.def.id}
@@ -739,7 +807,12 @@ export function LivingRoomView({
                     }`}
                   >
                     <div className="min-w-0">
-                      <div className="font-bold text-[#3c230f] truncate">
+                      <div className="font-bold text-[#3c230f] truncate flex items-center gap-1.5">
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full shrink-0 border border-white/70"
+                          style={{ backgroundColor: st.def.rankBadgeColor }}
+                          title={st.def.rankLabel}
+                        />
                         {display} · <span className="font-normal text-[#6b4423]">{st.def.roleTitle}</span>
                       </div>
                       <div className="text-[10.5px] text-[#7a4f23] truncate">
@@ -782,9 +855,17 @@ export function LivingRoomView({
                   </span>
                 </div>
 
-                <div className="text-[11px] font-semibold text-[#7a4f23]">
-                  {selectedAgent.def.roleTitle} · {selectedAgent.def.workstationIcon}{' '}
-                  {selectedAgent.def.workstationName}
+                <div className="text-[11px] font-semibold text-[#7a4f23] flex flex-wrap items-center gap-1.5">
+                  <span>
+                    {selectedAgent.def.roleTitle} · {selectedAgent.def.workstationIcon}{' '}
+                    {selectedAgent.def.workstationName}
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                    style={{ backgroundColor: selectedAgent.def.rankBadgeColor }}
+                  >
+                    {selectedAgent.def.rankLabel}
+                  </span>
                 </div>
 
                 <p className="text-[#3a2614] leading-snug">
