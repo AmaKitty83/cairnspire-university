@@ -3,7 +3,7 @@ import type { BuildingDef } from '../../data/campusData';
 import type { CampusRole } from '../../firebase';
 import type { DepartmentRecord } from '../../services/firestoreService';
 import {
-  clampPointToPolygon,
+  clampPointAwayFromProps,
   findNearestWalkNode,
   findNodePath,
   type HeldProp,
@@ -528,7 +528,11 @@ export function LivingRoomView({
     pt.x = e.clientX;
     pt.y = e.clientY;
     const local = pt.matrixTransform(ctm.inverse());
-    const clamped = clampPointToPolygon({ x: local.x, y: local.y }, room.floorPolygon);
+    const clamped = clampPointAwayFromProps(
+      { x: local.x, y: local.y },
+      room.floorPolygon,
+      room.props
+    );
 
     const nearestFrom = findNearestWalkNode(room.walkNodes, { x: st.x, y: st.y });
     const nearestTo = findNearestWalkNode(room.walkNodes, clamped);
