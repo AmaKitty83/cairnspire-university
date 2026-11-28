@@ -22,7 +22,7 @@ export function FinanceInterior({ role, userEmail }: FinanceInteriorProps) {
   const [syncErr, setSyncErr] = useState<string | null>(null);
 
   const [bCat, setBCat] = useState('');
-  const [bScope, setBScope] = useState<BudgetRow['scope']>('Household');
+  const [bScope, setBScope] = useState<BudgetRow['scope']>('Bramblewood / Business');
   const [bTarget, setBTarget] = useState('');
 
   const [billName, setBillName] = useState('');
@@ -48,11 +48,13 @@ export function FinanceInterior({ role, userEmail }: FinanceInteriorProps) {
     <div className="space-y-3 text-xs">
       <div className="p-3 rounded-xl bg-[#fff8e7] border border-[#b08647] flex flex-wrap items-center justify-between gap-2">
         <div className="text-[#54371b]">
-          <strong>Private Campus Treasury:</strong> Stored strictly in <code>private_finance/</code>{' '}
-          (Amarette &amp; Ray only — isolated from Home &amp; Garden and Guests).
+          <strong>Business &amp; Publishing Treasury:</strong> Stored strictly in{' '}
+          <code>private_finance/</code> (Amarette &amp; Ray only — tracks{' '}
+          <strong>Children’s Books, Sparrow &amp; Sprocket &amp; Social Media</strong> P&amp;L and
+          subscriptions; personal household bills stay outside Cairnspire).
         </div>
         <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-amber-400 text-amber-200 text-[10px] font-bold">
-          ⏸️ Roster Pending Your Definitions
+          ⏸️ 2-Agent Treasury Standby · Pending Constitution
         </span>
       </div>
 
@@ -92,7 +94,7 @@ export function FinanceInterior({ role, userEmail }: FinanceInteriorProps) {
               <input
                 value={bCat}
                 onChange={(e) => setBCat(e.target.value)}
-                placeholder="Category (e.g., Groceries)"
+                placeholder="Category (e.g., KDP Print Proofs)"
                 className="px-2 py-1.5 rounded bg-white border border-[#b89259]"
               />
               <select
@@ -100,9 +102,10 @@ export function FinanceInterior({ role, userEmail }: FinanceInteriorProps) {
                 onChange={(e) => setBScope(e.target.value as BudgetRow['scope'])}
                 className="px-2 py-1.5 rounded bg-white border border-[#b89259]"
               >
-                <option>Household</option>
                 <option>Bramblewood / Business</option>
-                <option>Savings</option>
+                <option>Social Media &amp; Printables</option>
+                <option>Software &amp; Tooling</option>
+                <option>Tax Reserve &amp; Savings</option>
               </select>
               <input
                 value={bTarget}

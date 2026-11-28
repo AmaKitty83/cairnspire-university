@@ -193,7 +193,13 @@ export async function saveStocksWorkspace(
 export interface BudgetRow {
   id: string;
   category: string;
-  scope: 'Household' | 'Bramblewood / Business' | 'Savings';
+  scope:
+    | 'Bramblewood / Business'
+    | 'Social Media & Printables'
+    | 'Software & Tooling'
+    | 'Tax Reserve & Savings'
+    | 'Household'
+    | 'Savings';
   monthlyTarget: string;
   notes: string;
 }

@@ -43,8 +43,7 @@ export const TOWN_HALL_COMMITTEES = [
   },
 ];
 
-// Detailed Offline/Standby Rosters ONLY for the 9 buildings Amarette worked on.
-// Finance, Stocks, AIR, Communications, and R&D rosters remain intentionally blank until Amarette defines them.
+// Complete Offline/Standby Rosters across ALL 14 Cairnspire University buildings.
 export const DEPARTMENT_ROSTERS: Record<string, DepartmentAgentSlot[]> = {
   commons: [
     {
@@ -386,6 +385,129 @@ export const DEPARTMENT_ROSTERS: Record<string, DepartmentAgentSlot[]> = {
       mandate: 'Reviews post performance, retention trends, and posting cadence adjustments.',
     },
   ],
+  finance: [
+    {
+      id: 'fn-treasurer',
+      roleTitle: 'Campus Treasurer (Dept. Head)',
+      defaultName: 'Bram',
+      isRep: true,
+      mandate: 'Leads Business & Publishing Accounting strictly for Amarette & Ray (Children’s Books, Sparrow & Sprocket, Social Media P&L & tax-prep summaries). Zero personal household bills, zero autonomous spending.',
+    },
+    {
+      id: 'fn-clerk',
+      roleTitle: 'Budget & Subscriptions Clerk',
+      defaultName: 'Aurelia',
+      mandate: 'Tracks publishing, studio, and software subscriptions, flags renewals for Chancellor ! Permit review, and maintains clean vendor expense ledgers.',
+    },
+  ],
+  stocks: [
+    {
+      id: 'st-head',
+      roleTitle: 'Head of Markets (Dept. Head)',
+      defaultName: 'Sora',
+      isRep: true,
+      mandate: 'Directs the Read-Only Research & Watchlists Desk and represents Stocks at the Constitutional Convention; enforces hard separation from the Walled MCP Trading Desk.',
+    },
+    {
+      id: 'st-risk',
+      roleTitle: 'Risk & Circuit-Breaker Officer',
+      defaultName: 'Cyrus',
+      mandate: 'Monitors daily loss limits, max position caps, and Article VIII risk rules — triggers an instant circuit-breaker halt or Courthouse escalation on any anomaly.',
+    },
+    {
+      id: 'st-grokbot',
+      roleTitle: 'Walled MCP Trader',
+      defaultName: 'GrokBot',
+      mandate: 'Strictly scoped inside the dedicated Article VIII Walled Brokerage MCP Account under hard loss caps and order limits, logging every execution to immutable Courthouse Cairns.',
+    },
+    {
+      id: 'st-earnings',
+      roleTitle: 'Earnings & Fundamentals Analyst',
+      defaultName: 'Calla',
+      mandate: 'Read-only research organizing quarterly filings, balance sheets, and earnings notes strictly outside the walled trading account.',
+    },
+    {
+      id: 'st-macro',
+      roleTitle: 'Macro & News Scout',
+      defaultName: 'Renn',
+      mandate: 'Read-only macro calendar, sector catalyst, and watchlist briefing scout for Chancellor Amarette and Ray.',
+    },
+  ],
+  air: [
+    {
+      id: 'air-head',
+      roleTitle: 'Director of AIR (Dept. Head)',
+      defaultName: 'Mina',
+      isRep: true,
+      mandate: 'Commands agent onboarding/offboarding governance, model routing priorities, and Article V compute stewardship.',
+    },
+    {
+      id: 'air-gpu',
+      roleTitle: 'Local GPU & Agent Zero Bridge Engineer',
+      defaultName: 'Zeph',
+      mandate: 'Maintains Ray’s local RTX 5090 ComfyUI & Agent Zero LAN bridges, VRAM health, and zero-cost local generation queues.',
+    },
+    {
+      id: 'air-rbac',
+      roleTitle: 'Agent Onboarding & RBAC Steward',
+      defaultName: 'Orin',
+      mandate: 'Audits server-side RBAC roles, Firestore security boundaries, and Constitution readiness before any agent may leave Standby.',
+    },
+    {
+      id: 'air-cost',
+      roleTitle: 'API & Compute Cost Watchdog',
+      defaultName: 'Kestrel',
+      mandate: 'Tracks metered API quotas and token budgets, deflecting routine workloads to Ray’s RTX 5090 under Article V.',
+    },
+  ],
+  communications: [
+    {
+      id: 'cm-postmaster',
+      roleTitle: 'Postmaster General (Dept. Head)',
+      defaultName: 'Sera',
+      isRep: true,
+      mandate: 'Oversees the Dual-Hub Belltower (Article VI Inter-Department Handoff Router + External Draft-First Desk) and represents Communications at Convention.',
+    },
+    {
+      id: 'cm-drafter',
+      roleTitle: 'External Correspondence & Outreach Drafter',
+      defaultName: 'Quill',
+      mandate: 'Drafts educator emails, publisher outreach, and announcements strictly in Draft-Only mode until Chancellor Amarette signs a ! Permit.',
+    },
+    {
+      id: 'cm-courier',
+      roleTitle: 'Inter-Department Handoff Courier',
+      defaultName: 'Kip',
+      mandate: 'Routes structured Article VI handoff packets cleanly between campus buildings without crossing department jurisdiction or privacy walls.',
+    },
+  ],
+  rd: [
+    {
+      id: 'rd-head',
+      roleTitle: 'Lead Artificer (Dept. Head)',
+      defaultName: 'Tink',
+      isRep: true,
+      mandate: 'Directs the Sandbox Innovation & Maker Workshop covering AI workflows, Skills, and web/script prototypes strictly isolated from live vaults.',
+    },
+    {
+      id: 'rd-skills',
+      roleTitle: 'Skill Incubator Architect',
+      defaultName: 'Lyra',
+      mandate: 'Packages reusable Agent Skills and prepares formal submissions for Town Hall Skills Review & Gate 1 Audit before campus graduation.',
+    },
+    {
+      id: 'rd-bench',
+      roleTitle: 'Local Model & ComfyUI Benchmarker',
+      defaultName: 'Bex',
+      mandate: 'Benchmarks new local RTX 5090 checkpoints, LoRAs, and Qwen/Wan workflows at zero cloud cost inside sandbox.',
+    },
+    {
+      id: 'rd-maker',
+      roleTitle: 'App & Automation Tool Prototyper',
+      defaultName: 'Jett',
+      mandate: 'Builds and tests prototype web tools, utility scripts, and home/business automations inside sandbox before any live rollout.',
+    },
+  ],
 };
 
 // All 13 Voting Department Representative Briefs for the Constitutional Convention (IN vs. OUT).
@@ -504,26 +626,26 @@ export const CONVENTION_BRIEFS: Record<string, ConventionBrief> = {
   },
   finance: {
     deptId: 'finance',
-    repDefaultName: 'Treasury Rep',
-    repTitle: 'Finance Department Representative',
+    repDefaultName: 'Bram',
+    repTitle: 'Campus Treasurer (Finance · Business & Publishing Accounting)',
     mustInclude: [
-      'Strict Amarette & Ray confidentiality vault rule; Finance agents prepare budgets/forecasts but never execute bank transfers or subscriptions.',
-      'Hard ! Permit gate on any financial expenditure or recurring billing change.',
-      'Clean accounting handoffs from Children’s Books & Social Media revenue tracking.',
+      'Strict Amarette & Ray confidentiality vault rule; Finance covers Business & Publishing Accounting ONLY (Children’s Books, Sparrow & Sprocket, Social Media P&L & subscriptions) — never bank transfers or live spending.',
+      'Hard ! Permit gate on any software subscription change or financial expenditure.',
+      'Clean revenue/cost reporting handoffs from Children’s Books & Social Media.',
     ],
     mustExclude: [
-      'Bank account numbers, card digits, exact balances, or tax IDs.',
+      'Personal household bills, family bank account numbers, card digits, or tax IDs inside Cairnspire.',
       'Autonomous payment, transfer, or subscription powers.',
     ],
   },
   stocks: {
     deptId: 'stocks',
-    repDefaultName: 'Markets Rep',
-    repTitle: 'Stocks Department Representative',
+    repDefaultName: 'Sora',
+    repTitle: 'Head of Markets (Stocks Dual-Desk Exchange)',
     mustInclude: [
-      'Codify the Article VIII Walled MCP Trading Exception (only GrokBot or a Chancellor-authorized upgraded agent inside a dedicated brokerage MCP account under explicit hard risk rules, with Courthouse Cairn logging).',
-      'Strict separation ensuring all non-exception Stocks agents remain research-and-briefing only.',
-      'Circuit-breaker authority allowing Police Station / Chancellor to halt trading immediately.',
+      'Codify the Article VIII Walled MCP Trading Exception (only GrokBot or a Chancellor-authorized upgrade inside a dedicated brokerage MCP account under explicit hard risk caps, monitored by the Risk & Circuit-Breaker Officer and logged to Courthouse Cairns).',
+      'Strict desk wall ensuring Head of Markets, Earnings Analyst, and Macro Scout remain 100% Read-Only research and briefings.',
+      'Circuit-breaker authority allowing Risk Officer, Police Station, or Chancellor to halt trading immediately.',
     ],
     mustExclude: [
       'Brokerage credentials, live API keys, or non-MCP retail account access.',
@@ -532,11 +654,11 @@ export const CONVENTION_BRIEFS: Record<string, ConventionBrief> = {
   },
   air: {
     deptId: 'air',
-    repDefaultName: 'AIR Rep',
-    repTitle: 'AIR (AI Resources) Representative',
+    repDefaultName: 'Mina',
+    repTitle: 'Director of AIR (AI Resources · 4-Agent Command)',
     mustInclude: [
-      'Hardware routing priority (local RTX 5090 ComfyUI & Agent Zero first) and VRAM health/rate-limit safeguards.',
-      'Standardized agent onboarding/offboarding gate ensuring no agent comes online before Constitution & Police compliance checks.',
+      'Hardware routing priority (local RTX 5090 ComfyUI & Agent Zero first via the Local GPU Bridge Engineer) and API/Compute Cost Watchdog safeguards.',
+      'Standardized Agent Onboarding & RBAC Steward gate ensuring no agent leaves Standby before Constitution & Police compliance checks.',
       'Zero credential exposure and server-side RBAC governance.',
     ],
     mustExclude: [
@@ -546,11 +668,11 @@ export const CONVENTION_BRIEFS: Record<string, ConventionBrief> = {
   },
   communications: {
     deptId: 'communications',
-    repDefaultName: 'Communications Rep',
-    repTitle: 'Communications Department Representative',
+    repDefaultName: 'Sera',
+    repTitle: 'Postmaster General (Communications Dual-Hub Belltower)',
     mustInclude: [
-      'Mandatory Draft-First & ! Permit Gate before sending any external email, SMS, or announcement.',
-      'Standardized Article VI inter-department handoff message format.',
+      'Mandatory Draft-First & ! Permit Gate for the External Correspondence Drafter before sending any external email, publisher outreach, or announcement.',
+      'Standardized Article VI Inter-Department Handoff Courier format across campus buildings.',
       'Strict privacy screening preventing Health, Finance, or Sanctuary data from entering external drafts.',
     ],
     mustExclude: [
@@ -560,12 +682,12 @@ export const CONVENTION_BRIEFS: Record<string, ConventionBrief> = {
   },
   rd: {
     deptId: 'rd',
-    repDefaultName: 'R&D Rep',
-    repTitle: 'Research & Development Representative',
+    repDefaultName: 'Tink',
+    repTitle: 'Lead Artificer (R&D Sandbox Innovation & Maker Workshop)',
     mustInclude: [
-      'Sandbox-first rule: experimental prototypes and local model benchmarks never touch live family/health/finance vaults or external accounts.',
-      'Pathway requiring Town Hall Skills Review & Gate 1 Audit before graduating a prototype Skill to production.',
-      'Preference for zero-cost local GPU experiments.',
+      'Strict Sandbox-First rule across both AI/ComfyUI benchmarks and App/Automation tool prototypes — never touches live family, health, finance, or external accounts.',
+      'Formal graduation path requiring Town Hall Skills Review & Gate 1 Audit before any Skill, web tool, or automation leaves R&D.',
+      'Preference for zero-cost local RTX 5090 experiments.',
     ],
     mustExclude: [
       'Direct network/router changes, unsanctioned port forwarding, or bypassing Security Rules for convenience.',
